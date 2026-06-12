@@ -966,14 +966,16 @@ function activateVideo() {
   }
 }
 
-// Attach both click and touchend to overlay
-document.addEventListener('DOMContentLoaded', () => {
+// Attach both click and touchend to overlay directly — DOMContentLoaded already fired by module time
+(function attachOverlay() {
   const overlay = document.getElementById('activate-overlay');
-  if (overlay) {
-    overlay.addEventListener('click',    activateVideo);
-    overlay.addEventListener('touchend', activateVideo);
-  }
-});
+  if (!overlay) { setTimeout(attachOverlay, 100); return; }
+  overlay.addEventListener('click', activateVideo);
+  overlay.addEventListener('touchend', e => { e.preventDefault(); activateVideo(); }, { passive: false });
+  // Also allow keyboard space/enter for accessibility
+  overlay.setAttribute('tabindex','0');
+  overlay.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') activateVideo(); });
+})();
 
 // ── YOUTUBE VIDEO BACKGROUND ──
 let currentVideoId = '';
