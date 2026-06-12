@@ -346,19 +346,16 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   const aqIndicator = document.getElementById('aq-indicator');
   if (aqIndicator) aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
 
-  // Start/stop auto-queue engine on the board
+  // Start/stop auto-queue engine
   const mins = data.autoQueueMins || 2;
   if (data.autoQueue && !boardAutoQueueOn) {
-    boardAutoQueueOn = true;
+    boardAutoQueueOn   = true;
     boardAutoQueueMins = mins;
-    startBoardAutoQueue(mins);
+    startBoardQueueChecker();
   } else if (!data.autoQueue && boardAutoQueueOn) {
-    boardAutoQueueOn = false;
     stopBoardAutoQueue();
   } else if (data.autoQueue && boardAutoQueueMins !== mins) {
-    // Interval changed — restart with new timing
-    boardAutoQueueMins = mins;
-    startBoardAutoQueue(mins);
+    boardAutoQueueMins = mins; // interval updated — checker will use new value
   }
 
   // Video offset
@@ -394,16 +391,18 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   }
 });
 
-// ── AUTO-QUEUE ENGINE (runs from the board, not staff page) ──
-let boardAutoQueueTimer = null;
-let boardAutoQueueOn    = false;
-let boardTracks         = []; // kept in sync with leaderboard
-let boardAutoQueueMins  = 2;
+// ── AUTO-QUEUE ENGINE ──
+// Driven by nextQueueAt in Firebase — single source of truth, no duplicate firing
+let boardTracks        = [];
+let boardAutoQueueOn   = false;
+let boardAutoQueueMins = 2;
+let boardQueueChecker  = null;  // polls every 10s to check if nextQueueAt has passed
+let boardFiring        = false; // prevents concurrent runs
 
 async function boardSpotifyCall(endpoint, method='GET', body=null) {
   if (!CONFIG.spotify_worker_url) return null;
   try {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const opts = { method, headers:{ 'Content-Type':'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(CONFIG.spotify_worker_url + endpoint, opts);
     return await res.json();
@@ -417,63 +416,91 @@ async function boardGetRecentlyPlayed() {
     const cutoff = Date.now() - 60 * 60 * 1000;
     return snap.docs
       .filter(d => d.data().playedAt > cutoff)
-      .map(d => (d.data().title + '|||' + d.data().artist).toLowerCase());
+      .map(d => (d.data().title+'|||'+d.data().artist).toLowerCase());
   } catch(e) { return []; }
 }
 
-function cleanTitle(t) {
+function cleanT(t) {
   return t.replace(/\s*[-–]\s*(remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|instrumental).*/i,'')
           .replace(/\s*\((remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|feat\.?|ft\.?)[^)]*\)/gi,'')
           .trim() || t.trim();
 }
 
 async function boardRunAutoQueue() {
-  const recentlyPlayed = await boardGetRecentlyPlayed();
-  const approved = [...boardTracks]
-    .filter(t => t.approved && !t.spotifyQueued)
-    .sort((a,b) => b.uniqueVoters - a.uniqueVoters);
-  if (!approved.length) return;
+  if (boardFiring) return; // prevent concurrent runs
+  boardFiring = true;
+  try {
+    const recentlyPlayed = await boardGetRecentlyPlayed();
+    // Sort by uniqueVoters DESC — highest votes first
+    const approved = [...boardTracks]
+      .filter(t => t.approved && !t.spotifyQueued)
+      .sort((a,b) => b.uniqueVoters - a.uniqueVoters);
 
-  const top = approved.find(t => !recentlyPlayed.includes((t.title+'|||'+t.artist).toLowerCase()));
-  if (!top) return;
+    if (!approved.length) { boardFiring = false; return; }
 
-  const ct = cleanTitle(top.title);
-  const ca = top.artist.replace(/\s*feat\.?.*/i,'').trim() || top.artist;
-  let found = null;
-  for (const [t,a] of [[ct,ca],[top.title,ca],[ct,top.artist],[top.title,top.artist],[ct,''],[top.title,'']]) {
-    found = await boardSpotifyCall('/search?track='+encodeURIComponent(t)+(a?'&artist='+encodeURIComponent(a):''));
-    if (found?.uri) break;
-  }
-  if (!found?.uri) return;
+    // Pick top track not played in last hour
+    const top = approved.find(t =>
+      !recentlyPlayed.includes((t.title+'|||'+t.artist).toLowerCase())
+    );
+    if (!top) { boardFiring = false; return; }
 
-  const result = await boardSpotifyCall('/queue', 'POST', { uri: found.uri });
-  if (result?.ok) {
-    await updateDoc(doc(db,'tracks',top.id), { spotifyQueued:true, spotifyUri:found.uri, queuedAt:Date.now() });
-    // Update nextQueueAt in settings
-    const nextAt = Date.now() + boardAutoQueueMins * 60 * 1000;
-    updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt }).catch(()=>{});
-    // Auto-remove after 30 seconds
-    setTimeout(async () => {
-      try {
-        await setDoc(doc(db,'played',top.id), {
-          title:top.title, artist:top.artist, playedAt:Date.now(), spotifyUri:found.uri
-        });
-        await deleteDoc(doc(db,'tracks',top.id));
-      } catch(e) {}
-    }, 30000);
-  }
+    // Search Spotify with fallbacks
+    const ct = cleanT(top.title);
+    const ca = top.artist.replace(/\s*feat\.?.*/i,'').trim() || top.artist;
+    let found = null;
+    for (const [t,a] of [[ct,ca],[top.title,ca],[ct,top.artist],[top.title,top.artist],[ct,''],[top.title,'']]) {
+      found = await boardSpotifyCall('/search?track='+encodeURIComponent(t)+(a?'&artist='+encodeURIComponent(a):''));
+      if (found?.uri) break;
+    }
+    if (!found?.uri) { boardFiring = false; return; }
+
+    // Queue it
+    const result = await boardSpotifyCall('/queue', 'POST', { uri:found.uri });
+    if (result?.ok) {
+      // Mark as queued in Firebase
+      await updateDoc(doc(db,'tracks',top.id), {
+        spotifyQueued:true, spotifyUri:found.uri, queuedAt:Date.now()
+      });
+      // Set next queue time in Firebase (this drives the countdown)
+      const nextAt = Date.now() + boardAutoQueueMins * 60 * 1000;
+      await updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt });
+
+      // Auto-remove from board after 30 seconds
+      setTimeout(async () => {
+        try {
+          await setDoc(doc(db,'played',top.id), {
+            title:top.title, artist:top.artist,
+            playedAt:Date.now(), spotifyUri:found.uri
+          });
+          await deleteDoc(doc(db,'tracks',top.id));
+        } catch(e) {}
+      }, 30000);
+    }
+  } catch(e) { console.warn('Auto-queue error', e); }
+  boardFiring = false;
 }
 
-function startBoardAutoQueue(mins) {
-  boardAutoQueueMins = mins || 2;
-  clearInterval(boardAutoQueueTimer);
-  boardRunAutoQueue();
-  boardAutoQueueTimer = setInterval(boardRunAutoQueue, boardAutoQueueMins * 60 * 1000);
+// Check every 10 seconds if nextQueueAt has passed — single engine, no drift
+function startBoardQueueChecker() {
+  clearInterval(boardQueueChecker);
+  boardQueueChecker = setInterval(async () => {
+    if (!boardAutoQueueOn) return;
+    try {
+      const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const snap = await getDoc(doc(db,'settings','venue'));
+      if (!snap.exists()) return;
+      const nextAt = snap.data().nextQueueAt;
+      if (nextAt && Date.now() >= nextAt) {
+        await boardRunAutoQueue();
+      }
+    } catch(e) {}
+  }, 10000); // check every 10 seconds
 }
 
 function stopBoardAutoQueue() {
-  clearInterval(boardAutoQueueTimer);
-  boardAutoQueueTimer = null;
+  clearInterval(boardQueueChecker);
+  boardQueueChecker = null;
+  boardAutoQueueOn  = false;
 }
 
 // ── APPLY VENUE CONFIG ──

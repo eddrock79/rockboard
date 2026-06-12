@@ -616,7 +616,7 @@ window._queueTopTrack = async function() {
 // ── AUTO-QUEUE TOGGLE ──
 let autoQueueOn = false;
 let autoQueueTimer = null;
-const AUTO_QUEUE_INTERVAL = (CONFIG.autoQueueMins || 2) * 60 * 1000;
+// Auto-queue interval now managed by board
 
 function applyAutoQueueState(on) {
   autoQueueOn = on;
@@ -624,67 +624,24 @@ function applyAutoQueueState(on) {
   if (!btn) return;
   btn.textContent = on ? '⏱ AUTO-QUEUE: ON' : '⏱ AUTO-QUEUE: OFF';
   btn.classList.toggle('on', on);
-  clearInterval(autoQueueTimer);
-  autoQueueTimer = null;
+  // Staff page only controls settings — board does the actual queuing
   if (on) {
     const stuck = allTracks.filter(t => t.approved && t.spotifyQueued && !t.queuedAt);
-    stuck.forEach(t => updateDoc(doc(db,'tracks',t.id), { spotifyQueued: false }).catch(()=>{}));
-    // Write next queue time to Firebase so board can show countdown
-    const nextAt = Date.now() + AUTO_QUEUE_INTERVAL;
-    updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt, autoQueueMins: CONFIG.autoQueueMins||2 }).catch(()=>{});
-    runAutoQueue();
-    autoQueueTimer = setInterval(() => {
-      const next = Date.now() + AUTO_QUEUE_INTERVAL;
-      updateDoc(doc(db,'settings','venue'), { nextQueueAt: next }).catch(()=>{});
-      runAutoQueue();
-    }, AUTO_QUEUE_INTERVAL);
+    stuck.forEach(t => updateDoc(doc(db,'tracks',t.id), { spotifyQueued:false }).catch(()=>{}));
+    const nextAt = Date.now() + 5000;
+    updateDoc(doc(db,'settings','venue'), {
+      autoQueue: true,
+      autoQueueMins: CONFIG.autoQueueMins || 2,
+      nextQueueAt: nextAt
+    }).catch(()=>{});
   } else {
-    updateDoc(doc(db,'settings','venue'), { nextQueueAt: null }).catch(()=>{});
+    updateDoc(doc(db,'settings','venue'), { autoQueue:false, nextQueueAt:null }).catch(()=>{});
   }
 }
-
-// ── UPDATE INTERVAL ──
-window._updateInterval = function(mins) {
-  const m = Math.max(1, Math.min(60, parseInt(mins) || 2));
-  document.getElementById('interval-input').value = m;
-  CONFIG.autoQueueMins = m;
-  // If auto-queue is running, restart with new interval
-  if (autoQueueOn) {
-    clearInterval(autoQueueTimer);
-    autoQueueTimer = null;
-    const next = Date.now() + m * 60 * 1000;
-    updateDoc(doc(db,'settings','venue'), { autoQueueMins: m, nextQueueAt: next }).catch(()=>{});
-    autoQueueTimer = setInterval(() => {
-      const nextAt = Date.now() + m * 60 * 1000;
-      updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt }).catch(()=>{});
-      runAutoQueue();
-    }, m * 60 * 1000);
-    showStaffToast('⏱ INTERVAL UPDATED — EVERY ' + m + ' MINS');
-  } else {
-    updateDoc(doc(db,'settings','venue'), { autoQueueMins: m }).catch(()=>{});
-  }
-};
-
-// ── VIDEO OFFSET ──
-window._updateVideoOffset = function(secs) {
-  const s = Math.max(-30, Math.min(30, parseInt(secs) || 0));
-  document.getElementById('offset-input').value = s;
-  // Save to Firebase so index.html picks it up
-  updateDoc(doc(db,'settings','venue'), { videoOffset: s }).catch(()=>{});
-  showStaffToast('🎬 VIDEO OFFSET: ' + (s >= 0 ? '+' : '') + s + 's');
-};
-
 window._toggleAutoQueue = function() {
   const newState = !autoQueueOn;
   applyAutoQueueState(newState);
-  // Persist to Firebase
-  updateDoc(doc(db,'settings','venue'), { autoQueue: newState }).catch(async () => {
-    try {
-      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      await setDoc(doc(db,'settings','venue'), { autoQueue: newState }, { merge:true });
-    } catch(e) {}
-  });
-  showStaffToast(newState ? '⏱ AUTO-QUEUE ON — EVERY 5 MINS' : '⏱ AUTO-QUEUE OFF');
+  showStaffToast(newState ? '⏱ AUTO-QUEUE ON' : '⏱ AUTO-QUEUE OFF');
 };
 
 // restoreAutoQueueState merged into restoreAllStates
