@@ -232,9 +232,34 @@ function showApp() {
   if (CONFIG.spotify_worker_url) {
     document.getElementById('queue-top-btn').style.display = '';
     document.getElementById('auto-queue-btn').style.display = '';
-    restoreAutoQueueState();
   }
+  // Restore all toggle states from Firebase
+  restoreAllStates();
   startListening();
+}
+
+async function restoreAllStates() {
+  try {
+    const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDoc(doc(db,'settings','venue'));
+    if (!snap.exists()) return;
+    const data = snap.data();
+    // Restore auto-approve
+    if (data.autoApprove === true) {
+      applyAutoApproveUI(true);
+      showStaffToast('⚡ AUTO-APPROVE RESTORED');
+    }
+    // Restore auto-queue
+    if (data.autoQueue === true && CONFIG.spotify_worker_url) {
+      applyAutoQueueState(true);
+      showStaffToast('⏱ AUTO-QUEUE RESTORED — RUNNING');
+    }
+    // Restore tshirt
+    if (typeof data.tshirtMode !== 'undefined') {
+      tshirtOn = data.tshirtMode;
+      applyTshirtUI();
+    }
+  } catch(e) { console.warn('Could not restore states', e); }
 }
 
 // ── PIN ──
@@ -328,13 +353,26 @@ window.toggleTshirt = function() {
 
 // ── AUTO-APPROVE ──
 let autoApprove = false;
-window.toggleAutoApprove = function() {
-  autoApprove = !autoApprove;
+
+function applyAutoApproveUI(on) {
+  autoApprove = on;
   const btn = document.getElementById('auto-approve-btn');
-  btn.textContent = autoApprove ? '⚡ AUTO-APPROVE: ON' : '⚡ AUTO-APPROVE: OFF';
-  btn.classList.toggle('on', autoApprove);
-  // If turning on, approve everything currently pending
-  if (autoApprove) approveAll();
+  if (!btn) return;
+  btn.textContent = on ? '⚡ AUTO-APPROVE: ON' : '⚡ AUTO-APPROVE: OFF';
+  btn.classList.toggle('on', on);
+}
+
+window.toggleAutoApprove = function() {
+  const newState = !autoApprove;
+  applyAutoApproveUI(newState);
+  if (newState) approveAll();
+  // Persist to Firebase
+  updateDoc(doc(db,'settings','venue'), { autoApprove: newState }).catch(async () => {
+    try {
+      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      await setDoc(doc(db,'settings','venue'), { autoApprove: newState }, { merge:true });
+    } catch(e) {}
+  });
 };
 
 // ── APPROVE ALL ──
@@ -512,6 +550,9 @@ function applyAutoQueueState(on) {
   clearInterval(autoQueueTimer);
   autoQueueTimer = null;
   if (on) {
+    // Reset any stuck spotifyQueued flags so tracks get retried
+    const stuck = allTracks.filter(t => t.approved && t.spotifyQueued && !t.queuedAt);
+    stuck.forEach(t => updateDoc(doc(db,'tracks',t.id), { spotifyQueued: false }).catch(()=>{}));
     runAutoQueue();
     autoQueueTimer = setInterval(runAutoQueue, AUTO_QUEUE_INTERVAL);
   }
@@ -530,17 +571,7 @@ window.toggleAutoQueue = function() {
   showStaffToast(newState ? '⏱ AUTO-QUEUE ON — EVERY 5 MINS' : '⏱ AUTO-QUEUE OFF');
 };
 
-// Restore auto-queue state from Firebase on load
-async function restoreAutoQueueState() {
-  try {
-    const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const snap = await getDoc(doc(db,'settings','venue'));
-    if (snap.exists() && snap.data().autoQueue === true) {
-      applyAutoQueueState(true);
-      showStaffToast('⏱ AUTO-QUEUE RESTORED — RUNNING');
-    }
-  } catch(e) { console.warn('Could not restore auto-queue state', e); }
-}
+// restoreAutoQueueState merged into restoreAllStates
 
 async function getRecentlyPlayed() {
   try {
