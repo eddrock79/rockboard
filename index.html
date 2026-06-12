@@ -21,6 +21,37 @@
   #bg-art-next.fade-in { opacity:1; }
   @keyframes kenburns { 0%{transform:scale(1.0) translate(0%,0%)} 50%{transform:scale(1.08) translate(-1.5%,1%)} 100%{transform:scale(1.0) translate(0%,0%)} }
 
+  /* ── YOUTUBE VIDEO BACKGROUND ── */
+  #yt-bg-wrap {
+    position:fixed; inset:0; z-index:0;
+    opacity:0; transition:opacity 3s ease;
+    pointer-events:none; overflow:hidden;
+  }
+  #yt-bg-wrap.show { opacity:1; }
+  #yt-bg-wrap iframe {
+    position:absolute;
+    top:50%; left:50%;
+    width:177.78vh; /* 16:9 */
+    height:100vh;
+    min-width:100vw;
+    min-height:56.25vw;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    border:none;
+  }
+  #yt-overlay {
+    position:fixed; inset:0; z-index:0;
+    background:linear-gradient(135deg,rgba(0,0,0,0.72),rgba(139,0,0,0.15),rgba(0,0,0,0.8));
+    pointer-events:none;
+  }
+  #yt-label {
+    position:fixed; bottom:90px; right:28px;
+    font-family:var(--font-pixel); font-size:12px;
+    letter-spacing:2px; color:rgba(240,237,232,0.2);
+    z-index:2; display:none;
+  }
+  #yt-label.show { display:block; }
+
   #app { position:relative; z-index:1; width:100vw; height:100vh; display:grid; grid-template-columns:420px 1fr; grid-template-rows:auto 1fr auto; grid-template-areas:"nowplaying header" "nowplaying leaderboard" "equalizer callout"; padding:28px; }
 
   #now-playing { grid-area:nowplaying; display:flex; flex-direction:column; gap:16px; padding-right:28px; }
@@ -108,6 +139,17 @@
 
 <div id="bg-art"></div>
 <div id="bg-art-next"></div>
+<div id="yt-bg-wrap"><iframe id="yt-iframe" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
+<div id="yt-overlay"></div>
+<div id="yt-label">▶ MUSIC VIDEO</div>
+<div id="activate-overlay" onclick="activateVideo()" style="position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,0.85)">
+  <div style="text-align:center">
+    <div style="font-size:72px;margin-bottom:16px">🎸</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:8px;color:#f0ede8">THE BLACK ROSE</div>
+    <div style="font-family:'VT323',monospace;font-size:24px;letter-spacing:6px;color:#8B0000;margin-top:8px">▶ ROCKBOARD</div>
+    <div style="font-family:'VT323',monospace;font-size:18px;letter-spacing:4px;color:rgba(240,237,232,0.3);margin-top:24px">TAP TO START</div>
+  </div>
+</div>
 <div id="firebase-status" class="ok">● CONNECTING...</div>
 
 <div id="app">
@@ -182,12 +224,13 @@ import { getFirestore, collection, onSnapshot, query, orderBy, doc } from "https
 
 // ── CONFIG from config.js ──
 const CONFIG = {
-  venueName:   (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)   || "THE BLACK ROSE",
-  venueSub:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueSub)    || "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
-  lastfm_user: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user) || "",
-  lastfm_key:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)  || "",
-  tshirtMode:  (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode   : true,
-  firebase:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)    || {},
+  venueName:      (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)      || "THE BLACK ROSE",
+  venueSub:       (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueSub)       || "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
+  lastfm_user:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user)    || "",
+  lastfm_key:     (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)     || "",
+  tshirtMode:     (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode       : true,
+  firebase:       (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)       || {},
+  youtube_key:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.youtube_key)    || "",
 };
 
 // ── QUOTES ──
@@ -310,6 +353,7 @@ nextQuote();
 
 // ── NOW PLAYING (Last.fm) ──
 let nowPlayingThumb = '';
+let nowPlayingTrack = '';
 let trackNumber = 1;
 
 async function fetchNowPlaying() {
@@ -322,31 +366,132 @@ async function fetchNowPlaying() {
     if (!track) return;
     const title  = track.name;
     const artist = track.artist['#text'];
-    const thumb  = track.image?.find(i => i.size === 'extralarge')?.['#text'] || '';
+    const thumb  = (track.image?.find(i => i.size === 'extralarge')?.['#text'] || '').replace(/\/noimage\//i,'');
     const isNow  = track['@attr']?.nowplaying === 'true';
+    const trackKey = title + '|||' + artist;
 
     document.getElementById('track-name').textContent   = title;
     document.getElementById('track-artist').textContent = artist;
     document.getElementById('status-text').textContent  = isNow ? 'NOW PLAYING' : 'LAST PLAYED';
     document.getElementById('wc-num').textContent       = String(trackNumber).padStart(3,'0');
 
-    if (thumb && thumb !== nowPlayingThumb) {
-      const bgNext = document.getElementById('bg-art-next');
-      const bgCurr = document.getElementById('bg-art');
-      bgNext.style.backgroundImage = `url('${thumb}')`;
-      bgNext.classList.add('fade-in');
-      bgCurr.classList.add('fade-out');
-      setTimeout(() => {
-        bgCurr.style.backgroundImage = `url('${thumb}')`;
-        bgCurr.classList.remove('fade-out');
-        bgNext.classList.remove('fade-in');
-        document.getElementById('album-img').src = thumb;
-      }, 2600);
-      nowPlayingThumb = thumb;
+    // New track — update visuals
+    if (trackKey !== nowPlayingTrack) {
+      nowPlayingTrack = trackKey;
       trackNumber++;
+
+      // Update album art background
+      if (thumb && thumb !== nowPlayingThumb) {
+        const bgNext = document.getElementById('bg-art-next');
+        const bgCurr = document.getElementById('bg-art');
+        bgNext.style.backgroundImage = `url('${thumb}')`;
+        bgNext.classList.add('fade-in');
+        bgCurr.classList.add('fade-out');
+        setTimeout(() => {
+          bgCurr.style.backgroundImage = `url('${thumb}')`;
+          bgCurr.classList.remove('fade-out');
+          bgNext.classList.remove('fade-in');
+          document.getElementById('album-img').src = thumb;
+        }, 2600);
+        nowPlayingThumb = thumb;
+      }
+
+      // Search YouTube for music video (only after user has tapped to activate)
+      if (CONFIG.youtube_key && videoActivated) {
+        searchYouTube(title, artist);
+      }
     }
   } catch(e) { console.warn('Last.fm error', e); }
 }
+
+// ── ACTIVATE ON FIRST TAP (needed for autoplay) ──
+let videoActivated = false;
+function activateVideo() {
+  videoActivated = true;
+  const overlay = document.getElementById('activate-overlay');
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.5s ease';
+  setTimeout(() => overlay.style.display = 'none', 500);
+  // Trigger video search for current track
+  if (nowPlayingTrack) {
+    const parts = nowPlayingTrack.split('|||');
+    if (CONFIG.youtube_key) searchYouTube(parts[0], parts[1]);
+  }
+}
+
+// ── YOUTUBE VIDEO BACKGROUND ──
+let currentVideoId = '';
+
+async function searchYouTube(title, artist) {
+  try {
+    const q = encodeURIComponent(`${artist} ${title} official music video`);
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&videoCategoryId=10&maxResults=3&key=${CONFIG.youtube_key}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const items = data.items || [];
+    if (!items.length) { hideYouTube(); return; }
+
+    // Pick first result — prefer "official" or "vevo" in title
+    const preferred = items.find(i =>
+      /official|vevo|music video/i.test(i.snippet.title)
+    ) || items[0];
+
+    const videoId = preferred.id.videoId;
+    if (videoId === currentVideoId) return;
+    currentVideoId = videoId;
+    loadYouTubeVideo(videoId);
+  } catch(e) {
+    console.warn('YouTube search failed', e);
+    hideYouTube();
+  }
+}
+
+function loadYouTubeVideo(videoId) {
+  const wrap   = document.getElementById('yt-bg-wrap');
+  const iframe = document.getElementById('yt-iframe');
+  const label  = document.getElementById('yt-label');
+  const bgArt  = document.getElementById('bg-art');
+
+  // Fade out current video
+  wrap.classList.remove('show');
+
+  setTimeout(() => {
+    // Load new video — autoplay, muted, loop, no controls, no branding
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0&playsinline=1&enablejsapi=1`;
+
+    // Fade in after a moment
+    setTimeout(() => {
+      wrap.classList.add('show');
+      // Fade out album art background when video is showing
+      bgArt.style.opacity = '0.15';
+      label.classList.add('show');
+    }, 1500);
+  }, 800);
+}
+
+function hideYouTube() {
+  document.getElementById('yt-bg-wrap').classList.remove('show');
+  document.getElementById('yt-label').classList.remove('show');
+  document.getElementById('bg-art').style.opacity = '1';
+  currentVideoId = '';
+}
+
+function updateAlbumArt(url) {
+  if (!url || url === nowPlayingThumb) return;
+  const bgNext = document.getElementById('bg-art-next');
+  const bgCurr = document.getElementById('bg-art');
+  bgNext.style.backgroundImage = `url('${url}')`;
+  bgNext.classList.add('fade-in');
+  bgCurr.classList.add('fade-out');
+  setTimeout(() => {
+    bgCurr.style.backgroundImage = `url('${url}')`;
+    bgCurr.classList.remove('fade-out');
+    bgNext.classList.remove('fade-in');
+    document.getElementById('album-img').src = url;
+  }, 2600);
+  nowPlayingThumb = url;
+}
+
 fetchNowPlaying();
 setInterval(fetchNowPlaying, 15000);
 
