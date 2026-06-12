@@ -361,13 +361,16 @@
 
 <div id="toast"></div>
 
+<script src="config.js"></script>
 <script>
 // ============================================================
-//  CONFIG
+//  CONFIG — reads from config.js
 // ============================================================
 const CONFIG = {
-  venueName: "THE BLACK ROSE",
-  maxActionsPerHour: 5,
+  venueName:         (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.venueName)         || "THE BLACK ROSE",
+  maxActionsPerHour: (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.maxActionsPerHour) || 5,
+  lastfm_user:       (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.lastfm_user)       || "",
+  lastfm_key:        (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.lastfm_key)        || "",
   requestUrl: window.location.href,
 };
 
@@ -583,6 +586,27 @@ function showToast(text) {
 }
 
 // ============================================================
+//  NOW PLAYING (Last.fm)
+// ============================================================
+async function fetchNowPlaying() {
+  if (!CONFIG.lastfm_key || !CONFIG.lastfm_user) return;
+  try {
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${CONFIG.lastfm_user}&api_key=${CONFIG.lastfm_key}&format=json&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const track = data.recenttracks?.track?.[0];
+    if (track) {
+      const title = track.name;
+      const artist = track.artist['#text'];
+      const isNow = track['@attr']?.nowplaying === 'true';
+      document.getElementById('np-text').textContent = isNow
+        ? `${title} — ${artist}`
+        : `Last played: ${title} — ${artist}`;
+    }
+  } catch(e) { console.warn('Last.fm fetch failed', e); }
+}
+
+// ============================================================
 //  INIT
 // ============================================================
 document.getElementById('top-venue').textContent = CONFIG.venueName;
@@ -590,6 +614,8 @@ document.title = CONFIG.venueName + ' · Request a Track';
 
 updateVoteBadge();
 renderVoteList();
+fetchNowPlaying();
+setInterval(fetchNowPlaying, 15000);
 
 // Simulate live updates
 setInterval(() => {

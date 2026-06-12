@@ -586,22 +586,19 @@
   <button id="winner-close" onclick="closeWinner()">[ CLOSE · NEW NIGHT ]</button>
 </div>
 
+<script src="config.js"></script>
 <script>
 // ============================================================
-//  CONFIG — swap these per venue
+//  CONFIG — reads from config.js (VENUE_CONFIG)
 // ============================================================
 const CONFIG = {
-  venueName:    "THE BLACK ROSE",
-  venueSub:     "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
-  accent:       "#8B0000",
-  lastfm_user:  "",          // e.g. "blackrose_tidal"
-  lastfm_key:   "",          // your Last.fm API key
-  tshirtMode:   true,        // show t-shirt prize badge
+  venueName:    (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.venueName)    || "THE BLACK ROSE",
+  venueSub:     (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.venueSub)     || "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
+  accent:       (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.accent)       || "#8B0000",
+  lastfm_user:  (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.lastfm_user)  || "",
+  lastfm_key:   (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.lastfm_key)   || "",
+  tshirtMode:   (typeof VENUE_CONFIG !== 'undefined') ? VENUE_CONFIG.tshirtMode    : true,
   requestUrl:   "request.html",
-  firebaseConfig: {
-    // Paste Firebase config here when ready
-    // apiKey: "", authDomain: "", projectId: "", ...
-  }
 };
 
 // ============================================================
