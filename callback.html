@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ROCKBOARD · Spotify Auth</title>
+<style>
+  body{font-family:monospace;background:#0a0a0a;color:#f0ede8;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;flex-direction:column;gap:16px;text-align:center;padding:20px}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:6px;color:#FFB347;margin:0}
+  p{color:rgba(240,237,232,0.5);font-size:14px;letter-spacing:2px;line-height:1.8}
+  .code{background:rgba(139,0,0,0.15);border:1px solid rgba(139,0,0,0.3);border-radius:8px;padding:16px;word-break:break-all;color:#39FF14;font-size:12px;max-width:600px}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+</head>
+<body>
+<h1>ROCKBOARD</h1>
+<p>SPOTIFY AUTHORISATION COMPLETE<br>YOU CAN CLOSE THIS TAB</p>
+<script>
+  // Extract code from URL and display it
+  const code = new URLSearchParams(window.location.search).get('code');
+  const error = new URLSearchParams(window.location.search).get('error');
+  if (code) {
+    document.body.innerHTML += '<p>AUTH CODE (copy this):</p><div class="code">' + code + '</div>';
+  } else if (error) {
+    document.body.innerHTML += '<p style="color:#ff4444">ERROR: ' + error + '</p>';
+  }
+</script>
+</body>
+</html>

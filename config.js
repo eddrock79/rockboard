@@ -10,21 +10,25 @@ const VENUE_CONFIG = {
   accent:       "#8B0000",
   logo:         "assets/blackrose.png",
 
-  // ── LAST.FM (Now Playing) ────────────────────────────────
+  // ── LAST.FM (Now Playing display) ────────────────────────
   lastfm_user:  "eddrock79",
   lastfm_key:   "78658e952901ff5d096dc83873d22049",
 
-  // ── VOTING RULES (set low for live, high for testing) ────
-  maxRequestsPerHour: 40,    // track requests per device per hour
-  maxVotesPerHour:   100,    // votes per device per hour
-  maxLeaderboard:     10,    // how many tracks show on the board
+  // ── SPOTIFY (Auto-queue via Cloudflare Worker) ───────────
+  spotify_worker_url:    "https://rockboard.YOUR-SUBDOMAIN.workers.dev",  // ← fill this in after deploying worker
+  spotify_playlist_id:   "3lj6qRLWbJKbFkXtrlJCHc",
+
+  // ── VOTING RULES ─────────────────────────────────────────
+  maxRequestsPerHour: 40,
+  maxVotesPerHour:   100,
+  maxLeaderboard:     10,
 
   // ── T-SHIRT COMPETITION ──────────────────────────────────
-  tshirtMode:   true,        // true = show prize badge, false = hide it
+  tshirtMode:   true,
   tshirtText:   "MOST UNIQUE VOTES WINS A T-SHIRT",
 
   // ── STAFF ────────────────────────────────────────────────
-  staffPin:     "1234",      // change this!
+  staffPin:     "1234",  // change this!
 
   // ── FIREBASE ─────────────────────────────────────────────
   firebase: {
@@ -44,9 +48,11 @@ const VENUE_CONFIG = {
 // ── PER-VENUE PRESETS ─────────────────────────────────────
 /*
 const BANSHEE = {
-  venueName:   "THE BANSHEE LABYRINTH",
-  accent:      "#2d0047",
-  lastfm_user: "banshee_tidal",
-  lastfm_key:  "",
+  venueName:             "THE BANSHEE LABYRINTH",
+  accent:                "#2d0047",
+  lastfm_user:           "banshee_tidal",
+  lastfm_key:            "",
+  spotify_worker_url:    "https://rockboard-banshee.YOUR-SUBDOMAIN.workers.dev",
+  spotify_playlist_id:   "YOUR_BANSHEE_PLAYLIST_ID",
 };
 */

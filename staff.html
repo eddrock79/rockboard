@@ -37,6 +37,7 @@
   .ctrl-btn.tshirt-on{background:rgba(255,179,71,0.15);border-color:rgba(255,179,71,0.5);color:var(--amber)}
   .ctrl-btn.tshirt-off{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
   .ctrl-btn.winner-btn{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.4);color:var(--green)}
+  .ctrl-btn.queue-ctrl-btn{background:rgba(30,215,96,0.1);border-color:rgba(30,215,96,0.4);color:#1ED760}
   .ctrl-btn.clear-btn{background:rgba(255,68,68,0.1);border-color:rgba(255,68,68,0.3);color:#ff6666}
   .ctrl-btn.lock-btn{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
   .ctrl-btn.approve-btn{background:rgba(57,255,20,0.08);border-color:rgba(57,255,20,0.25);color:rgba(57,255,20,0.5)}
@@ -82,6 +83,11 @@
   .spotify-btn:active{background:rgba(30,215,96,0.3);transform:scale(0.95)}
   .approved-card.top-track{border-color:rgba(30,215,96,0.3);background:rgba(10,30,15,0.9);box-shadow:0 0 15px rgba(30,215,96,0.05)}
   .approved-card.top-track .ac-rank{color:#1ED760}
+  .approved-card.queued-track{border-color:rgba(30,215,96,0.5);background:rgba(5,25,10,0.95)}
+  .queue-btn{padding:8px 12px;background:rgba(30,215,96,0.2);border:1px solid rgba(30,215,96,0.5);border-radius:5px;color:#1ED760;font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:all 0.15s;-webkit-appearance:none}
+  .queue-btn:active{background:rgba(30,215,96,0.4);transform:scale(0.95)}
+  .played-btn{padding:8px 12px;background:rgba(255,179,71,0.15);border:1px solid rgba(255,179,71,0.4);border-radius:5px;color:var(--amber);font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:all 0.15s;-webkit-appearance:none}
+  .played-btn:active{background:rgba(255,179,71,0.3);transform:scale(0.95)}
   .empty-state{text-align:center;padding:40px 20px;font-family:var(--font-pixel);font-size:18px;color:rgba(240,237,232,0.25);letter-spacing:3px;line-height:1.8}
   .rc-spotify{margin-bottom:10px}
   .spotify-preview-btn{display:block;text-align:center;padding:10px;background:rgba(30,215,96,0.08);border:1px solid rgba(30,215,96,0.25);border-radius:6px;color:#1ED760;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;text-decoration:none;transition:all 0.15s}
@@ -136,6 +142,7 @@
   <div id="controls-bar">
     <button class="ctrl-btn tshirt-on" id="tshirt-btn" onclick="toggleTshirt()">🏆 T-SHIRT: ON</button>
     <button class="ctrl-btn approve-btn" id="auto-approve-btn" onclick="toggleAutoApprove()">⚡ AUTO-APPROVE: OFF</button>
+    <button class="ctrl-btn queue-ctrl-btn" id="queue-top-btn" onclick="queueTopTrack()" style="display:none">🎵 QUEUE NO.1</button>
     <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
@@ -172,10 +179,12 @@ import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/fir
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const CONFIG = {
-  venueName:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)  || "THE BLACK ROSE",
-  staffPin:   (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.staffPin)   || "1234",
-  tshirtMode: (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode   : true,
-  firebase:   (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)   || {},
+  venueName:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)           || "THE BLACK ROSE",
+  staffPin:            (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.staffPin)            || "1234",
+  tshirtMode:          (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode            : true,
+  firebase:            (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)            || {},
+  spotify_worker_url:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url)  || "",
+  spotify_playlist_id: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_playlist_id) || "",
 };
 
 const fbApp = initializeApp(CONFIG.firebase);
@@ -199,6 +208,10 @@ function showApp() {
   isAuthed = true;
   document.getElementById('pin-screen').style.display = 'none';
   document.getElementById('staff-app').classList.add('show');
+  // Show queue button if Spotify worker is configured
+  if (CONFIG.spotify_worker_url) {
+    document.getElementById('queue-top-btn').style.display = '';
+  }
   startListening();
 }
 
