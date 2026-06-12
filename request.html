@@ -598,25 +598,35 @@ async function lfSearch(type, q, ddId, cb) {
 // ── DROPDOWN HELPERS ──
 function renderDD(id, items, header) {
   const el = document.getElementById(id);
-  el.innerHTML = (header ? `<div class="dd-header">${header}</div>` : '') +
-    items.map(item => `<div class="dd-item" onclick="(${item.onclick.toString()})()">
-      <div class="dd-icon">${item.icon}</div>
-      <div style="flex:1;min-width:0">
-        <div class="dd-main">${item.main}</div>
-        ${item.sub ? `<div class="dd-sub">${item.sub}</div>` : ''}
-      </div>
-    </div>`).join('');
+  el.innerHTML = (header ? '<div class="dd-header">' + header + '</div>' : '') +
+    items.map((item, i) =>
+      '<div class="dd-item" data-idx="' + i + '">' +
+        '<div class="dd-icon">' + item.icon + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="dd-main">' + item.main + '</div>' +
+          (item.sub ? '<div class="dd-sub">' + item.sub + '</div>' : '') +
+        '</div>' +
+      '</div>'
+    ).join('');
+  // Attach listeners directly — avoids inline handler issues on mobile
+  el.querySelectorAll('.dd-item[data-idx]').forEach(row => {
+    const fn = items[parseInt(row.dataset.idx)].onclick;
+    row.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive:false });
+    row.addEventListener('click',    e => { e.stopPropagation(); fn(); });
+  });
   el.classList.add('open');
 }
 function closeDD(id) { document.getElementById(id)?.classList.remove('open'); }
 function spin(id, on) { document.getElementById(id)?.classList.toggle('on', on); }
 
 // Close dropdowns on outside tap
-document.addEventListener('click', e => {
+function outsideTap(e) {
   if (!e.target.closest('.inp-wrap') && !e.target.closest('.dropdown')) {
     ['dd-artist','dd-track','dd-song'].forEach(closeDD);
   }
-});
+}
+document.addEventListener('touchend', outsideTap);
+document.addEventListener('click',    outsideTap);
 
 // ── UI HELPERS ──
 function showMsg(t,c) { const el=document.getElementById('form-msg'); el.textContent=t; el.className=c; setTimeout(()=>{el.textContent='';el.className='';},4000); }
