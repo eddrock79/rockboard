@@ -144,6 +144,12 @@
   <div id="np-text">Loading now playing...</div>
 </div>
 
+<div id="vote-countdown-strip" style="display:none;background:linear-gradient(90deg,rgba(57,255,20,0.08),rgba(57,255,20,0.03));border-bottom:1px solid rgba(57,255,20,0.15);padding:8px 20px;display:none;align-items:center;gap:12px;justify-content:space-between">
+  <div style="font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.35)">▸ NEXT TRACK QUEUES IN</div>
+  <div id="req-countdown" style="font-family:var(--font-pixel);font-size:28px;color:var(--amber);letter-spacing:4px">--:--</div>
+  <div style="font-family:var(--font-pixel);font-size:12px;letter-spacing:2px;color:rgba(57,255,20,0.5)">VOTE NOW 🤘</div>
+</div>
+
 <div class="section">
   <div class="section-title">▸ REQUEST A TRACK</div>
 
@@ -570,8 +576,32 @@ onSnapshot(lq, snap => {
   }).join('');
 });
 
+// ── VOTE COUNTDOWN ──
+let reqCountdownTimer = null;
+onSnapshot(doc(db,'settings','venue'), (snap) => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const strip = document.getElementById('vote-countdown-strip');
+  if (data.autoQueue && data.nextQueueAt) {
+    strip.style.display = 'flex';
+    const totalMs = (data.autoQueueMins || 2) * 60 * 1000;
+    clearInterval(reqCountdownTimer);
+    reqCountdownTimer = setInterval(() => {
+      const rem = data.nextQueueAt - Date.now();
+      if (rem <= 0) { document.getElementById('req-countdown').textContent = '00:00'; clearInterval(reqCountdownTimer); return; }
+      const m = Math.floor(rem/60000), s = Math.floor((rem%60000)/1000);
+      const el = document.getElementById('req-countdown');
+      el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      el.style.color = rem < 30000 ? 'var(--green)' : 'var(--amber)';
+    }, 1000);
+  } else {
+    strip.style.display = 'none';
+    clearInterval(reqCountdownTimer);
+  }
+});
+
 // ── NOW PLAYING ──
-async function fetchNP() {
+async function fetchNP() { {
   if (!CONFIG.lastfm_key||!CONFIG.lastfm_user) return;
   try {
     const data = await lfFetch(`user.getrecenttracks&user=${CONFIG.lastfm_user}&limit=1`);

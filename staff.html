@@ -202,7 +202,8 @@ const CONFIG = {
   venueName:          "THE BLACK ROSE",
   staffPin:           "1234",
   tshirtMode:         true,
-  spotify_worker_url: "https://rockboard.eddrock79.workers.dev",
+  spotify_worker_url:   "https://rockboard.eddrock79.workers.dev",
+  autoQueueMins:        2,    // ← change this to set voting time (minutes between auto-queues)
   firebase: {
     apiKey:            "AIzaSyCBV3mususv2A_ss0vEiUDxA6PBGCOLCgc",
     authDomain:        "rockboard-2b240.firebaseapp.com",
@@ -562,7 +563,7 @@ window.queueTopTrack = async function() {
 // ── AUTO-QUEUE TOGGLE ──
 let autoQueueOn = false;
 let autoQueueTimer = null;
-const AUTO_QUEUE_INTERVAL = 2 * 60 * 1000; // 2 minutes (change to 4 * 60 * 1000 for venue use)
+const AUTO_QUEUE_INTERVAL = (CONFIG.autoQueueMins || 2) * 60 * 1000;
 
 function applyAutoQueueState(on) {
   autoQueueOn = on;
@@ -573,11 +574,19 @@ function applyAutoQueueState(on) {
   clearInterval(autoQueueTimer);
   autoQueueTimer = null;
   if (on) {
-    // Reset any stuck spotifyQueued flags so tracks get retried
     const stuck = allTracks.filter(t => t.approved && t.spotifyQueued && !t.queuedAt);
     stuck.forEach(t => updateDoc(doc(db,'tracks',t.id), { spotifyQueued: false }).catch(()=>{}));
+    // Write next queue time to Firebase so board can show countdown
+    const nextAt = Date.now() + AUTO_QUEUE_INTERVAL;
+    updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt, autoQueueMins: CONFIG.autoQueueMins||2 }).catch(()=>{});
     runAutoQueue();
-    autoQueueTimer = setInterval(runAutoQueue, AUTO_QUEUE_INTERVAL);
+    autoQueueTimer = setInterval(() => {
+      const next = Date.now() + AUTO_QUEUE_INTERVAL;
+      updateDoc(doc(db,'settings','venue'), { nextQueueAt: next }).catch(()=>{});
+      runAutoQueue();
+    }, AUTO_QUEUE_INTERVAL);
+  } else {
+    updateDoc(doc(db,'settings','venue'), { nextQueueAt: null }).catch(()=>{});
   }
 }
 

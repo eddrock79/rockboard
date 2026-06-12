@@ -133,6 +133,29 @@
   #firebase-status { position:fixed; top:12px; right:12px; font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; padding:6px 12px; border-radius:4px; z-index:100; transition:opacity 1s ease; }
   #firebase-status.ok { background:rgba(57,255,20,0.1); border:1px solid rgba(57,255,20,0.3); color:var(--green); }
   #firebase-status.err { background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.3); color:#ff6666; }
+
+  /* Countdown timer */
+  #queue-countdown {
+    position:fixed; bottom:72px; left:50%; transform:translateX(-50%);
+    display:none; flex-direction:column; align-items:center; gap:4px;
+    z-index:10;
+  }
+  #queue-countdown.show { display:flex; }
+  #countdown-label { font-family:var(--font-pixel); font-size:12px; letter-spacing:3px; color:rgba(240,237,232,0.3); }
+  #countdown-time {
+    font-family:var(--font-pixel); font-size:48px; color:var(--amber);
+    letter-spacing:4px; line-height:1;
+    text-shadow: 0 0 20px rgba(255,179,71,0.3);
+  }
+  #countdown-time.urgent { color:var(--green); text-shadow:0 0 20px rgba(57,255,20,0.4); animation:pulse 0.5s ease-in-out infinite; }
+  #countdown-bar {
+    width:200px; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;
+  }
+  #countdown-fill {
+    height:100%; background:linear-gradient(90deg,var(--accent),var(--amber));
+    border-radius:2px; transition:width 1s linear;
+  }
+  #countdown-sub { font-family:var(--font-pixel); font-size:11px; letter-spacing:3px; color:rgba(240,237,232,0.2); }
 </style>
 </head>
 <body>
@@ -204,6 +227,13 @@
 <div id="qr-hint">
   <div style="width:80px;height:80px;background:#1a0808;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:var(--font-pixel);font-size:11px;color:rgba(240,237,232,0.3);letter-spacing:1px;text-align:center;">QR<br>CODE</div>
   <div id="qr-hint-label">SCAN TO VOTE</div>
+</div>
+
+<div id="queue-countdown">
+  <div id="countdown-label">▸ NEXT TRACK QUEUES IN</div>
+  <div id="countdown-time">--:--</div>
+  <div id="countdown-bar"><div id="countdown-fill" style="width:100%"></div></div>
+  <div id="countdown-sub">VOTE NOW TO PUSH YOUR TRACK TO NO.1</div>
 </div>
 
 <div id="winner-overlay">
@@ -297,18 +327,49 @@ const db = getFirestore(app);
 const statusEl = document.getElementById('firebase-status');
 
 // ── LISTEN TO SETTINGS (tshirt toggle from staff page) ──
+let countdownTimer = null;
+let totalQueueMs = 2 * 60 * 1000;
+
 onSnapshot(doc(db,'settings','venue'), (snap) => {
   if (!snap.exists()) return;
   const data = snap.data();
+
+  // T-shirt badge
   if (typeof data.tshirtMode !== 'undefined') {
     const badge = document.getElementById('tshirt-badge');
     if (data.tshirtMode) badge.classList.add('active');
     else badge.classList.remove('active');
   }
-  // Show auto-queue indicator on main board
+
+  // Auto-queue indicator
   const aqIndicator = document.getElementById('aq-indicator');
-  if (aqIndicator) {
-    aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
+  if (aqIndicator) aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
+
+  // Countdown timer
+  const countdown = document.getElementById('queue-countdown');
+  if (data.autoQueue && data.nextQueueAt) {
+    totalQueueMs = (data.autoQueueMins || 2) * 60 * 1000;
+    countdown.classList.add('show');
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      const remaining = data.nextQueueAt - Date.now();
+      if (remaining <= 0) {
+        document.getElementById('countdown-time').textContent = '00:00';
+        document.getElementById('countdown-fill').style.width = '0%';
+        clearInterval(countdownTimer);
+        return;
+      }
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      const timeEl = document.getElementById('countdown-time');
+      timeEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      timeEl.classList.toggle('urgent', remaining < 30000);
+      const pct = Math.min(100, (remaining / totalQueueMs) * 100);
+      document.getElementById('countdown-fill').style.width = pct + '%';
+    }, 1000);
+  } else {
+    countdown.classList.remove('show');
+    clearInterval(countdownTimer);
   }
 });
 
