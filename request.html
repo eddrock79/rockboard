@@ -533,10 +533,20 @@ window.submitRequest = async function() {
   if (!canRequest()) { updateBadge(); return; }
   useRequest();
   try {
+    // Fetch album art from Last.fm before saving
+    let spotifyImage = '';
+    try {
+      const artRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(title)}&api_key=${CONFIG.lastfm_key}&format=json`);
+      const artData = await artRes.json();
+      const img = artData.track?.album?.image?.find(i=>i.size==='large')?.['#text'] || '';
+      if (img && !img.includes('noimage')) spotifyImage = img;
+    } catch(e) {}
+
     await addDoc(collection(db,'tracks'), {
       title, artist, requester:name,
       votes:1, uniqueVoters:1, voters:[DEVICE_ID],
-      approved:false, createdAt:Date.now()
+      approved:false, createdAt:Date.now(),
+      spotifyImage,
     });
     // Reset form
     resetAll();

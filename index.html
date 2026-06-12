@@ -100,14 +100,14 @@
   #tracks-list { position:relative; height:calc(100% - 28px); }
 
   .track-card {
-    position:absolute; left:0; right:0; height:82px;
+    position:absolute; left:0; right:0; height:96px;
     background:rgba(8,3,3,0.9);
     border:1px solid rgba(139,0,0,0.25);
     border-left:4px solid rgba(139,0,0,0.4);
     border-radius:0 6px 6px 0;
     backdrop-filter:blur(30px);
     display:flex; align-items:center; gap:14px; padding:0 16px 0 12px;
-    transition:top 0.65s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease, border-color 0.3s ease;
+    transition:top 0.65s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
   .track-card.top-card {
     border-color:rgba(255,179,71,0.6);
@@ -119,24 +119,34 @@
   .track-card.new-entry { animation:slideIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
   @keyframes slideIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
 
+  /* No.1 flash animation when countdown hits zero */
+  @keyframes chosenFlash {
+    0%   { border-color:var(--amber); box-shadow:0 0 0px rgba(255,179,71,0); background:rgba(35,18,0,0.92); }
+    25%  { border-color:#fff; box-shadow:0 0 60px rgba(255,255,255,0.6), 0 0 120px rgba(255,179,71,0.8); background:rgba(255,179,71,0.25); }
+    50%  { border-color:var(--amber); box-shadow:0 0 30px rgba(255,179,71,0.4); background:rgba(35,18,0,0.92); }
+    75%  { border-color:#fff; box-shadow:0 0 60px rgba(255,255,255,0.6), 0 0 120px rgba(255,179,71,0.8); background:rgba(255,179,71,0.25); }
+    100% { border-color:var(--amber); box-shadow:0 0 30px rgba(255,179,71,0.12); background:rgba(35,18,0,0.92); }
+  }
+  .track-card.chosen { animation:chosenFlash 0.8s ease-in-out 4; }
+
   .track-rank { font-family:var(--font-head); font-size:44px; color:rgba(240,237,232,0.12); min-width:52px; text-align:center; line-height:1; flex-shrink:0; }
   .track-card.top-card .track-rank { color:var(--amber); }
 
-  .track-thumb { width:52px; height:52px; border-radius:4px; background:#1a0808; object-fit:cover; flex-shrink:0; }
+  .track-thumb { width:64px; height:64px; border-radius:6px; background:#1a0808; object-fit:cover; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.6); }
 
   .track-details { flex:1; min-width:0; }
-  .track-title { font-family:var(--font-head); font-size:28px; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.1; }
-  .track-card.top-card .track-title { font-size:30px; color:var(--amber); }
-  .track-artist-name { font-size:14px; color:rgba(240,237,232,0.6); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; font-weight:400; }
-  .track-meta { display:flex; align-items:center; gap:8px; margin-top:3px; }
-  .track-requester { font-family:var(--font-pixel); font-size:17px; color:rgba(220,80,80,1); letter-spacing:1px; }
-  .track-card.top-card .track-requester { color:var(--amber); font-size:18px; }
+  .track-title { font-family:var(--font-head); font-size:30px; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.1; }
+  .track-card.top-card .track-title { font-size:32px; color:var(--amber); }
+  .track-artist-name { font-size:16px; color:rgba(240,237,232,0.7); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; font-weight:400; }
+  .track-meta { display:flex; align-items:center; gap:8px; margin-top:4px; }
+  .track-requester { font-family:var(--font-pixel); font-size:19px; color:rgba(220,80,80,1); letter-spacing:1px; }
+  .track-card.top-card .track-requester { color:var(--amber); font-size:20px; }
 
-  .track-votes { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:60px; }
-  .vote-count { font-family:var(--font-pixel); font-size:40px; color:var(--white); line-height:1; }
-  .track-card.top-card .vote-count { color:var(--amber); font-size:44px; }
+  .track-votes { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:64px; }
+  .vote-count { font-family:var(--font-pixel); font-size:44px; color:var(--white); line-height:1; }
+  .track-card.top-card .vote-count { color:var(--amber); font-size:48px; }
   .vote-label { font-family:var(--font-pixel); font-size:11px; color:rgba(240,237,232,0.3); letter-spacing:2px; }
-  .rank-change { font-family:var(--font-pixel); font-size:16px; min-width:24px; text-align:center; flex-shrink:0; }
+  .rank-change { font-family:var(--font-pixel); font-size:18px; min-width:24px; text-align:center; flex-shrink:0; }
   .rank-change.up { color:var(--green); text-shadow:0 0 8px var(--green); }
   .rank-change.down { color:#ff4444; }
   .rank-change.same { color:rgba(240,237,232,0.15); }
@@ -646,6 +656,12 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
         document.getElementById('countdown-time').textContent = '00:00';
         document.getElementById('countdown-fill').style.width = '0%';
         clearInterval(countdownTimer);
+        // Flash the No.1 card
+        const topCard = document.querySelector('.track-card.top-card');
+        if (topCard) {
+          topCard.classList.add('chosen');
+          setTimeout(() => topCard.classList.remove('chosen'), 3500);
+        }
         return;
       }
       const m = Math.floor(remaining / 60000);
@@ -1153,7 +1169,7 @@ setInterval(fetchNowPlaying, 15000);
 // ── LEADERBOARD (Firebase live) ──
 let tracks = [];
 let prevRanks = {};
-const CARD_H = 86; // 82px card + 4px gap
+const CARD_H = 100; // 96px card + 4px gap
 
 function renderLeaderboard() {
   const list = document.getElementById('tracks-list');
@@ -1186,9 +1202,15 @@ function renderLeaderboard() {
 
     card.className = 'track-card' + (idx===0?' top-card':'') + (rankChange>0?' rising':'');
     card.style.top = top + 'px';
+    // Get album art — use Spotify URI image if available, else Last.fm lookup
+    const artUrl = track.spotifyImage || '';
+    const thumbHtml = artUrl
+      ? `<img class="track-thumb" src="${artUrl}" onerror="this.parentElement.innerHTML='<div class=\'track-thumb\' style=\'background:#1a0808;display:flex;align-items:center;justify-content:center;font-size:22px;\'>🎵</div>'">`
+      : `<div class="track-thumb" style="background:#1a0808;display:flex;align-items:center;justify-content:center;font-size:22px;">🎵</div>`;
+
     card.innerHTML = `
       <div class="track-rank">${String(idx+1).padStart(2,'0')}</div>
-      <div class="track-thumb" style="background:#1a0808;display:flex;align-items:center;justify-content:center;font-size:22px;">🎵</div>
+      ${thumbHtml}
       <div class="track-details">
         <div class="track-title">${track.title}</div>
         <div class="track-meta">
@@ -1202,6 +1224,34 @@ function renderLeaderboard() {
         <div class="vote-label">VOTES</div>
       </div>
       <div class="rank-change ${changeClass}">${changeIcon}</div>`;
+
+    // Fetch album art if not stored — search Last.fm
+    if (!artUrl) {
+      const cacheKey = track.title + '|||' + track.artist;
+      if (!window._artCache) window._artCache = {};
+      if (window._artCache[cacheKey]) {
+        const img = card.querySelector('.track-thumb');
+        if (img && img.tagName === 'DIV') img.style.backgroundImage = `url('${window._artCache[cacheKey]}')`;
+      } else if (CONFIG.lastfm_key) {
+        fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(track.artist)}&track=${encodeURIComponent(track.title)}&api_key=${CONFIG.lastfm_key}&format=json`)
+          .then(r=>r.json()).then(d=>{
+            const url = d.track?.album?.image?.find(i=>i.size==='large')?.['#text'] || '';
+            if (url && !url.includes('noimage')) {
+              window._artCache[cacheKey] = url;
+              // Update card if still visible
+              const c = document.querySelector(`.track-card[data-id="${track.id}"]`);
+              if (c) {
+                const thumb = c.querySelector('.track-thumb');
+                if (thumb && thumb.tagName === 'DIV') {
+                  thumb.style.backgroundImage = `url('${url}')`;
+                  thumb.style.backgroundSize = 'cover';
+                  thumb.style.backgroundPosition = 'center';
+                }
+              }
+            }
+          }).catch(()=>{});
+      }
+    }
     prevRanks[track.id] = idx;
     delete existingCards[track.id];
   });
