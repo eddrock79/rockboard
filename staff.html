@@ -42,6 +42,15 @@
   .ctrl-btn.lock-btn{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
   .ctrl-btn.approve-btn{background:rgba(57,255,20,0.08);border-color:rgba(57,255,20,0.25);color:rgba(57,255,20,0.5)}
   .ctrl-btn.approve-btn.on{background:rgba(57,255,20,0.18);border-color:rgba(57,255,20,0.6);color:var(--green)}
+  .ctrl-btn.queue-ctrl-btn{background:rgba(30,215,96,0.1);border-color:rgba(30,215,96,0.4);color:#1ED760}
+  .queue-btn{padding:8px 12px;background:rgba(30,215,96,0.2);border:1px solid rgba(30,215,96,0.5);border-radius:5px;color:#1ED760;font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;-webkit-appearance:none}
+  .queue-btn:active{background:rgba(30,215,96,0.4)}
+  .played-btn{padding:8px 12px;background:rgba(255,179,71,0.15);border:1px solid rgba(255,179,71,0.4);border-radius:5px;color:var(--amber);font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;-webkit-appearance:none}
+  .played-btn:active{background:rgba(255,179,71,0.3)}
+  .approved-card.top-track{border-color:rgba(30,215,96,0.3);background:rgba(10,30,15,0.9)}
+  .approved-card.top-track .ac-rank{color:#1ED760}
+  .approved-card.queued-track{border-color:rgba(30,215,96,0.5)}
+  .ctrl-btn.approve-btn.on{background:rgba(57,255,20,0.18);border-color:rgba(57,255,20,0.6);color:var(--green)}
   .approve-all-btn{padding:6px 14px;border-radius:6px;border:1px solid rgba(57,255,20,0.4);background:rgba(57,255,20,0.1);color:var(--green);font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;cursor:pointer;-webkit-appearance:none}
   .approve-all-btn:active{background:rgba(57,255,20,0.25)}
 
@@ -406,20 +415,78 @@ function renderPending() {
     </div>`).join('');
 }
 
+// ── SPOTIFY via Worker ──
+async function spotifyCall(endpoint, method='GET', body=null) {
+  if (!CONFIG.spotify_worker_url) return null;
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(CONFIG.spotify_worker_url + endpoint, opts);
+    return await res.json();
+  } catch(e) { console.warn('Spotify error', e); return { error: e.message }; }
+}
+
+window.queueTopTrack = async function() {
+  const approved = [...allTracks.filter(t=>t.approved && !t.spotifyQueued)].sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
+  if (!approved.length) { showStaffToast('NO TRACKS TO QUEUE'); return; }
+  const top = approved[0];
+  showStaffToast('🔍 SEARCHING SPOTIFY...');
+  const found = await spotifyCall('/search?track=' + encodeURIComponent(top.title) + '&artist=' + encodeURIComponent(top.artist));
+  if (!found?.uri) { showStaffToast('❌ NOT FOUND ON SPOTIFY: ' + top.title); return; }
+  showStaffToast('⏳ QUEUING: ' + found.name + '...');
+  const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
+  if (result?.ok) {
+    await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri });
+    showStaffToast('✅ QUEUED: ' + found.name);
+  } else {
+    const err = result?.error?.error?.message || result?.error || 'IS SPOTIFY PLAYING?';
+    showStaffToast('❌ FAILED: ' + err);
+  }
+};
+
+window.markPlayed = async function(id) {
+  await deleteDoc(doc(db,'tracks',id));
+  showStaffToast('✅ MARKED AS PLAYED — QUEUING NEXT...');
+  setTimeout(() => queueTopTrack(), 1500);
+};
+
+let staffToastTimer;
+function showStaffToast(msg) {
+  let el = document.getElementById('staff-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'staff-toast';
+    el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(15,5,7,0.97);border:1px solid rgba(139,0,0,0.5);border-radius:8px;padding:14px 24px;font-family:var(--font-pixel);font-size:16px;letter-spacing:2px;color:#f0ede8;z-index:999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.6);transition:opacity 0.3s';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(staffToastTimer);
+  staffToastTimer = setTimeout(() => { el.style.opacity = '0'; }, 4000);
+}
+
 function renderApproved() {
   const approved = [...allTracks.filter(t=>t.approved)].sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
   document.getElementById('approved-count-num').textContent = approved.length;
   const list = document.getElementById('approved-list');
   if (!approved.length) { list.innerHTML = '<div class="empty-state">NO APPROVED TRACKS YET<br>APPROVE SOME REQUESTS...</div>'; return; }
+  const workerReady = !!CONFIG.spotify_worker_url;
   list.innerHTML = approved.map((t,i) => {
     const spotifyUrl = 'https://open.spotify.com/search/' + encodeURIComponent(t.title + ' ' + t.artist);
     const spotifyApp = 'spotify:search:' + encodeURIComponent(t.title + ' ' + t.artist);
+    const isQueued = !!t.spotifyQueued;
     return `
-    <div class="approved-card ${i===0?'top-track':''}">
+    <div class="approved-card ${i===0?'top-track':''} ${isQueued?'queued-track':''}">
       <div class="ac-rank">${i===0?'🔥':String(i+1).padStart(2,'0')}</div>
-      <div class="ac-details"><div class="ac-title">${t.title}</div><div class="ac-artist">${t.artist} · ${t.requester||'?'}</div></div>
+      <div class="ac-details">
+        <div class="ac-title">${t.title}</div>
+        <div class="ac-artist">${t.artist} · ${t.requester||'?'}</div>
+        ${isQueued?'<div style="font-family:var(--font-pixel);font-size:11px;color:#1ED760;letter-spacing:2px;margin-top:2px">▶ QUEUED IN SPOTIFY</div>':''}
+      </div>
       <div class="ac-meta">${t.uniqueVoters||1}<small>VOTES</small></div>
-      <a class="spotify-btn" href="${spotifyApp}" onclick="this.href='${spotifyApp}';setTimeout(()=>this.href='${spotifyUrl}',500)" target="_blank">▶</a>
+      ${workerReady && i===0 && !isQueued ? `<button class="queue-btn" onclick="queueTopTrack()">▶ QUEUE</button>` : ''}
+      ${workerReady && isQueued ? `<button class="played-btn" onclick="markPlayed('${t.id}')">✓ PLAYED</button>` : ''}
+      ${!workerReady ? `<a class="spotify-btn" href="${spotifyApp}" onclick="this.href='${spotifyApp}';setTimeout(()=>this.href='${spotifyUrl}',500)" target="_blank">▶</a>` : ''}
       <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
     </div>`;
   }).join('');
