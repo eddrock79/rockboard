@@ -230,12 +230,12 @@
 <div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
 <div id="yt-overlay"></div>
 <div id="yt-label">▶ MUSIC VIDEO</div>
-<div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,0.85)">
-  <div style="text-align:center;pointer-events:none">
+<div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
+  <div style="text-align:center">
     <div style="font-size:72px;margin-bottom:16px">🎸</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:8px;color:#f0ede8">THE BLACK ROSE</div>
     <div style="font-family:'VT323',monospace;font-size:24px;letter-spacing:6px;color:#8B0000;margin-top:8px">▶ ROCKBOARD</div>
-    <div style="font-family:'VT323',monospace;font-size:18px;letter-spacing:4px;color:rgba(240,237,232,0.3);margin-top:24px">TAP TO START</div>
+    <button id="start-btn" onclick="window.activateVideo()" style="margin-top:32px;background:var(--accent,#8B0000);border:none;border-radius:8px;padding:18px 48px;color:#f0ede8;font-family:'VT323',monospace;font-size:28px;letter-spacing:6px;cursor:pointer;display:block;margin-left:auto;margin-right:auto">▶ TAP TO START</button>
   </div>
 </div>
 <div id="firebase-status" class="ok">● CONNECTING...</div>
@@ -952,7 +952,7 @@ async function fetchNowPlaying() {
 
 // ── ACTIVATE ON FIRST TAP (needed for autoplay) ──
 let videoActivated = false;
-function activateVideo() {
+window.activateVideo = function activateVideo() {
   if (videoActivated) return;
   videoActivated = true;
   const overlay = document.getElementById('activate-overlay');
@@ -966,16 +966,7 @@ function activateVideo() {
   }
 }
 
-// Attach both click and touchend to overlay directly — DOMContentLoaded already fired by module time
-(function attachOverlay() {
-  const overlay = document.getElementById('activate-overlay');
-  if (!overlay) { setTimeout(attachOverlay, 100); return; }
-  overlay.addEventListener('click', activateVideo);
-  overlay.addEventListener('touchend', e => { e.preventDefault(); activateVideo(); }, { passive: false });
-  // Also allow keyboard space/enter for accessibility
-  overlay.setAttribute('tabindex','0');
-  overlay.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') activateVideo(); });
-})();
+// Button uses onclick="window.activateVideo()" — no listener needed
 
 // ── YOUTUBE VIDEO BACKGROUND ──
 let currentVideoId = '';
