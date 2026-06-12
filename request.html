@@ -274,12 +274,19 @@ import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, upda
 
 // ── CONFIG ──
 const CONFIG = {
-  venueName:          (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)          || "THE BLACK ROSE",
-  maxRequestsPerHour: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.maxRequestsPerHour) || 40,
-  maxVotesPerHour:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.maxVotesPerHour)    || 100,
-  lastfm_user:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user)        || "",
-  lastfm_key:         (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)         || "",
-  firebase:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)           || {},
+  venueName:          "THE BLACK ROSE",
+  maxRequestsPerHour: 40,
+  maxVotesPerHour:    100,
+  lastfm_user:        "eddrock79",
+  lastfm_key:         "78658e952901ff5d096dc83873d22049",
+  firebase: {
+    apiKey:            "AIzaSyCBV3mususv2A_ss0vEiUDxA6PBGCOLCgc",
+    authDomain:        "rockboard-2b240.firebaseapp.com",
+    projectId:         "rockboard-2b240",
+    storageBucket:     "rockboard-2b240.firebasestorage.app",
+    messagingSenderId: "875047215481",
+    appId:             "1:875047215481:web:89616e2e219aa6396d0fa8",
+  },
 };
 
 const fbApp = initializeApp(CONFIG.firebase);
