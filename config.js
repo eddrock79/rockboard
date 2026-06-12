@@ -15,7 +15,7 @@ const VENUE_CONFIG = {
   lastfm_key:   "78658e952901ff5d096dc83873d22049",
 
   // ── SPOTIFY (Auto-queue via Cloudflare Worker) ───────────
-  spotify_worker_url:    "https://rockboard.YOUR-SUBDOMAIN.workers.dev",  // ← fill this in after deploying worker
+  spotify_worker_url: "https://rockboard.eddrock79.workers.dev",  // ← fill this in after deploying worker
   spotify_playlist_id:   "3lj6qRLWbJKbFkXtrlJCHc",
 
   // ── VOTING RULES ─────────────────────────────────────────
