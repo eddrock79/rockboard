@@ -38,11 +38,15 @@
   .ctrl-btn.tshirt-off{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
   .ctrl-btn.winner-btn{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.4);color:var(--green)}
   .ctrl-btn.queue-ctrl-btn{background:rgba(30,215,96,0.1);border-color:rgba(30,215,96,0.4);color:#1ED760}
+  .ctrl-btn.auto-queue-btn{background:rgba(30,215,96,0.05);border-color:rgba(30,215,96,0.2);color:rgba(30,215,96,0.4)}
+  .ctrl-btn.auto-queue-btn.on{background:rgba(30,215,96,0.18);border-color:rgba(30,215,96,0.6);color:#1ED760}
   .ctrl-btn.clear-btn{background:rgba(255,68,68,0.1);border-color:rgba(255,68,68,0.3);color:#ff6666}
   .ctrl-btn.lock-btn{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
   .ctrl-btn.approve-btn{background:rgba(57,255,20,0.08);border-color:rgba(57,255,20,0.25);color:rgba(57,255,20,0.5)}
   .ctrl-btn.approve-btn.on{background:rgba(57,255,20,0.18);border-color:rgba(57,255,20,0.6);color:var(--green)}
   .ctrl-btn.queue-ctrl-btn{background:rgba(30,215,96,0.1);border-color:rgba(30,215,96,0.4);color:#1ED760}
+  .ctrl-btn.auto-queue-btn{background:rgba(30,215,96,0.05);border-color:rgba(30,215,96,0.2);color:rgba(30,215,96,0.4)}
+  .ctrl-btn.auto-queue-btn.on{background:rgba(30,215,96,0.18);border-color:rgba(30,215,96,0.6);color:#1ED760}
   .queue-btn{padding:8px 12px;background:rgba(30,215,96,0.2);border:1px solid rgba(30,215,96,0.5);border-radius:5px;color:#1ED760;font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;-webkit-appearance:none}
   .queue-btn:active{background:rgba(30,215,96,0.4)}
   .played-btn{padding:8px 12px;background:rgba(255,179,71,0.15);border:1px solid rgba(255,179,71,0.4);border-radius:5px;color:var(--amber);font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;-webkit-appearance:none}
@@ -152,6 +156,7 @@
     <button class="ctrl-btn tshirt-on" id="tshirt-btn" onclick="toggleTshirt()">🏆 T-SHIRT: ON</button>
     <button class="ctrl-btn approve-btn" id="auto-approve-btn" onclick="toggleAutoApprove()">⚡ AUTO-APPROVE: OFF</button>
     <button class="ctrl-btn queue-ctrl-btn" id="queue-top-btn" onclick="queueTopTrack()" style="display:none">🎵 QUEUE NO.1</button>
+    <button class="ctrl-btn auto-queue-btn" id="auto-queue-btn" onclick="toggleAutoQueue()" style="display:none">⏱ AUTO-QUEUE: OFF</button>
     <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
@@ -450,11 +455,70 @@ window.queueTopTrack = async function() {
   }
 };
 
+// ── AUTO-QUEUE TOGGLE ──
+let autoQueueOn = false;
+let autoQueueTimer = null;
+const AUTO_QUEUE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+window.toggleAutoQueue = function() {
+  autoQueueOn = !autoQueueOn;
+  const btn = document.getElementById('auto-queue-btn');
+  btn.textContent = autoQueueOn ? '⏱ AUTO-QUEUE: ON' : '⏱ AUTO-QUEUE: OFF';
+  btn.classList.toggle('on', autoQueueOn);
+
+  if (autoQueueOn) {
+    showStaffToast('⏱ AUTO-QUEUE ON — EVERY 5 MINS');
+    // Write state to Firebase so main board knows
+    updateDoc(doc(db,'settings','venue'), { autoQueue: true }).catch(() => {});
+    // Run immediately then every 5 mins
+    runAutoQueue();
+    autoQueueTimer = setInterval(runAutoQueue, AUTO_QUEUE_INTERVAL);
+  } else {
+    showStaffToast('⏱ AUTO-QUEUE OFF');
+    updateDoc(doc(db,'settings','venue'), { autoQueue: false }).catch(() => {});
+    clearInterval(autoQueueTimer);
+    autoQueueTimer = null;
+  }
+};
+
+async function runAutoQueue() {
+  const approved = [...allTracks.filter(t=>t.approved && !t.spotifyQueued)]
+    .sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
+  if (!approved.length) {
+    showStaffToast('⏱ AUTO-QUEUE: NO TRACKS READY');
+    return;
+  }
+  const top = approved[0];
+  // Only auto-queue if track has at least 1 unique voter
+  if ((top.uniqueVoters||1) < 1) return;
+  showStaffToast('⏱ AUTO-QUEUING: ' + top.title);
+  const found = await spotifyCall('/search?track=' + encodeURIComponent(top.title) + '&artist=' + encodeURIComponent(top.artist));
+  if (!found?.uri) { showStaffToast('⏱ AUTO-QUEUE: NOT FOUND ON SPOTIFY'); return; }
+  const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
+  if (result?.ok) {
+    await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri, queuedAt: Date.now() });
+    showStaffToast('⏱ AUTO-QUEUED: ' + found.name);
+  }
+}
+
 window.markPlayed = async function(id) {
   await deleteDoc(doc(db,'tracks',id));
   showStaffToast('✅ MARKED AS PLAYED — QUEUING NEXT...');
-  setTimeout(() => queueTopTrack(), 1500);
+  setTimeout(() => {
+    if (autoQueueOn) runAutoQueue();
+    else queueTopTrack();
+  }, 1500);
 };
+
+// Auto-remove tracks queued more than 15 mins ago (assume they played)
+setInterval(async () => {
+  if (!autoQueueOn) return;
+  const now = Date.now();
+  const stale = allTracks.filter(t => t.approved && t.spotifyQueued && t.queuedAt && (now - t.queuedAt) > 15 * 60 * 1000);
+  for (const t of stale) {
+    await deleteDoc(doc(db,'tracks',t.id));
+  }
+}, 60 * 1000); // check every minute
 
 let staffToastTimer;
 function showStaffToast(msg) {

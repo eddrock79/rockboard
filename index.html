@@ -139,6 +139,11 @@
       <div class="badge-prize">T-SHIRT</div>
       <div class="badge-sub">MOST UNIQUE VOTES WINS</div>
     </div>
+    <div id="aq-indicator" style="display:none;flex-direction:column;align-items:flex-end;gap:4px;margin-left:16px">
+      <div style="font-family:var(--font-pixel);font-size:11px;letter-spacing:3px;color:rgba(30,215,96,0.6)">AUTO-QUEUE</div>
+      <div style="font-family:var(--font-pixel);font-size:20px;color:#1ED760;letter-spacing:2px">▶ ACTIVE</div>
+      <div style="font-family:var(--font-pixel);font-size:10px;letter-spacing:2px;color:rgba(30,215,96,0.4)">TOP TRACK QUEUES EVERY 5 MINS</div>
+    </div>
   </div>
 
   <div id="leaderboard">
@@ -256,6 +261,11 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
     const badge = document.getElementById('tshirt-badge');
     if (data.tshirtMode) badge.classList.add('active');
     else badge.classList.remove('active');
+  }
+  // Show auto-queue indicator on main board
+  const aqIndicator = document.getElementById('aq-indicator');
+  if (aqIndicator) {
+    aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
   }
 });
 
