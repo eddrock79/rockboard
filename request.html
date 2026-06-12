@@ -608,7 +608,7 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
 });
 
 // ── NOW PLAYING ──
-async function fetchNP() { {
+async function fetchNP() {
   if (!CONFIG.lastfm_key||!CONFIG.lastfm_user) return;
   try {
     const data = await lfFetch(`user.getrecenttracks&user=${CONFIG.lastfm_user}&limit=1`);
