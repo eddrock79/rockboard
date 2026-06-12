@@ -162,7 +162,7 @@
 
 <div id="bg-art"></div>
 <div id="bg-art-next"></div>
-<div id="yt-bg-wrap"><iframe id="yt-iframe" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
+<div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
 <div id="yt-overlay"></div>
 <div id="yt-label">▶ MUSIC VIDEO</div>
 <div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,0.85)">
@@ -254,13 +254,14 @@ import { getFirestore, collection, onSnapshot, query, orderBy, doc } from "https
 
 // ── CONFIG from config.js ──
 const CONFIG = {
-  venueName:      (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)      || "THE BLACK ROSE",
-  venueSub:       (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueSub)       || "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
-  lastfm_user:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user)    || "",
-  lastfm_key:     (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)     || "",
-  tshirtMode:     (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode       : true,
-  firebase:       (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)       || {},
-  youtube_key:    (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.youtube_key)    || "",
+  venueName:          (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)          || "THE BLACK ROSE",
+  venueSub:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueSub)           || "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
+  lastfm_user:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user)        || "",
+  lastfm_key:         (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)         || "",
+  tshirtMode:         (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode           : true,
+  firebase:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)           || {},
+  youtube_key:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.youtube_key)        || "",
+  spotify_worker_url: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url) || "https://rockboard.eddrock79.workers.dev",
 };
 
 // ── QUOTES ──
@@ -517,34 +518,112 @@ async function searchYouTube(title, artist) {
   }
 }
 
+// ── YOUTUBE IFRAME API ──
+let ytPlayer = null;
+let ytReady  = false;
+let pendingVideoId   = null;
+let pendingStartSecs = 0;
+let syncInterval = null;
+
+// Load YouTube IFrame API
+const ytScript = document.createElement('script');
+ytScript.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(ytScript);
+
+window.onYouTubeIframeAPIReady = function() {
+  ytReady = true;
+  ytPlayer = new YT.Player('yt-iframe', {
+    playerVars: {
+      autoplay: 1, mute: 1, controls: 0, showinfo: 0, rel: 0,
+      modestbranding: 1, iv_load_policy: 3, disablekb: 1, fs: 0,
+      playsinline: 1, loop: 0,
+    },
+    events: {
+      onReady: (e) => {
+        e.target.mute();
+        if (pendingVideoId) {
+          loadVideoAtPosition(pendingVideoId, pendingStartSecs);
+          pendingVideoId = null;
+        }
+      },
+      onStateChange: (e) => {
+        // If video ended before track, just replay from near start
+        if (e.data === YT.PlayerState.ENDED) {
+          ytPlayer.seekTo(2, true);
+          ytPlayer.playVideo();
+        }
+      }
+    }
+  });
+};
+
+function loadVideoAtPosition(videoId, startSecs) {
+  if (!ytPlayer || !ytReady) {
+    pendingVideoId   = videoId;
+    pendingStartSecs = startSecs;
+    return;
+  }
+  ytPlayer.loadVideoById({ videoId, startSeconds: Math.max(0, startSecs - 1) });
+  ytPlayer.mute();
+}
+
+async function getSpotifyProgress() {
+  if (!CONFIG.spotify_worker_url) return 0;
+  try {
+    const res  = await fetch(CONFIG.spotify_worker_url + '/nowplaying');
+    const data = await res.json();
+    if (data.playing && data.progress && data.duration) {
+      return Math.floor(data.progress / 1000); // convert ms to seconds
+    }
+  } catch(e) {}
+  return 0;
+}
+
 function loadYouTubeVideo(videoId) {
-  const wrap   = document.getElementById('yt-bg-wrap');
-  const iframe = document.getElementById('yt-iframe');
-  const label  = document.getElementById('yt-label');
-  const bgArt  = document.getElementById('bg-art');
+  const wrap  = document.getElementById('yt-bg-wrap');
+  const label = document.getElementById('yt-label');
+  const bgArt = document.getElementById('bg-art');
 
-  // Fade out current video
   wrap.classList.remove('show');
+  clearInterval(syncInterval);
 
-  setTimeout(() => {
-    // Load new video — autoplay, muted, loop, no controls, no branding
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0&playsinline=1&enablejsapi=1`;
+  setTimeout(async () => {
+    // Get current Spotify progress to sync video
+    const startSecs = await getSpotifyProgress();
 
-    // Fade in after a moment
+    loadVideoAtPosition(videoId, startSecs);
+
     setTimeout(() => {
       wrap.classList.add('show');
-      // Fade out album art background when video is showing
       bgArt.style.opacity = '0.15';
       label.classList.add('show');
-    }, 1500);
-  }, 800);
+    }, 1200);
+
+    // Resync every 30 seconds to correct drift
+    syncInterval = setInterval(async () => {
+      if (!ytPlayer || currentVideoId !== videoId) { clearInterval(syncInterval); return; }
+      try {
+        const spotifySecs = await getSpotifyProgress();
+        const ytSecs      = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+        const drift       = Math.abs(spotifySecs - ytSecs);
+        if (drift > 5) {
+          // More than 5 seconds out — resync
+          ytPlayer.seekTo(Math.max(0, spotifySecs - 1), true);
+          console.log(`YT resync: drift ${drift.toFixed(1)}s → seeking to ${spotifySecs}s`);
+        }
+      } catch(e) {}
+    }, 30000);
+
+  }, 600);
 }
 
 function hideYouTube() {
   document.getElementById('yt-bg-wrap').classList.remove('show');
   document.getElementById('yt-label').classList.remove('show');
   document.getElementById('bg-art').style.opacity = '1';
+  clearInterval(syncInterval);
   currentVideoId = '';
+  if (ytPlayer?.stopVideo) ytPlayer.stopVideo();
 }
 
 function updateAlbumArt(url) {
