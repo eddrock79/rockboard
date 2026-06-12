@@ -514,11 +514,17 @@ window.queueTopTrack = async function() {
   const wasSkipped = recentlyPlayed.includes((top.title+'|||'+top.artist).toLowerCase());
   if (wasSkipped) showStaffToast('⚠ ALL TOP TRACKS PLAYED RECENTLY');
   showStaffToast('🔍 SEARCHING SPOTIFY...');
-  const cleanTitle = top.title.replace(/\s*[-–(].*?(remaster|remastered|remix|live|acoustic|edit|version|feat|ft\.?|with\s).*/i,'').replace(/\s*\(.*?\)/g,'').trim();
-  const cleanArtist = top.artist.replace(/\s*feat\.?.*/i,'').trim();
-  let found = await spotifyCall('/search?track=' + encodeURIComponent(cleanTitle) + '&artist=' + encodeURIComponent(cleanArtist));
-  if (!found?.uri) found = await spotifyCall('/search?track=' + encodeURIComponent(top.title) + '&artist=' + encodeURIComponent(top.artist));
-  if (!found?.uri) { showStaffToast('❌ NOT FOUND ON SPOTIFY: ' + cleanTitle); return; }
+  function cleanT(t) {
+    return t.replace(/\s*[-–]\s*(remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|instrumental).*/i,'').replace(/\s*\((remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|feat\.?|ft\.?|with\s)[^)]*\)/gi,'').trim() || t.trim();
+  }
+  const cleanTitle  = cleanT(top.title);
+  const cleanArtist = top.artist.replace(/\s*feat\.?.*/i,'').trim() || top.artist;
+  let found = null;
+  for (const [t,a] of [[cleanTitle,cleanArtist],[top.title,cleanArtist],[cleanTitle,top.artist],[top.title,top.artist],[cleanTitle,''],[top.title,'']]) {
+    found = await spotifyCall('/search?track='+encodeURIComponent(t)+(a?'&artist='+encodeURIComponent(a):''));
+    if (found?.uri) break;
+  }
+  if (!found?.uri) { showStaffToast('❌ NOT FOUND ON SPOTIFY: ' + top.title); return; }
   showStaffToast('⏳ QUEUING: ' + found.name + '...');
   const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
   console.log('Queue result:', JSON.stringify(result));
@@ -608,20 +614,34 @@ async function runAutoQueue() {
   }
 
   showStaffToast('⏱ AUTO-QUEUING: ' + top.title);
-  // Clean title — remove remaster/feat/live suffixes that confuse Spotify search
-  const cleanTitle = top.title
-    .replace(/\s*[-–(].*?(remaster|remastered|remix|live|acoustic|edit|version|feat|ft\.?|with\s).*/i,'')
-    .replace(/\s*\(.*?\)/g,'')
-    .trim();
-  const cleanArtist = top.artist.replace(/\s*feat\.?.*/i,'').trim();
 
-  let found = await spotifyCall('/search?track=' + encodeURIComponent(cleanTitle) + '&artist=' + encodeURIComponent(cleanArtist));
-  // Fallback: try without artist if not found
-  if (!found?.uri) found = await spotifyCall('/search?track=' + encodeURIComponent(cleanTitle) + '&artist=' + encodeURIComponent(top.artist));
-  // Fallback: try original title
-  if (!found?.uri) found = await spotifyCall('/search?track=' + encodeURIComponent(top.title) + '&artist=' + encodeURIComponent(top.artist));
+  // Only clean if title contains known suffixes — don't strip short titles
+  function cleanTrackTitle(t) {
+    return t
+      .replace(/\s*[-–]\s*(remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|instrumental).*/i, '')
+      .replace(/\s*\((remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|feat\.?|ft\.?|with\s)[^)]*\)/gi, '')
+      .trim() || t.trim(); // fall back to original if cleaning empties it
+  }
+  const cleanTitle  = cleanTrackTitle(top.title);
+  const cleanArtist = top.artist.replace(/\s*feat\.?.*/i,'').trim() || top.artist;
 
-  if (!found?.uri) { showStaffToast('⏱ AUTO-QUEUE: NOT FOUND — ' + cleanTitle); return; }
+  // Try 4 combinations — most specific to least specific
+  let found = null;
+  const attempts = [
+    [cleanTitle,  cleanArtist],
+    [top.title,   cleanArtist],
+    [cleanTitle,  top.artist],
+    [top.title,   top.artist],
+    [cleanTitle,  ''],          // title only, no artist filter
+    [top.title,   ''],
+  ];
+  for (const [t, a] of attempts) {
+    const q = '/search?track=' + encodeURIComponent(t) + (a ? '&artist=' + encodeURIComponent(a) : '');
+    found = await spotifyCall(q);
+    if (found?.uri) break;
+  }
+
+  if (!found?.uri) { showStaffToast('⏱ NOT FOUND ON SPOTIFY: ' + top.title); return; }
   const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
   if (result?.ok) {
     await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri, queuedAt: Date.now() });
