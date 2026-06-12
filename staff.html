@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROCKBOARD · Staff</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --accent: #8B0000;
+    --green: #39FF14;
+    --amber: #FFB347;
+    --white: #f0ede8;
+    --card: rgba(20,10,10,0.9);
+    --font-pixel: 'VT323', monospace;
+    --font-head: 'Bebas Neue', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  html, body {
+    min-height: 100vh;
+    background: var(--bg);
+    background-image: radial-gradient(ellipse at top, rgba(139,0,0,0.12) 0%, transparent 60%);
+    color: var(--white);
+    font-family: var(--font-body);
+  }
+
+  /* PIN SCREEN */
+  #pin-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 40px 20px;
+  }
+  #pin-screen h1 {
+    font-family: var(--font-head);
+    font-size: 42px;
+    letter-spacing: 6px;
+    color: var(--white);
+  }
+  #pin-screen p {
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: rgba(240,237,232,0.4);
+  }
+  #pin-dots {
+    display: flex;
+    gap: 16px;
+  }
+  .pin-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(139,0,0,0.5);
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+  #pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 72px);
+    gap: 10px;
+  }
+  .pin-key {
+    height: 64px;
+    background: var(--card);
+    border: 1px solid rgba(139,0,0,0.3);
+    border-radius: 8px;
+    color: var(--white);
+    font-family: var(--font-head);
+    font-size: 28px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+  }
+  .pin-key:active { background: rgba(139,0,0,0.4); transform: scale(0.96); }
+  .pin-key.clear { font-size: 18px; color: rgba(240,237,232,0.4); }
+  #pin-error {
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    color: #ff4444;
+    letter-spacing: 3px;
+    min-height: 24px;
+    text-align: center;
+  }
+
+  /* STAFF APP */
+  #staff-app { display: none; }
+  #staff-app.show { display: block; }
+
+  #staff-header {
+    background: rgba(10,10,10,0.95);
+    border-bottom: 1px solid rgba(139,0,0,0.3);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky; top: 0; z-index: 50;
+  }
+  #staff-header h1 {
+    font-family: var(--font-head);
+    font-size: 24px;
+    letter-spacing: 4px;
+  }
+  #staff-header .sub {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 3px;
+  }
+
+  /* Controls bar */
+  #controls-bar {
+    padding: 16px 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(139,0,0,0.15);
+  }
+  .ctrl-btn {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-family: var(--font-pixel);
+    font-size: 15px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+  }
+  .ctrl-btn:active { transform: scale(0.97); }
+  .ctrl-btn.tshirt-on  { background: rgba(255,179,71,0.15); border-color: rgba(255,179,71,0.5); color: var(--amber); }
+  .ctrl-btn.tshirt-off { background: rgba(20,10,10,0.5);    border-color: rgba(255,255,255,0.1); color: rgba(240,237,232,0.3); }
+  .ctrl-btn.winner-btn { background: rgba(57,255,20,0.1); border-color: rgba(57,255,20,0.4); color: var(--green); }
+  .ctrl-btn.clear-btn  { background: rgba(255,68,68,0.1); border-color: rgba(255,68,68,0.3); color: #ff6666; }
+  .ctrl-btn.lock-btn   { background: rgba(20,10,10,0.5); border-color: rgba(255,255,255,0.1); color: rgba(240,237,232,0.3); }
+
+  /* Tabs */
+  #tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(139,0,0,0.2);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px;
+    font-family: var(--font-pixel);
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-align: center;
+    color: rgba(240,237,232,0.35);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab.active { color: var(--white); border-bottom-color: var(--accent); }
+
+  /* Pending / Approved lists */
+  .list-section { padding: 16px 20px; display: none; }
+  .list-section.show { display: block; }
+
+  .pending-count {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: rgba(240,237,232,0.35);
+    margin-bottom: 12px;
+  }
+  .pending-count span { color: var(--amber); }
+
+  .request-card {
+    background: var(--card);
+    border: 1px solid rgba(139,0,0,0.25);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .request-card.ditching {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  .request-card.keeping {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  .rc-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .rc-track {
+    font-family: var(--font-head);
+    font-size: 22px;
+    letter-spacing: 1px;
+  }
+  .rc-artist { font-size: 13px; color: rgba(240,237,232,0.5); margin-top: 2px; }
+  .rc-meta {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: rgba(240,237,232,0.35);
+    letter-spacing: 2px;
+    text-align: right;
+  }
+  .rc-meta .votes { font-size: 22px; color: var(--white); display: block; line-height: 1; }
+  .rc-requester {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+
+  .rc-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .keep-btn, .ditch-btn {
+    padding: 14px;
+    border-radius: 6px;
+    border: none;
+    font-family: var(--font-head);
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+  }
+  .keep-btn:active, .ditch-btn:active { transform: scale(0.97); }
+  .keep-btn  { background: rgba(57,255,20,0.15);  border: 1px solid rgba(57,255,20,0.4);  color: var(--green); }
+  .ditch-btn { background: rgba(139,0,0,0.25);    border: 1px solid rgba(139,0,0,0.5);   color: #ff6666; }
+
+  /* Approved list */
+  .approved-card {
+    background: var(--card);
+    border: 1px solid rgba(57,255,20,0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .ac-rank {
+    font-family: var(--font-head);
+    font-size: 28px;
+    color: rgba(240,237,232,0.15);
+    min-width: 36px;
+    text-align: center;
+  }
+  .ac-details { flex: 1; }
+  .ac-title { font-family: var(--font-head); font-size: 18px; letter-spacing: 0.5px; }
+  .ac-artist { font-size: 12px; color: rgba(240,237,232,0.4); margin-top: 2px; }
+  .ac-meta {
+    font-family: var(--font-pixel);
+    font-size: 22px;
+    color: var(--white);
+    text-align: right;
+    min-width: 48px;
+  }
+  .ac-meta small { font-size: 10px; color: rgba(240,237,232,0.3); display: block; letter-spacing: 2px; }
+  .ac-ditch {
+    background: transparent;
+    border: 1px solid rgba(139,0,0,0.3);
+    border-radius: 5px;
+    padding: 6px 10px;
+    color: rgba(255,68,68,0.5);
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+  }
+  .ac-ditch:active { background: rgba(139,0,0,0.3); color: #ff4444; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    font-family: var(--font-pixel);
+    font-size: 18px;
+    color: rgba(240,237,232,0.25);
+    letter-spacing: 3px;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div>
+    <h1>ROCKBOARD</h1>
+    <p style="text-align:center; margin-top:4px;">STAFF ACCESS</p>
+  </div>
+  <div id="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div id="pin-keypad">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key clear" onclick="pinClear()">CLR</button>
+    <button class="pin-key" onclick="pinKey('0')">0</button>
+    <button class="pin-key clear" onclick="pinBack()">⌫</button>
+  </div>
+  <div id="pin-error"></div>
+</div>
+
+<!-- STAFF APP -->
+<div id="staff-app">
+  <div id="staff-header">
+    <div>
+      <h1>STAFF · ROCKBOARD</h1>
+      <div class="sub">THE BLACK ROSE</div>
+    </div>
+    <button class="ctrl-btn lock-btn" onclick="lock()">LOCK</button>
+  </div>
+
+  <div id="controls-bar">
+    <button class="ctrl-btn tshirt-on" id="tshirt-btn" onclick="toggleTshirt()">🏆 T-SHIRT: ON</button>
+    <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
+    <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
+  </div>
+
+  <div id="tabs">
+    <div class="tab active" id="tab-pending" onclick="switchTab('pending')">
+      PENDING <span id="pending-badge"></span>
+    </div>
+    <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
+  </div>
+
+  <div class="list-section show" id="section-pending">
+    <div class="pending-count">REQUESTS AWAITING REVIEW · <span id="pending-count-num">0</span></div>
+    <div id="pending-list"></div>
+  </div>
+
+  <div class="list-section" id="section-approved">
+    <div class="pending-count">LIVE ON THE BOARD · <span id="approved-count-num">0</span></div>
+    <div id="approved-list"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CONFIG
+// ============================================================
+const STAFF_PIN = "1234"; // Change this!
+const CONFIG = { venueName: "THE BLACK ROSE", tshirtMode: true };
+
+// ============================================================
+//  PIN
+// ============================================================
+let pinEntry = '';
+
+function pinKey(k) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += k;
+  updatePinDots();
+  if (pinEntry.length === 4) checkPin();
+}
+function pinBack() { pinEntry = pinEntry.slice(0, -1); updatePinDots(); }
+function pinClear() { pinEntry = ''; updatePinDots(); }
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinEntry.length);
+  }
+}
+
+function checkPin() {
+  if (pinEntry === STAFF_PIN) {
+    document.getElementById('pin-screen').style.display = 'none';
+    document.getElementById('staff-app').classList.add('show');
+    renderAll();
+  } else {
+    document.getElementById('pin-error').textContent = 'WRONG PIN · TRY AGAIN';
+    pinEntry = '';
+    updatePinDots();
+    setTimeout(() => { document.getElementById('pin-error').textContent = ''; }, 2000);
+  }
+}
+
+function lock() {
+  pinEntry = '';
+  updatePinDots();
+  document.getElementById('pin-screen').style.display = '';
+  document.getElementById('staff-app').classList.remove('show');
+}
+
+// ============================================================
+//  DATA (replace with Firebase)
+// ============================================================
+let tracks = {
+  pending: [
+    { id:'p1', title:'Killing in the Name', artist:'Rage Against the Machine', requester:'Alex', votes:1, uniqueVoters:1 },
+    { id:'p2', title:'Everlong', artist:'Foo Fighters', requester:'Sam', votes:1, uniqueVoters:1 },
+    { id:'p3', title:'Paranoid', artist:'Black Sabbath', requester:'Charlie', votes:1, uniqueVoters:1 },
+  ],
+  approved: [
+    { id:'t1', title:'Bohemian Rhapsody', artist:'Queen', requester:'Dave', votes:12, uniqueVoters:9 },
+    { id:'t2', title:'Enter Sandman', artist:'Metallica', requester:'Sarah', votes:9, uniqueVoters:7 },
+    { id:'t3', title:'Back in Black', artist:'AC/DC', requester:'Mike', votes:7, uniqueVoters:6 },
+    { id:'t4', title:'Smells Like Teen Spirit', artist:'Nirvana', requester:'Jen', votes:6, uniqueVoters:5 },
+    { id:'t5', title:'Mr. Brightside', artist:'The Killers', requester:'Tom', votes:5, uniqueVoters:4 },
+  ]
+};
+
+let tshirtOn = CONFIG.tshirtMode;
+
+// ============================================================
+//  ACTIONS
+// ============================================================
+function keepTrack(id) {
+  const card = document.getElementById('rc-' + id);
+  if (card) { card.classList.add('keeping'); }
+  setTimeout(() => {
+    const idx = tracks.pending.findIndex(t => t.id === id);
+    if (idx === -1) return;
+    const track = tracks.pending.splice(idx, 1)[0];
+    track.pending = false;
+    tracks.approved.push(track);
+    renderAll();
+  }, 300);
+}
+
+function ditchTrack(id) {
+  const card = document.getElementById('rc-' + id);
+  if (card) { card.classList.add('ditching'); }
+  setTimeout(() => {
+    tracks.pending = tracks.pending.filter(t => t.id !== id);
+    tracks.approved = tracks.approved.filter(t => t.id !== id);
+    renderAll();
+  }, 300);
+}
+
+function toggleTshirt() {
+  tshirtOn = !tshirtOn;
+  const btn = document.getElementById('tshirt-btn');
+  btn.textContent = tshirtOn ? '🏆 T-SHIRT: ON' : '🏆 T-SHIRT: OFF';
+  btn.className = 'ctrl-btn ' + (tshirtOn ? 'tshirt-on' : 'tshirt-off');
+}
+
+function revealWinner() {
+  if (!tracks.approved.length) { alert('No approved tracks yet!'); return; }
+  const sorted = [...tracks.approved].sort((a,b) => b.uniqueVoters - a.uniqueVoters);
+  const w = sorted[0];
+  alert(`🏆 TONIGHT'S WINNER\n\n${w.title} — ${w.artist}\nRequested by: ${w.requester}\nUnique votes: ${w.uniqueVoters}\n\n(In production this triggers the winner overlay on the main display)`);
+}
+
+function clearNight() {
+  if (!confirm('Start a new night? This clears all tracks and votes.')) return;
+  tracks.pending = [];
+  tracks.approved = [];
+  renderAll();
+}
+
+// ============================================================
+//  TABS
+// ============================================================
+function switchTab(tab) {
+  document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
+  document.getElementById('tab-approved').classList.toggle('active', tab === 'approved');
+  document.getElementById('section-pending').classList.toggle('show', tab === 'pending');
+  document.getElementById('section-approved').classList.toggle('show', tab === 'approved');
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function renderAll() {
+  renderPending();
+  renderApproved();
+}
+
+function renderPending() {
+  const list = document.getElementById('pending-list');
+  const count = tracks.pending.length;
+  document.getElementById('pending-count-num').textContent = count;
+  document.getElementById('pending-badge').textContent = count > 0 ? ` (${count})` : '';
+
+  if (!count) {
+    list.innerHTML = `<div class="empty-state">NO PENDING REQUESTS<br>ALL QUIET FOR NOW...</div>`;
+    return;
+  }
+
+  list.innerHTML = tracks.pending.map(t => `
+    <div class="request-card" id="rc-${t.id}">
+      <div class="rc-top">
+        <div>
+          <div class="rc-track">${t.title}</div>
+          <div class="rc-artist">${t.artist}</div>
+        </div>
+        <div class="rc-meta">
+          <span class="votes">${t.uniqueVoters}</span>
+          VOTES
+        </div>
+      </div>
+      <div class="rc-requester">↳ REQUESTED BY ${t.requester.toUpperCase()}</div>
+      <div class="rc-actions">
+        <button class="keep-btn" onclick="keepTrack('${t.id}')">🤘 KEEP IT</button>
+        <button class="ditch-btn" onclick="ditchTrack('${t.id}')">✕ DITCH IT</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderApproved() {
+  const list = document.getElementById('approved-list');
+  const sorted = [...tracks.approved].sort((a,b) => b.uniqueVoters - a.uniqueVoters);
+  document.getElementById('approved-count-num').textContent = sorted.length;
+
+  if (!sorted.length) {
+    list.innerHTML = `<div class="empty-state">NO APPROVED TRACKS YET<br>APPROVE SOME REQUESTS...</div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map((t, i) => `
+    <div class="approved-card">
+      <div class="ac-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="ac-details">
+        <div class="ac-title">${t.title}</div>
+        <div class="ac-artist">${t.artist} · ${t.requester}</div>
+      </div>
+      <div class="ac-meta">
+        ${t.uniqueVoters}
+        <small>VOTES</small>
+      </div>
+      <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>

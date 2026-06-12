@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROCKBOARD</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --accent: #8B0000;
+    --green: #39FF14;
+    --amber: #FFB347;
+    --white: #f0ede8;
+    --dim: rgba(10,10,10,0.75);
+    --card-bg: rgba(20,10,10,0.82);
+    --font-pixel: 'VT323', monospace;
+    --font-head: 'Bebas Neue', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--font-body);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── ALBUM ART BACKGROUND ── */
+  #bg-art {
+    position: fixed; inset: -5%;
+    background-size: cover;
+    background-position: center;
+    background-image: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1920&q=80');
+    filter: blur(18px) saturate(0.6) brightness(0.35);
+    transition: opacity 2.5s ease;
+    z-index: 0;
+  }
+  #bg-art.fade-out { opacity: 0; }
+  #bg-art-next {
+    position: fixed; inset: -5%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(18px) saturate(0.6) brightness(0.35);
+    opacity: 0;
+    transition: opacity 2.5s ease;
+    z-index: 0;
+  }
+  #bg-art-next.fade-in { opacity: 1; }
+
+  /* Ken Burns on album art */
+  @keyframes kenburns {
+    0%   { transform: scale(1.0) translate(0%, 0%); }
+    50%  { transform: scale(1.08) translate(-1.5%, 1%); }
+    100% { transform: scale(1.0) translate(0%, 0%); }
+  }
+  #bg-art { animation: kenburns 20s ease-in-out infinite; }
+
+  /* ── LAYOUT ── */
+  #app {
+    position: relative; z-index: 1;
+    width: 100vw; height: 100vh;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "nowplaying  header"
+      "nowplaying  leaderboard"
+      "equalizer   callout";
+    gap: 0;
+    padding: 28px;
+  }
+
+  /* ── NOW PLAYING PANEL ── */
+  #now-playing {
+    grid-area: nowplaying;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-right: 28px;
+  }
+
+  #album-art {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    background: #1a0a0a;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 60px rgba(139,0,0,0.4), 0 8px 32px rgba(0,0,0,0.8);
+  }
+  #album-art img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: opacity 1.5s ease;
+  }
+  #album-art-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(139,0,0,0.15), transparent);
+    pointer-events: none;
+  }
+
+  /* Winamp-style track info */
+  #track-info {
+    background: var(--card-bg);
+    border: 1px solid rgba(139,0,0,0.3);
+    border-radius: 4px;
+    padding: 16px;
+    backdrop-filter: blur(20px);
+  }
+  #track-status {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    color: var(--green);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  #track-name {
+    font-family: var(--font-head);
+    font-size: 28px;
+    line-height: 1.1;
+    color: var(--white);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  #track-artist {
+    font-size: 14px;
+    color: rgba(240,237,232,0.65);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  #progress-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--amber));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 1s linear;
+  }
+
+  /* Winamp counter */
+  #winamp-counter {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-family: var(--font-pixel);
+    font-size: 22px;
+    color: var(--amber);
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(139,0,0,0.2);
+    border-radius: 4px;
+    letter-spacing: 2px;
+  }
+  .wc-label { color: rgba(240,237,232,0.3); font-size: 11px; letter-spacing: 3px; align-self: flex-end; padding-bottom: 4px; }
+
+  /* ── HEADER ── */
+  #header {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(139,0,0,0.25);
+    margin-bottom: 20px;
+  }
+  #venue-name {
+    font-family: var(--font-head);
+    font-size: 48px;
+    letter-spacing: 4px;
+    color: var(--white);
+    line-height: 1;
+  }
+  #venue-sub {
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    margin-top: 4px;
+  }
+  #tshirt-badge {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  #tshirt-badge.active { display: flex; }
+  #tshirt-badge .badge-label {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--amber);
+  }
+  #tshirt-badge .badge-prize {
+    font-family: var(--font-head);
+    font-size: 28px;
+    color: var(--white);
+    letter-spacing: 2px;
+  }
+  #tshirt-badge .badge-sub {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: rgba(240,237,232,0.4);
+    letter-spacing: 2px;
+  }
+
+  /* ── LEADERBOARD ── */
+  #leaderboard {
+    grid-area: leaderboard;
+    overflow: hidden;
+    position: relative;
+  }
+  #leaderboard-title {
+    font-family: var(--font-pixel);
+    font-size: 14px;
+    letter-spacing: 5px;
+    color: rgba(240,237,232,0.35);
+    margin-bottom: 12px;
+  }
+  #tracks-list {
+    position: relative;
+    height: calc(100% - 30px);
+  }
+
+  .track-card {
+    position: absolute;
+    left: 0; right: 0;
+    height: 72px;
+    background: var(--card-bg);
+    border: 1px solid rgba(139,0,0,0.2);
+    border-radius: 4px;
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 16px;
+    transition: top 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease, border-color 0.3s ease;
+    cursor: default;
+  }
+  .track-card:hover { border-color: rgba(139,0,0,0.5); }
+  .track-card.top-card {
+    border-color: rgba(255,179,71,0.5);
+    background: rgba(30,15,0,0.85);
+    box-shadow: 0 0 20px rgba(255,179,71,0.1);
+  }
+  .track-card.new-entry { animation: slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .track-card.rising { border-color: rgba(57,255,20,0.4); }
+
+  .track-rank {
+    font-family: var(--font-head);
+    font-size: 38px;
+    color: rgba(240,237,232,0.15);
+    min-width: 44px;
+    text-align: center;
+    line-height: 1;
+  }
+  .track-card.top-card .track-rank { color: var(--amber); }
+
+  .track-thumb {
+    width: 46px; height: 46px;
+    border-radius: 3px;
+    background: #1a0808;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .track-details { flex: 1; min-width: 0; }
+  .track-title {
+    font-family: var(--font-head);
+    font-size: 19px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  .track-artist-name {
+    font-size: 12px;
+    color: rgba(240,237,232,0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  .track-requester {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .track-votes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 52px;
+  }
+  .vote-count {
+    font-family: var(--font-pixel);
+    font-size: 32px;
+    color: var(--white);
+    line-height: 1;
+  }
+  .track-card.top-card .vote-count { color: var(--amber); }
+  .vote-label {
+    font-family: var(--font-pixel);
+    font-size: 10px;
+    color: rgba(240,237,232,0.3);
+    letter-spacing: 2px;
+  }
+
+  .rank-change {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    min-width: 22px;
+    text-align: center;
+  }
+  .rank-change.up { color: var(--green); }
+  .rank-change.down { color: #ff4444; }
+  .rank-change.same { color: rgba(240,237,232,0.2); }
+
+  /* ── EQUALIZER ── */
+  #equalizer {
+    grid-area: equalizer;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 48px;
+    padding-right: 28px;
+    padding-top: 12px;
+  }
+  .eq-bar {
+    flex: 1;
+    background: linear-gradient(to top, var(--accent), var(--amber));
+    border-radius: 2px 2px 0 0;
+    min-height: 4px;
+    opacity: 0.7;
+  }
+
+  /* ── CALLOUT TICKER ── */
+  #callout {
+    grid-area: callout;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(139,0,0,0.2);
+    overflow: hidden;
+  }
+  #callout-tag {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  #callout-text {
+    font-family: var(--font-pixel);
+    font-size: 20px;
+    color: var(--amber);
+    white-space: nowrap;
+    animation: ticker 18s linear infinite;
+    letter-spacing: 1px;
+  }
+  @keyframes ticker {
+    0%   { transform: translateX(100vw); }
+    100% { transform: translateX(-100%); }
+  }
+
+  /* ── QR HINT ── */
+  #qr-hint {
+    position: fixed;
+    bottom: 80px; right: 28px;
+    background: var(--card-bg);
+    border: 1px solid rgba(139,0,0,0.3);
+    border-radius: 4px;
+    padding: 14px 18px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    z-index: 10;
+  }
+  #qr-hint canvas, #qr-hint img { width: 80px; height: 80px; display: block; margin: 0 auto 8px; }
+  #qr-hint-label {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: rgba(240,237,232,0.5);
+  }
+
+  /* ── WINNER OVERLAY ── */
+  #winner-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 500;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    text-align: center;
+  }
+  #winner-overlay.show { display: flex; }
+  #winner-crown { font-size: 80px; animation: bounce 0.8s ease infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-12px); } }
+  #winner-title {
+    font-family: var(--font-head);
+    font-size: 72px;
+    letter-spacing: 8px;
+    color: var(--amber);
+    text-shadow: 0 0 40px rgba(255,179,71,0.6);
+  }
+  #winner-track {
+    font-family: var(--font-head);
+    font-size: 42px;
+    letter-spacing: 3px;
+    color: var(--white);
+  }
+  #winner-artist { font-size: 20px; color: rgba(240,237,232,0.6); letter-spacing: 2px; }
+  #winner-callout {
+    font-family: var(--font-pixel);
+    font-size: 28px;
+    color: var(--green);
+    letter-spacing: 3px;
+    max-width: 700px;
+    line-height: 1.4;
+  }
+  #winner-votes {
+    font-family: var(--font-pixel);
+    font-size: 18px;
+    color: rgba(240,237,232,0.4);
+    letter-spacing: 3px;
+  }
+  #winner-close {
+    margin-top: 20px;
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    color: rgba(240,237,232,0.3);
+    letter-spacing: 3px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 10px 24px;
+    border-radius: 4px;
+    background: transparent;
+    color: rgba(240,237,232,0.4);
+    transition: all 0.2s;
+  }
+  #winner-close:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* Confetti */
+  .confetti-piece {
+    position: fixed;
+    width: 8px; height: 14px;
+    opacity: 0;
+    animation: confettiFall 3s ease-in forwards;
+    z-index: 501;
+    border-radius: 2px;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div id="bg-art"></div>
+<div id="bg-art-next"></div>
+
+<div id="app">
+
+  <!-- LEFT: Now Playing -->
+  <div id="now-playing">
+    <div id="album-art">
+      <img id="album-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80" alt="Album Art">
+      <div id="album-art-overlay"></div>
+    </div>
+
+    <div id="track-info">
+      <div id="track-status">
+        <div id="status-dot"></div>
+        <span id="status-text">NOW PLAYING</span>
+      </div>
+      <div id="track-name">Loading...</div>
+      <div id="track-artist">—</div>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+
+    <div id="winamp-counter">
+      <span class="wc-label">TRACK</span>
+      <span id="wc-num">001</span>
+      <span style="color:rgba(240,237,232,0.2)">|</span>
+      <span class="wc-label">TONIGHT</span>
+      <span id="wc-total">—</span>
+    </div>
+  </div>
+
+  <!-- TOP RIGHT: Header -->
+  <div id="header">
+    <div>
+      <div id="venue-name">THE BLACK ROSE</div>
+      <div id="venue-sub">▶ ROCKBOARD · VOTE FOR YOUR TRACK</div>
+    </div>
+    <div id="tshirt-badge" class="active">
+      <div class="badge-label">🏆 TONIGHT'S PRIZE</div>
+      <div class="badge-prize">T-SHIRT</div>
+      <div class="badge-sub">MOST UNIQUE VOTES WINS</div>
+    </div>
+  </div>
+
+  <!-- MID RIGHT: Leaderboard -->
+  <div id="leaderboard">
+    <div id="leaderboard-title">▸ TONIGHT'S MOST WANTED</div>
+    <div id="tracks-list"></div>
+  </div>
+
+  <!-- BOTTOM LEFT: Equalizer -->
+  <div id="equalizer" id="eq"></div>
+
+  <!-- BOTTOM RIGHT: Callout Ticker -->
+  <div id="callout">
+    <div id="callout-tag">▶ ROCKBOARD</div>
+    <div id="callout-text">Loading the vibe...</div>
+  </div>
+
+</div>
+
+<!-- QR Code Hint -->
+<div id="qr-hint">
+  <div style="width:80px;height:80px;background:#1a0808;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:var(--font-pixel);font-size:11px;color:rgba(240,237,232,0.3);letter-spacing:1px;text-align:center;">QR<br>CODE</div>
+  <div id="qr-hint-label">SCAN TO VOTE</div>
+</div>
+
+<!-- Winner Overlay -->
+<div id="winner-overlay">
+  <div id="winner-crown">🏆</div>
+  <div id="winner-title">TONIGHT'S CHAMPION</div>
+  <div id="winner-track" id="w-track">—</div>
+  <div id="winner-artist" id="w-artist">—</div>
+  <div id="winner-callout" id="w-callout">—</div>
+  <div id="winner-votes" id="w-votes">— UNIQUE VOTES</div>
+  <button id="winner-close" onclick="closeWinner()">[ CLOSE · NEW NIGHT ]</button>
+</div>
+
+<script>
+// ============================================================
+//  CONFIG — swap these per venue
+// ============================================================
+const CONFIG = {
+  venueName:    "THE BLACK ROSE",
+  venueSub:     "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
+  accent:       "#8B0000",
+  lastfm_user:  "",          // e.g. "blackrose_tidal"
+  lastfm_key:   "",          // your Last.fm API key
+  tshirtMode:   true,        // show t-shirt prize badge
+  requestUrl:   "request.html",
+  firebaseConfig: {
+    // Paste Firebase config here when ready
+    // apiKey: "", authDomain: "", projectId: "", ...
+  }
+};
+
+// ============================================================
+//  CALLOUT QUOTES — Beavis & Butt-Head + Wayne's World
+// ============================================================
+const QUOTES = [
+  // Beavis & Butt-Head vibes
+  "Uh... this song is like, really cool. Heh heh.",
+  "That last vote was pretty lame. Change it. Change it now.",
+  "Heh heh heh. Someone just voted for THAT.",
+  "This is, like, the greatest playlist ever. For now.",
+  "Uh... the music... it speaks to me. Heh.",
+  "Beavis says: that song rules. Butt-Head disagrees.",
+  "Heh heh. Someone here has bad taste. Heh heh heh.",
+  "This is the part where the music gets good. Heh.",
+  "Uh... are you gonna vote or just stand there?",
+  "Heh heh. Two people just fought over No.1. Heh.",
+  "This song has, like, a guitar. And stuff. It rules.",
+  "Uh... I am Cornholio! I need votes for my bunghole!",
+  "Heh heh heh. That request was pretty dumb. Heh.",
+  "This is like that time we saw that video. It was cool.",
+  "Uh... this crowd needs to vote more. Heh heh.",
+  "Are you threatening me?! Vote properly!",
+  "Heh heh. Someone just got their request ditched. Heh.",
+  "That was, like, the coolest vote. For a second. Heh.",
+  "Whoa! That song just moved up. That's pretty cool. Heh.",
+  "Heh heh heh. This place is like a concert. But with beer.",
+  "Uh... I think I'm gonna be sick. Play something better.",
+  "Settle down Beavis. Someone's about to take No.1.",
+  "Heh heh. The playlist is getting good. Heh heh.",
+  "This song is, like, really really cool. Or whatever.",
+  "Uh... this is the greatest bar. In the world. Heh.",
+  "Heh heh heh heh. Yeah. Yeah! YEAH!",
+  "Uh... you said vote. Heh heh. Vote.",
+  "This is like that one song. You know the one. Yeah.",
+  "Heh. Someone keeps requesting the same song. Loser.",
+  "Whoa! That's like, a lot of votes. That's pretty cool.",
+
+  // Wayne's World
+  "PARTY ON! Vote for your track, excellent!",
+  "That request was most non-non-non-heinous.",
+  "SCHWING! That track just hit No.1!",
+  "Excellent! The people have spoken. Most triumphant.",
+  "No way. Way. That song just went to No.1.",
+  "If it's going to be stale... it'll get ditched. Station!",
+  "We're not worthy! We're not worthy! That track is fire.",
+  "That was most non-non-non-non-heinous. Excellent.",
+  "Wayne's World, Wayne's World, party time, excellent!",
+  "Did someone just request Bohemian Rhapsody? Excellent.",
+  "I'm in Delaware. But I'd rather be at No.1.",
+  "Shyeah right. That request getting approved. As if!",
+  "Ah yes, it will be mine. The top spot. Oh yes.",
+  "Game on! The vote battle is getting intense!",
+  "That was so cool it was almost not cool. Almost.",
+  "Cassandra... if you're out there... vote for the rock.",
+  "Excellent! A most outstanding choice of track!",
+  "That song... I'm not worthy. I'm not worthy!",
+  "Shyeah, and monkeys might fly out of my butt.",
+  "We fear change. Except when it means a better playlist.",
+  "Zaniest bunch of voters I've ever seen. Excellent.",
+  "If you vote for it, they will come. And they will rock.",
+  "Did you ever find Bugs Bunny attractive? No? Vote then.",
+  "It's a Cinderella story... this track is climbing!",
+  "Led Zeppelin didn't write songs everyone liked. This isn't one of those.",
+  "Ah, here comes the night's top voter. Excellent.",
+  "That's what I'd do. I'd vote for that.",
+  "Party on Garth. PARTY ON WAYNE.",
+  "Most outstanding. A most outstanding request.",
+  "Live in the now! The vote gap is closing!",
+
+  // General bar-crowd callouts
+  "Someone at the bar has impeccable taste. You know who you are.",
+  "Whoever keeps voting for that — we see you. We respect it.",
+  "The battle for No.1 is getting personal. Very personal.",
+  "One person is carrying this playlist. Respect.",
+  "Table vibes are strong tonight. Strong.",
+  "That request was bold. Controversial. We're here for it.",
+  "The DJ would like to point out: Wonderwall is not an option.",
+  "Three people just voted for the same thing. Power move.",
+  "Whoever just hit their hourly limit — calm down, champ.",
+  "The No.1 spot just changed hands. The people have spoken.",
+  "Someone here definitely has a band. You know who you are.",
+  "Bold choice. Zero regrets. Respect.",
+  "Last time we played that, someone cried. Just saying.",
+  "The gap between No.1 and No.2 is terrifying.",
+  "Statistically, someone in here owns a Creed album.",
+  "This is either a great crowd or the votes are rigged. Could be both.",
+  "Cheryl's in the wrong bar. But she's voting correctly.",
+  "Bob should be the DJ. Bob knows what he's doing.",
+  "Whoever requested that — you're buying the next round.",
+  "This crowd is ON FIRE tonight. Absolutely on fire.",
+  "Someone here definitely peaked at a school disco. Still got it though.",
+  "The vibes? Immaculate. The votes? Also immaculate.",
+  "If that track gets to No.1 the barman quits. No pressure.",
+  "That surge in votes came from one table. Respect the hustle.",
+  "We have a rogue voter. You know who you are. We salute you.",
+  "Karen voted for something actually good. We're shocked.",
+  "Dave's taste is carrying this bar. Absolute legend.",
+  "Someone just requested something we actually like. Suspicious.",
+  "The front table are in a voting war. This is beautiful.",
+  "You can't stop the music. You can only vote for it.",
+  "A No.1 is for life, not just for the evening. Fight for it.",
+  "Someone here is a secret music snob. We know it. You know it.",
+  "That request came in fast. Someone had that queued up all night.",
+  "Two tracks within one vote of each other. This is chaos. We love it.",
+  "The leaderboard is lying. No wait, it's not. That track really is No.1.",
+  "Someone just used their last vote of the hour. Spend it wisely.",
+  "An upset! The people have SPOKEN.",
+  "Call it a comeback. That track just climbed four places.",
+  "Someone's table captain just took over. Leadership.",
+  "The t-shirt is on the line. Don't sleep on it.",
+  "Iconic voting from table three. Truly iconic.",
+  "We're not saying it was you. But it was definitely you.",
+];
+
+// ============================================================
+//  DEMO TRACK DATA (replaced by Firebase + Last.fm in prod)
+// ============================================================
+let tracks = [
+  { id:"t1", title:"Bohemian Rhapsody", artist:"Queen", votes:12, uniqueVoters:9, requester:"Dave", thumb:"", approved:true },
+  { id:"t2", title:"Enter Sandman", artist:"Metallica", votes:9, uniqueVoters:7, requester:"Sarah", thumb:"", approved:true },
+  { id:"t3", title:"Back in Black", artist:"AC/DC", votes:7, uniqueVoters:6, requester:"Mike", thumb:"", approved:true },
+  { id:"t4", title:"Smells Like Teen Spirit", artist:"Nirvana", votes:6, uniqueVoters:5, requester:"Jen", thumb:"", approved:true },
+  { id:"t5", title:"Mr. Brightside", artist:"The Killers", votes:5, uniqueVoters:4, requester:"Tom", thumb:"", approved:true },
+  { id:"t6", title:"Seven Nation Army", artist:"White Stripes", votes:4, uniqueVoters:4, requester:"Amy", thumb:"", approved:true },
+  { id:"t7", title:"Wonderwall", artist:"Oasis", votes:3, uniqueVoters:3, requester:"Anonymous", thumb:"", approved:true },
+  { id:"t8", title:"Don't Stop Me Now", artist:"Queen", votes:2, uniqueVoters:2, requester:"Bob", thumb:"", approved:true },
+];
+
+let nowPlaying = { title: "Loading...", artist: "—", album: "", thumb: "", duration: 0, progress: 0 };
+let trackNumber = 1;
+let quoteIndex = Math.floor(Math.random() * QUOTES.length);
+let eqAnimFrame;
+let prevRanks = {};
+
+// ============================================================
+//  EQUALIZER
+// ============================================================
+const NUM_BARS = 48;
+const eq = document.getElementById('equalizer');
+let eqBars = [];
+
+function initEQ() {
+  for (let i = 0; i < NUM_BARS; i++) {
+    const b = document.createElement('div');
+    b.className = 'eq-bar';
+    b.style.height = '4px';
+    eq.appendChild(b);
+    eqBars.push({ el: b, current: 4, target: 4, speed: 0 });
+  }
+  animateEQ();
+}
+
+function animateEQ() {
+  eqBars.forEach((b, i) => {
+    if (Math.random() < 0.15) {
+      const base = 8 + Math.sin(i / NUM_BARS * Math.PI) * 28;
+      b.target = base + Math.random() * 20;
+    }
+    b.current += (b.target - b.current) * 0.18;
+    b.el.style.height = Math.max(4, b.current) + 'px';
+  });
+  eqAnimFrame = requestAnimationFrame(animateEQ);
+}
+
+// ============================================================
+//  LEADERBOARD RENDERING
+// ============================================================
+const CARD_H = 76; // height + gap
+
+function renderLeaderboard() {
+  const list = document.getElementById('tracks-list');
+  const sorted = [...tracks]
+    .filter(t => t.approved)
+    .sort((a, b) => b.votes - a.votes || b.uniqueVoters - a.uniqueVoters)
+    .slice(0, 10);
+
+  const existingCards = {};
+  list.querySelectorAll('.track-card').forEach(el => {
+    existingCards[el.dataset.id] = el;
+  });
+
+  sorted.forEach((track, idx) => {
+    const top = idx * CARD_H;
+    let card = existingCards[track.id];
+
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'track-card new-entry';
+      card.dataset.id = track.id;
+      card.style.top = top + 'px';
+      card.style.opacity = '0';
+      setTimeout(() => { card.style.opacity = '1'; }, 50);
+      list.appendChild(card);
+    }
+
+    const prevRank = prevRanks[track.id];
+    const rankChange = prevRank !== undefined ? prevRank - idx : 0;
+    const changeIcon = rankChange > 0 ? '▲' : rankChange < 0 ? '▼' : '—';
+    const changeClass = rankChange > 0 ? 'up' : rankChange < 0 ? 'down' : 'same';
+
+    card.className = 'track-card' + (idx === 0 ? ' top-card' : '') + (rankChange > 0 ? ' rising' : '');
+    card.style.top = top + 'px';
+    card.innerHTML = `
+      <div class="track-rank">${String(idx + 1).padStart(2, '0')}</div>
+      <div class="track-thumb" style="background:#1a0808;display:flex;align-items:center;justify-content:center;font-size:20px;">🎵</div>
+      <div class="track-details">
+        <div class="track-title">${track.title}</div>
+        <div class="track-artist-name">${track.artist}</div>
+        <div class="track-requester">↳ ${track.requester}</div>
+      </div>
+      <div class="track-votes">
+        <div class="vote-count">${track.uniqueVoters}</div>
+        <div class="vote-label">VOTES</div>
+      </div>
+      <div class="rank-change ${changeClass}">${changeIcon}</div>
+    `;
+
+    prevRanks[track.id] = idx;
+    delete existingCards[track.id];
+  });
+
+  // Remove cards no longer in top 10
+  Object.values(existingCards).forEach(el => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 400);
+  });
+}
+
+// ============================================================
+//  CALLOUT TICKER
+// ============================================================
+function nextQuote() {
+  const el = document.getElementById('callout-text');
+  el.style.animation = 'none';
+  el.textContent = QUOTES[quoteIndex % QUOTES.length];
+  quoteIndex++;
+  void el.offsetWidth;
+  el.style.animation = 'ticker 18s linear';
+  el.addEventListener('animationend', nextQuote, { once: true });
+}
+
+// ============================================================
+//  NOW PLAYING (Last.fm stub — replace with live fetch)
+// ============================================================
+async function fetchNowPlaying() {
+  if (!CONFIG.lastfm_key || !CONFIG.lastfm_user) {
+    // Demo rotation
+    const demos = [
+      { title:"Bohemian Rhapsody", artist:"Queen", thumb:"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80" },
+      { title:"Enter Sandman", artist:"Metallica", thumb:"https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80" },
+      { title:"Back in Black", artist:"AC/DC", thumb:"https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80" },
+    ];
+    const d = demos[trackNumber % demos.length];
+    updateNowPlaying(d.title, d.artist, d.thumb);
+    return;
+  }
+  try {
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${CONFIG.lastfm_user}&api_key=${CONFIG.lastfm_key}&format=json&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const track = data.recenttracks?.track?.[0];
+    if (track) {
+      const title = track.name;
+      const artist = track.artist['#text'];
+      const thumb = track.image?.find(i => i.size === 'extralarge')?.['#text'] || '';
+      const isNow = track['@attr']?.nowplaying === 'true';
+      updateNowPlaying(title, artist, thumb, isNow);
+    }
+  } catch(e) { console.warn('Last.fm fetch failed', e); }
+}
+
+function updateNowPlaying(title, artist, thumb, isLive = true) {
+  document.getElementById('track-name').textContent = title;
+  document.getElementById('track-artist').textContent = artist;
+  document.getElementById('status-text').textContent = isLive ? 'NOW PLAYING' : 'LAST PLAYED';
+  document.getElementById('wc-num').textContent = String(trackNumber).padStart(3, '0');
+
+  if (thumb && thumb !== nowPlaying.thumb) {
+    // Crossfade album art
+    const bgNext = document.getElementById('bg-art-next');
+    const bgCurr = document.getElementById('bg-art');
+    const img = document.getElementById('album-img');
+
+    bgNext.style.backgroundImage = `url('${thumb}')`;
+    bgNext.classList.add('fade-in');
+    bgCurr.classList.add('fade-out');
+
+    setTimeout(() => {
+      bgCurr.style.backgroundImage = `url('${thumb}')`;
+      bgCurr.classList.remove('fade-out');
+      bgNext.classList.remove('fade-in');
+      img.src = thumb;
+    }, 2600);
+  }
+
+  nowPlaying = { title, artist, thumb };
+  trackNumber++;
+}
+
+// ============================================================
+//  WINNER REVEAL
+// ============================================================
+function showWinner() {
+  const sorted = [...tracks].filter(t => t.approved).sort((a,b) => b.uniqueVoters - a.uniqueVoters);
+  if (!sorted.length) return;
+  const winner = sorted[0];
+  document.getElementById('winner-track').textContent = winner.title;
+  document.getElementById('winner-artist').textContent = winner.artist;
+  document.getElementById('w-votes').textContent = `${winner.uniqueVoters} UNIQUE VOTES`;
+  const winnerQuotes = [
+    `${winner.requester} has the best taste in this bar. Come collect your t-shirt.`,
+    `${winner.requester} — we bow to your superior taste. T-shirt incoming.`,
+    `${winner.requester} wins the night. And possibly our respect. Collect your t-shirt.`,
+    `${winner.requester}, tonight you ARE the DJ. T-shirt at the bar.`,
+    `${winner.requester} called it. The crowd agreed. T-shirt well earned.`,
+  ];
+  document.getElementById('winner-callout').textContent = winnerQuotes[Math.floor(Math.random() * winnerQuotes.length)];
+  document.getElementById('winner-overlay').classList.add('show');
+  launchConfetti();
+}
+
+function closeWinner() {
+  document.getElementById('winner-overlay').classList.remove('show');
+  tracks = [];
+  renderLeaderboard();
+}
+
+function launchConfetti() {
+  const colors = ['#8B0000','#FFB347','#39FF14','#f0ede8','#ff4444'];
+  for (let i = 0; i < 80; i++) {
+    setTimeout(() => {
+      const c = document.createElement('div');
+      c.className = 'confetti-piece';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.top = '-20px';
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.animationDelay = (Math.random() * 2) + 's';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      c.style.transform = `rotate(${Math.random()*360}deg)`;
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4500);
+    }, i * 30);
+  }
+}
+
+// Demo: simulate votes changing every few seconds
+function demoVoteChange() {
+  const idx = Math.floor(Math.random() * tracks.length);
+  tracks[idx].votes += Math.floor(Math.random() * 3) + 1;
+  tracks[idx].uniqueVoters += Math.floor(Math.random() * 2) + 1;
+  renderLeaderboard();
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  // Apply venue config
+  document.getElementById('venue-name').textContent = CONFIG.venueName;
+  document.getElementById('venue-sub').textContent = CONFIG.venueSub;
+  if (!CONFIG.tshirtMode) document.getElementById('tshirt-badge').classList.remove('active');
+
+  document.title = CONFIG.venueName + ' · ROCKBOARD';
+
+  initEQ();
+  renderLeaderboard();
+  nextQuote();
+  fetchNowPlaying();
+
+  // Refresh Last.fm every 15 seconds
+  setInterval(fetchNowPlaying, 15000);
+  // Re-render leaderboard every 3 seconds
+  setInterval(renderLeaderboard, 3000);
+  // Demo vote simulation (remove when Firebase is live)
+  setInterval(demoVoteChange, 4000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+// Expose winner reveal for staff page trigger
+window.showWinner = showWinner;
+</script>
+</body>
+</html>
