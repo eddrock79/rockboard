@@ -435,12 +435,18 @@ window.queueTopTrack = async function() {
   if (!found?.uri) { showStaffToast('❌ NOT FOUND ON SPOTIFY: ' + top.title); return; }
   showStaffToast('⏳ QUEUING: ' + found.name + '...');
   const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
+  console.log('Queue result:', JSON.stringify(result));
   if (result?.ok) {
     await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri });
     showStaffToast('✅ QUEUED: ' + found.name);
   } else {
-    const err = result?.error?.error?.message || result?.error || 'IS SPOTIFY PLAYING?';
-    showStaffToast('❌ FAILED: ' + err);
+    // Dig into nested Spotify error structure
+    let err = 'UNKNOWN ERROR';
+    if (typeof result?.error === 'string') err = result.error;
+    else if (result?.error?.error?.message) err = result.error.error.message + ' (' + result.error.error.status + ')';
+    else if (result?.error?.message) err = result.error.message;
+    else err = JSON.stringify(result);
+    showStaffToast('❌ ' + err);
   }
 };
 
