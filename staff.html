@@ -225,6 +225,7 @@ function showApp() {
   // Show queue button if Spotify worker is configured
   if (CONFIG.spotify_worker_url) {
     document.getElementById('queue-top-btn').style.display = '';
+    document.getElementById('auto-queue-btn').style.display = '';
   }
   startListening();
 }
