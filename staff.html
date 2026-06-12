@@ -157,6 +157,13 @@
     <button class="ctrl-btn approve-btn" id="auto-approve-btn" onclick="toggleAutoApprove()">⚡ AUTO-APPROVE: OFF</button>
     <button class="ctrl-btn queue-ctrl-btn" id="queue-top-btn" onclick="queueTopTrack()" style="display:none">🎵 QUEUE NO.1</button>
     <button class="ctrl-btn auto-queue-btn" id="auto-queue-btn" onclick="toggleAutoQueue()" style="display:none">⏱ AUTO-QUEUE: OFF</button>
+    <div id="interval-wrap" style="display:none;align-items:center;gap:6px">
+      <span style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.4)">EVERY</span>
+      <input type="number" id="interval-input" min="1" max="60" value="2"
+        style="width:52px;background:rgba(0,0,0,0.4);border:1px solid rgba(30,215,96,0.3);border-radius:4px;padding:8px 6px;color:#1ED760;font-family:var(--font-pixel);font-size:18px;letter-spacing:2px;text-align:center;outline:none;-webkit-appearance:none"
+        onchange="updateInterval(this.value)">
+      <span style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.4)">MINS</span>
+    </div>
     <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
@@ -239,6 +246,18 @@ function showApp() {
   if (CONFIG.spotify_worker_url) {
     document.getElementById('queue-top-btn').style.display = '';
     document.getElementById('auto-queue-btn').style.display = '';
+    document.getElementById('interval-wrap').style.display = 'flex';
+    document.getElementById('interval-input').value = CONFIG.autoQueueMins || 2;
+    // Restore saved interval from Firebase
+    try {
+      const { getDoc: gd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const snap = await gd(doc(db,'settings','venue'));
+      if (snap.exists() && snap.data().autoQueueMins) {
+        const savedMins = snap.data().autoQueueMins;
+        document.getElementById('interval-input').value = savedMins;
+        CONFIG.autoQueueMins = savedMins;
+      }
+    } catch(e) {}
   }
   // Restore all toggle states from Firebase
   restoreAllStates();
@@ -589,6 +608,28 @@ function applyAutoQueueState(on) {
     updateDoc(doc(db,'settings','venue'), { nextQueueAt: null }).catch(()=>{});
   }
 }
+
+// ── UPDATE INTERVAL ──
+window.updateInterval = function(mins) {
+  const m = Math.max(1, Math.min(60, parseInt(mins) || 2));
+  document.getElementById('interval-input').value = m;
+  CONFIG.autoQueueMins = m;
+  // If auto-queue is running, restart with new interval
+  if (autoQueueOn) {
+    clearInterval(autoQueueTimer);
+    autoQueueTimer = null;
+    const next = Date.now() + m * 60 * 1000;
+    updateDoc(doc(db,'settings','venue'), { autoQueueMins: m, nextQueueAt: next }).catch(()=>{});
+    autoQueueTimer = setInterval(() => {
+      const nextAt = Date.now() + m * 60 * 1000;
+      updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt }).catch(()=>{});
+      runAutoQueue();
+    }, m * 60 * 1000);
+    showStaffToast('⏱ INTERVAL UPDATED — EVERY ' + m + ' MINS');
+  } else {
+    updateDoc(doc(db,'settings','venue'), { autoQueueMins: m }).catch(()=>{});
+  }
+};
 
 window.toggleAutoQueue = function() {
   const newState = !autoQueueOn;
