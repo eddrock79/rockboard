@@ -644,6 +644,28 @@ window._toggleAutoQueue = function() {
   showStaffToast(newState ? '⏱ AUTO-QUEUE ON' : '⏱ AUTO-QUEUE OFF');
 };
 
+window._updateInterval = function(v) {
+  const m = Math.max(1, Math.min(60, parseInt(v) || 2));
+  document.getElementById('interval-input').value = m;
+  CONFIG.autoQueueMins = m;
+  if (autoQueueOn) {
+    // Reset countdown to start fresh from NOW with new interval
+    const nextAt = Date.now() + (m * 60 * 1000);
+    updateDoc(doc(db,'settings','venue'), { autoQueueMins: m, nextQueueAt: nextAt }).catch(()=>{});
+    showStaffToast('⏱ ' + m + ' MIN TIMER — COUNTDOWN RESET');
+  } else {
+    updateDoc(doc(db,'settings','venue'), { autoQueueMins: m }).catch(()=>{});
+    showStaffToast('⏱ INTERVAL SET TO ' + m + ' MINS');
+  }
+};
+
+window._updateVideoOffset = function(secs) {
+  const s = Math.max(-30, Math.min(30, parseInt(secs) || 0));
+  document.getElementById('offset-input').value = s;
+  updateDoc(doc(db,'settings','venue'), { videoOffset: s }).catch(()=>{});
+  showStaffToast('🎬 VIDEO OFFSET: ' + (s >= 0 ? '+' : '') + s + 's');
+};
+
 // restoreAutoQueueState merged into restoreAllStates
 
 async function getRecentlyPlayed() {

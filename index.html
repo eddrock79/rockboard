@@ -612,6 +612,11 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   const aqIndicator = document.getElementById('aq-indicator');
   if (aqIndicator) aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
 
+  // Keep local nextQueueAt mirror in sync
+  if (typeof data.nextQueueAt !== 'undefined') {
+    nextQueueAt_local = data.nextQueueAt;
+  }
+
   // Start/stop auto-queue engine
   const mins = data.autoQueueMins || 2;
   if (data.autoQueue && !boardAutoQueueOn) {
@@ -621,7 +626,7 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   } else if (!data.autoQueue && boardAutoQueueOn) {
     stopBoardAutoQueue();
   } else if (data.autoQueue && boardAutoQueueMins !== mins) {
-    boardAutoQueueMins = mins; // interval updated — checker will use new value
+    boardAutoQueueMins = mins;
   }
 
   // Video offset
@@ -727,9 +732,11 @@ async function boardRunAutoQueue() {
       await updateDoc(doc(db,'tracks',top.id), {
         spotifyQueued:true, spotifyUri:found.uri, queuedAt:Date.now()
       });
-      // Set next queue time in Firebase (this drives the countdown)
-      const nextAt = Date.now() + boardAutoQueueMins * 60 * 1000;
+      // Set next queue time — exactly N minutes from NOW
+      const nextAt = Date.now() + (boardAutoQueueMins * 60 * 1000);
+      nextQueueAt_local = nextAt; // update local mirror immediately
       await updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt });
+      console.log(`✅ Queued: ${top.title} | Next queue at: ${new Date(nextAt).toLocaleTimeString()}`);
 
       // Auto-remove from board after 30 seconds
       setTimeout(async () => {
@@ -746,27 +753,43 @@ async function boardRunAutoQueue() {
   boardFiring = false;
 }
 
-// Check every 10 seconds if nextQueueAt has passed — single engine, no drift
+// ── QUEUE CHECKER — driven entirely by nextQueueAt in Firebase ──
+// Uses a 2-second tick for tight timing. Does NOT use setInterval for queue firing.
+// The countdown display and the actual queue trigger both read the same nextQueueAt.
+
+let nextQueueAt_local = null; // mirrors Firebase value locally for fast checks
+
 function startBoardQueueChecker() {
   clearInterval(boardQueueChecker);
   boardQueueChecker = setInterval(async () => {
     if (!boardAutoQueueOn) return;
-    try {
-      const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      const snap = await getDoc(doc(db,'settings','venue'));
-      if (!snap.exists()) return;
-      const nextAt = snap.data().nextQueueAt;
-      if (nextAt && Date.now() >= nextAt) {
-        await boardRunAutoQueue();
-      }
-    } catch(e) {}
-  }, 10000); // check every 10 seconds
+    if (boardFiring) return;
+
+    // Use local mirror for fast check — avoids Firestore read every 2s
+    if (nextQueueAt_local && Date.now() >= nextQueueAt_local) {
+      // Double-check with Firebase to prevent race conditions
+      try {
+        const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const snap = await getDoc(doc(db,'settings','venue'));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (!data.autoQueue) return; // auto-queue was turned off
+        const serverNextAt = data.nextQueueAt;
+        if (serverNextAt && Date.now() >= serverNextAt) {
+          // Clear local mirror immediately to prevent double-fire
+          nextQueueAt_local = null;
+          await boardRunAutoQueue();
+        }
+      } catch(e) { console.warn('Queue check error', e); }
+    }
+  }, 2000); // check every 2 seconds for tight timing
 }
 
 function stopBoardAutoQueue() {
   clearInterval(boardQueueChecker);
-  boardQueueChecker = null;
-  boardAutoQueueOn  = false;
+  boardQueueChecker    = null;
+  boardAutoQueueOn     = false;
+  nextQueueAt_local    = null;
 }
 
 // ── APPLY VENUE CONFIG ──
