@@ -1077,6 +1077,8 @@ window.onYouTubeIframeAPIReady = function() {
     events: {
       onReady: (e) => {
         e.target.mute();
+        // Request highest available quality
+        e.target.setPlaybackQuality('hd1080');
         if (pendingVideoId) {
           loadVideoAtPosition(pendingVideoId, pendingStartSecs);
           pendingVideoId = null;
@@ -1087,6 +1089,13 @@ window.onYouTubeIframeAPIReady = function() {
         if (e.data === YT.PlayerState.ENDED) {
           ytPlayer.seekTo(2, true);
           ytPlayer.playVideo();
+        }
+        // Re-apply quality on buffering/play — YouTube sometimes resets it
+        if (e.data === YT.PlayerState.PLAYING) {
+          const q = ytPlayer.getPlaybackQuality();
+          if (q !== 'hd1080' && q !== 'hd720' && q !== 'highres') {
+            ytPlayer.setPlaybackQuality('hd1080');
+          }
         }
       }
     }
