@@ -337,104 +337,257 @@ const CONFIG = {
   spotify_worker_url: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url) || "https://rockboard.eddrock79.workers.dev",
 };
 
-// ── QUOTES ──
-const QUOTES = [
+// ── FALLBACK QUOTES (used until AI kicks in) ──
+const FALLBACK_QUOTES = [
   "Uh... this song is like, really cool. Heh heh.",
-  "That last vote was pretty lame. Change it. Change it now.",
-  "Heh heh heh. Someone just voted for THAT.",
-  "This is, like, the greatest playlist ever. For now.",
-  "Beavis says: that song rules. Butt-Head disagrees.",
-  "Heh heh. Someone here has bad taste. Heh heh heh.",
+  "Heh heh heh. Someone just voted for THAT. Heh.",
   "Uh... I am Cornholio! I need votes for my bunghole!",
   "Are you threatening me?! Vote properly!",
-  "Heh heh. Someone just got their request ditched. Heh.",
   "Settle down Beavis. Someone's about to take No.1.",
-  "Heh heh heh heh. Yeah. Yeah! YEAH!",
-  "Whoa! That's like, a lot of votes. That's pretty cool.",
+  "Heh heh heh heh. Yeah. Yeah! YEAH! This is cool.",
+  "Heh. This song has, like, a guitar. It rules. Heh.",
+  "Uh... the music... it speaks to me. Heh heh.",
+  "Whoa! That's like, a lot of votes. That's pretty cool. Heh.",
+  "Beavis says: that song rules. Butt-Head disagrees. Heh.",
+  "Are you, like, gonna vote or just stand there? Heh.",
+  "Heh heh. This place is like a concert. But with beer.",
+  "Uh... I think I'm gonna be sick. Play something better.",
+  "This is like that time we saw that video. Heh heh.",
+  "Heh. Someone keeps requesting the same song. Loser. Heh.",
+  "Uh... you said vote. Heh heh. Vote. Heh.",
+  "Heh heh. Two people just fought over No.1. Heh.",
   "PARTY ON! Vote for your track, excellent!",
-  "That request was most non-non-non-heinous.",
-  "SCHWING! That track just hit No.1!",
-  "Excellent! The people have spoken. Most triumphant.",
-  "No way. Way. That song just went to No.1.",
+  "SCHWING! That track just hit No.1! Excellent!",
+  "No way. Way. That song just went to No.1. Party on.",
   "We're not worthy! We're not worthy! That track is fire.",
-  "Wayne's World, Wayne's World, party time, excellent!",
   "Ah yes, it will be mine. The top spot. Oh yes.",
-  "Game on! The vote battle is getting intense!",
   "Shyeah, and monkeys might fly out of my butt.",
-  "It's a Cinderella story... this track is climbing!",
-  "Party on Garth. PARTY ON WAYNE.",
-  "Most outstanding. A most outstanding request.",
-  "Live in the now! The vote gap is closing!",
-  "Someone at the bar has impeccable taste. You know who you are.",
-  "Whoever keeps voting for that — we see you. We respect it.",
-  "The battle for No.1 is getting personal. Very personal.",
-  "One person is carrying this playlist. Respect.",
-  "The DJ would like to point out: Wonderwall is not an option.",
-  "Three people just voted for the same thing. Power move.",
-  "Whoever just hit their hourly limit — calm down, champ.",
-  "The No.1 spot just changed hands. The people have spoken.",
-  "Someone here definitely has a band. You know who you are.",
-  "Bold choice. Zero regrets. Respect.",
-  "Last time we played that, someone cried. Just saying.",
-  "Statistically, someone in here owns a Creed album.",
-  "This is either a great crowd or the votes are rigged. Could be both.",
-  "Cheryl's in the wrong bar. But she's voting correctly.",
-  "Bob should be the DJ. Bob knows what he's doing.",
-  "Whoever requested that — you're buying the next round.",
-  "This crowd is ON FIRE tonight. Absolutely on fire.",
-  "The vibes? Immaculate. The votes? Also immaculate.",
-  "If that track gets to No.1 the barman quits. No pressure.",
-  "We have a rogue voter. You know who you are. We salute you.",
-  "Someone just requested something we actually like. Suspicious.",
-  "Two tracks within one vote of each other. This is chaos. We love it.",
-  "Call it a comeback. That track just climbed four places.",
-  "The t-shirt is on the line. Don't sleep on it.",
-  "We're not saying it was you. But it was definitely you.",
-  "An upset! The people have SPOKEN.",
-  "Iconic voting from the back table. Truly iconic.",
-
-  // Rock / Metal / Goth bar jokes
-  "Why do metal guitarists make bad baristas? They always drop the bass.",
-  "What do you call a guitarist without a girlfriend? Homeless.",
+  "Party on Garth. PARTY ON WAYNE. Excellent.",
   "A goth walks into a bar. The bar becomes a void of eternal suffering.",
   "How many metal fans does it take to change a lightbulb? None. They prefer the dark.",
-  "The lead singer just asked for a light beer. We have asked them to leave.",
-  "Why did the drummer get kicked out of the band? He kept beating around the bush.",
-  "A punk walks into a bar. The bar says 'We don't serve punks here.' The punk says 'That's okay, I wasn't going to pay anyway.'",
-  "What do you call a goth with a job? A disappointment to the scene.",
-  "How do you get a guitarist to turn down? Put sheet music in front of them.",
-  "Why don't metal bands play hide and seek? Because good luck hiding when you're wearing a battle jacket with 200 patches.",
-  "A vampire walks into a bar and orders a pint of blood. The barman says 'Sorry, we only serve spirits here.'",
-  "What's the difference between a drummer and a pizza? A pizza can feed a family of four.",
-  "Why did the goth cross the road? To get to the other side... of despair.",
-  "How many guitarists does it take to change a lightbulb? Eleven. One to do it and ten to say they could've done it better.",
   "A skeleton walks into a bar and orders a beer and a mop.",
-  "Why don't punks use sunscreen? They refuse to follow any instructions.",
-  "What do you call a metal band with no bass player? In tune.",
-  "A goth, a punk and a metalhead walk into a bar. The barman says 'Is this some kind of joke?' They say 'Life is.'",
-  "Why did the metal fan fail their driving test? They kept going 666 mph.",
-  "What's a vampire's favourite pub snack? Blood orange crisps.",
-  "The support band just cancelled. Our night is officially better.",
-  "Why do goths always know what time it is? They have a watch... it just stopped.",
-  "What did the drummer say before bed? 'I'll beat that tomorrow.'",
-  "A witch walks into a bar. Barman says 'What'll it be?' She says 'Something wicked.'",
-  "Why can't metal fans play card games? They always raise the devil.",
-  "What's a zombie's favourite bar snack? Finger food.",
-  "Why did the punk get thrown out of the library? For disturbing the peace... and everything else.",
-  "How do you confuse a metal fan? Put them in a room with no darkness.",
-  "A ghost walks into a bar. The barman says 'Sorry, we don't serve spirits.' The ghost says 'Good. Neither do I.'",
-  "Why do goths hate autocorrect? It keeps changing 'doom' to 'boom'.",
-  "What's the difference between a rock guitarist and a jazz guitarist? The rock guitarist plays 3 chords for 3000 people. The jazz guitarist plays 3000 chords for 3 people.",
-  "Why did the metal band go to school? To improve their death notes.",
-  "A bat walks into a bar at 3am. The barman says 'Sorry, last orders were an hour ago.' The bat says 'I'll just hang around then.'",
-  "Why do metal fans make great employees? They're used to working in hellish conditions.",
-  "What do you call a goth who loves gardening? Someone who prefers their flowers dead.",
-  "How many goths does it take to screw in a lightbulb? None. They'd rather sit in the dark and write poetry about it.",
-  "A werewolf walks into a bar. Barman says 'We close at midnight.' Werewolf says 'Sounds about right.'",
-  "Why did the rock band break up? Creative differences — half wanted to play loud, the other half wanted to play louder.",
-  "What do you call an honest guitarist? A fictional character.",
+  "A vampire walks into a bar. Sorry, we only serve spirits. That's fine, neither do I.",
+  "Why do goths hate autocorrect? It keeps changing doom to boom.",
+  "A ghost walks into a bar. Sorry, we don't serve spirits. Good. Neither do I.",
+  "A werewolf walks into a bar. We close at midnight. Sounds about right.",
+  "How many goths to screw in a lightbulb? None. Sit in the dark and write poetry about it.",
+  "The lead singer just asked for a light beer. We have asked them to leave.",
+  "What do you call a goth with a job? A disappointment to the scene.",
+  "The No.1 spot just changed hands. The people have spoken.",
+  "Someone here definitely has a band. You know who you are.",
+  "Statistically, someone in here owns a Creed album.",
+  "If that track gets to No.1 the barman quits. No pressure.",
+  "This is either a great crowd or the votes are rigged. Could be both.",
+  "We're not saying it was you. But it was definitely you.",
 ];
 
+// ── TRACK ENRICHMENT ENGINE ──
+// Pulls artist/track data from Last.fm, MusicBrainz & Wikipedia
+let trackFactCache = {}; // cache by "artist|track"
+
+async function enrichTrackData(artist, track) {
+  const cacheKey = `${artist}|${track}`;
+  if (trackFactCache[cacheKey]) return trackFactCache[cacheKey];
+
+  const facts = {
+    artist, track,
+    listeners: null, playcount: null, tags: [],
+    artistBio: null, similarArtists: [],
+    wikiSummary: null, mbInfo: null,
+    members: [], formed: null, origin: null,
+  };
+
+  try {
+    // 1. Last.fm — track info (listeners, tags, wiki)
+    const lfTrack = await fetch(
+      `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${CONFIG.lastfm_key}&format=json`
+    ).then(r=>r.json()).catch(()=>({}));
+
+    if (lfTrack.track) {
+      facts.listeners  = parseInt(lfTrack.track.listeners || 0).toLocaleString();
+      facts.playcount  = parseInt(lfTrack.track.playcount || 0).toLocaleString();
+      facts.tags       = (lfTrack.track.toptags?.tag || []).slice(0,4).map(t=>t.name);
+      facts.wikiSummary = lfTrack.track.wiki?.summary
+        ?.replace(/<[^>]+>/g,'')
+        ?.replace(/\s+/g,' ')
+        ?.substring(0, 300) || null;
+    }
+
+    // 2. Last.fm — artist info (bio, similar, listeners)
+    const lfArtist = await fetch(
+      `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(artist)}&api_key=${CONFIG.lastfm_key}&format=json`
+    ).then(r=>r.json()).catch(()=>({}));
+
+    if (lfArtist.artist) {
+      facts.artistListeners = parseInt(lfArtist.artist.stats?.listeners || 0).toLocaleString();
+      facts.artistPlaycount = parseInt(lfArtist.artist.stats?.playcount || 0).toLocaleString();
+      facts.similarArtists  = (lfArtist.artist.similar?.artist || []).slice(0,4).map(a=>a.name);
+      facts.artistBio = lfArtist.artist.bio?.summary
+        ?.replace(/<[^>]+>/g,'')
+        ?.replace(/\s+/g,' ')
+        ?.substring(0,300) || null;
+    }
+
+    // 3. MusicBrainz — band members, origin, formed date
+    const mbSearch = await fetch(
+      `https://musicbrainz.org/ws/2/artist/?query=${encodeURIComponent(artist)}&fmt=json&limit=1`,
+      { headers: { 'User-Agent': 'RockBoard/1.0 (eddrock79@hotmail.com)' } }
+    ).then(r=>r.json()).catch(()=>({}));
+
+    const mbArtist = mbSearch.artists?.[0];
+    if (mbArtist) {
+      facts.formed = mbArtist['life-span']?.begin?.substring(0,4) || null;
+      facts.origin = mbArtist.area?.name || mbArtist['begin-area']?.name || null;
+      facts.mbType = mbArtist.type || null; // Group, Person, etc
+
+      // Get artist details including members
+      if (mbArtist.id) {
+        const mbDetail = await fetch(
+          `https://musicbrainz.org/ws/2/artist/${mbArtist.id}?inc=artist-rels&fmt=json`,
+          { headers: { 'User-Agent': 'RockBoard/1.0 (eddrock79@hotmail.com)' } }
+        ).then(r=>r.json()).catch(()=>({}));
+
+        const memberRels = (mbDetail.relations || [])
+          .filter(r => r.type === 'member of band' && r.direction === 'backward')
+          .slice(0,5)
+          .map(r => r.artist?.name)
+          .filter(Boolean);
+        facts.members = memberRels;
+      }
+    }
+
+    // 4. Wikipedia — quick summary for chart facts
+    const wikiSearch = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artist.replace(/ /g,'_'))}`,
+      { headers: { 'User-Agent': 'RockBoard/1.0' } }
+    ).then(r=>r.json()).catch(()=>({}));
+
+    if (wikiSearch.extract) {
+      facts.wikiArtist = wikiSearch.extract.substring(0,400);
+    }
+
+  } catch(e) {
+    console.warn('Enrichment partial error', e);
+  }
+
+  trackFactCache[cacheKey] = facts;
+  return facts;
+}
+
+// ── AI QUOTE ENGINE ──
+let aiQuoteQueue = [];
+let aiQuoteFetching = false;
+let lastAiContext = '';
+let currentTrackFacts = null;
+
+async function fetchAIQuotes() {
+  if (aiQuoteFetching) return;
+  aiQuoteFetching = true;
+  try {
+    const topTrack    = [...tracks].filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters)[0];
+    const totalVotes  = tracks.filter(t=>t.approved).reduce((s,t)=>s+t.uniqueVoters,0);
+    const nowPlaying  = document.getElementById('track-name').textContent;
+    const nowArtist   = document.getElementById('track-artist').textContent;
+    const trackCount  = tracks.filter(t=>t.approved).length;
+
+    const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
+    if (context === lastAiContext && aiQuoteQueue.length > 4) { aiQuoteFetching = false; return; }
+    lastAiContext = context;
+
+    // Enrich current track in background
+    let facts = null;
+    if (nowArtist && nowArtist !== '—' && nowArtist !== 'Loading...') {
+      facts = await enrichTrackData(nowArtist, nowPlaying);
+      currentTrackFacts = facts;
+    }
+
+    // Also enrich No.1 requested track
+    let top1Facts = null;
+    if (topTrack) {
+      top1Facts = await enrichTrackData(topTrack.artist, topTrack.title);
+    }
+
+    // Build rich context for Claude
+    const factLines = [];
+    if (facts) {
+      if (facts.listeners)      factLines.push(`"${nowPlaying}" has ${facts.listeners} listeners on Last.fm`);
+      if (facts.artistListeners) factLines.push(`${nowArtist} has ${facts.artistListeners} monthly listeners`);
+      if (facts.formed && facts.origin) factLines.push(`${nowArtist} formed in ${facts.formed} in ${facts.origin}`);
+      else if (facts.formed)    factLines.push(`${nowArtist} formed in ${facts.formed}`);
+      else if (facts.origin)    factLines.push(`${nowArtist} from ${facts.origin}`);
+      if (facts.members?.length) factLines.push(`Members include: ${facts.members.slice(0,3).join(', ')}`);
+      if (facts.similarArtists?.length) factLines.push(`Fans of ${nowArtist} also like: ${facts.similarArtists.slice(0,3).join(', ')}`);
+      if (facts.tags?.length)   factLines.push(`Genre tags: ${facts.tags.join(', ')}`);
+      if (facts.wikiArtist)     factLines.push(`Wikipedia: ${facts.wikiArtist.substring(0,200)}`);
+    }
+    if (top1Facts) {
+      if (top1Facts.listeners)   factLines.push(`Most requested "${topTrack.title}" has ${top1Facts.listeners} Last.fm listeners`);
+      if (top1Facts.formed && top1Facts.origin) factLines.push(`${topTrack.artist} from ${top1Facts.origin}, formed ${top1Facts.formed}`);
+    }
+
+    const prompt = `You are the voice of ROCKBOARD — live music voting at The Black Rose, a rock/metal/goth bar in Edinburgh. Generate 10 ticker messages (max 14 words each) for the bottom of a big screen display.
+
+LIVE BOARD STATE:
+- Now playing on Spotify: "${nowPlaying}" by ${nowArtist}
+- No.1 most voted: ${topTrack ? '"' + topTrack.title + '" by ' + topTrack.artist + ' (' + topTrack.uniqueVoters + ' votes)' : 'nothing yet'}
+- Total votes cast tonight: ${totalVotes}
+- Tracks on the board: ${trackCount}
+
+ARTIST & TRACK FACTS (weave these in naturally):
+${factLines.length ? factLines.map(f=>'- '+f).join('
+') : '- No facts available yet'}
+
+STYLE — mix ALL of these every batch:
+- Beavis & Butt-Head (3 quotes): Use their actual voice. "Heh heh", "Uh...", "This is cool", "This sucks", "I am Cornholio", "Bunghole", "Buttmunch", "Fartknocker", "Are you threatening me", "Settle down Beavis". Make them react to the actual track/artist facts stupidly. e.g. "Heh heh, this band is from Sweden. Heh. Sweden. Heh heh."
+- Wayne's World (2 quotes): "Excellent!", "Party on!", "Schwing!", "No way... Way", "I will have it", "Most non-heinous". React to vote counts or facts.
+- Rock/metal/goth bar jokes (2 quotes): Dark dry pub humour. Vampires, goths, drummers, guitarists, metal fans. Original jokes only.
+- Track/artist facts (2 quotes): Natural, punchy use of the facts above. Chart facts, member trivia, origin stories. Make it feel like a knowledgeable rock DJ presenting.
+- Live crowd commentary (1 quote): Reference THIS MOMENT — the vote gap, who's winning, the countdown.
+
+RULES:
+- MAX 14 words per quote — they scroll across a screen
+- Make every quote feel LIVE and specific — no generic filler
+- Beavis/Butt-Head quotes must sound authentically like them
+- Fact quotes should feel surprising or impressive
+- Never start two consecutive quotes with the same word
+- Return ONLY a JSON array of 10 strings, nothing else
+
+Example format: ["quote one here", "quote two here"]`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+    const cleaned = text.replace(/```json[\s\S]*?```/g, t => t.replace(/```json|```/g,'')).replace(/```/g,'').trim();
+    const start = cleaned.indexOf('['), end = cleaned.lastIndexOf(']');
+    if (start !== -1 && end !== -1) {
+      const quotes = JSON.parse(cleaned.substring(start, end+1));
+      if (Array.isArray(quotes) && quotes.length > 0) {
+        aiQuoteQueue.push(...quotes.filter(q => typeof q === 'string' && q.length > 0));
+        if (aiQuoteQueue.length > 40) aiQuoteQueue = aiQuoteQueue.slice(-25);
+      }
+    }
+  } catch(e) {
+    console.warn('AI quotes failed:', e);
+  }
+  aiQuoteFetching = false;
+}
+
+function getNextQuote() {
+  if (aiQuoteQueue.length > 2) return aiQuoteQueue.shift();
+  fetchAIQuotes();
+  return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+}
+
+// ── INIT FIREBASE ──
 // ── INIT FIREBASE ──
 const app = initializeApp(CONFIG.firebase);
 const db = getFirestore(app);
@@ -665,16 +818,21 @@ function animateEQ() {
 animateEQ();
 
 // ── CALLOUT TICKER ──
-let quoteIndex = Math.floor(Math.random() * QUOTES.length);
 function nextQuote() {
   const el = document.getElementById('callout-text');
   el.style.animation = 'none';
-  el.textContent = QUOTES[quoteIndex % QUOTES.length];
-  quoteIndex++;
+  const quote = getNextQuote();
+  el.textContent = quote;
   void el.offsetWidth;
-  el.style.animation = 'ticker 18s linear';
+  // Adjust speed based on quote length — longer quotes scroll slower
+  const duration = Math.max(14, Math.min(26, quote.length * 0.45));
+  el.style.animation = `ticker ${duration}s linear`;
   el.addEventListener('animationend', nextQuote, { once:true });
 }
+
+// Fetch first batch of AI quotes immediately, then every 3 minutes
+fetchAIQuotes();
+setInterval(fetchAIQuotes, 3 * 60 * 1000);
 nextQuote();
 
 // ── STATS PANEL ──
