@@ -250,7 +250,7 @@
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query, orderBy, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── CONFIG from config.js ──
 const CONFIG = {
@@ -346,6 +346,21 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   const aqIndicator = document.getElementById('aq-indicator');
   if (aqIndicator) aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
 
+  // Start/stop auto-queue engine on the board
+  const mins = data.autoQueueMins || 2;
+  if (data.autoQueue && !boardAutoQueueOn) {
+    boardAutoQueueOn = true;
+    boardAutoQueueMins = mins;
+    startBoardAutoQueue(mins);
+  } else if (!data.autoQueue && boardAutoQueueOn) {
+    boardAutoQueueOn = false;
+    stopBoardAutoQueue();
+  } else if (data.autoQueue && boardAutoQueueMins !== mins) {
+    // Interval changed — restart with new timing
+    boardAutoQueueMins = mins;
+    startBoardAutoQueue(mins);
+  }
+
   // Video offset
   if (typeof data.videoOffset !== 'undefined') {
     window.videoOffset = data.videoOffset || 0;
@@ -378,6 +393,88 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
     clearInterval(countdownTimer);
   }
 });
+
+// ── AUTO-QUEUE ENGINE (runs from the board, not staff page) ──
+let boardAutoQueueTimer = null;
+let boardAutoQueueOn    = false;
+let boardTracks         = []; // kept in sync with leaderboard
+let boardAutoQueueMins  = 2;
+
+async function boardSpotifyCall(endpoint, method='GET', body=null) {
+  if (!CONFIG.spotify_worker_url) return null;
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(CONFIG.spotify_worker_url + endpoint, opts);
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+async function boardGetRecentlyPlayed() {
+  try {
+    const { getDocs, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(col(db,'played'));
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    return snap.docs
+      .filter(d => d.data().playedAt > cutoff)
+      .map(d => (d.data().title + '|||' + d.data().artist).toLowerCase());
+  } catch(e) { return []; }
+}
+
+function cleanTitle(t) {
+  return t.replace(/\s*[-–]\s*(remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|instrumental).*/i,'')
+          .replace(/\s*\((remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|feat\.?|ft\.?)[^)]*\)/gi,'')
+          .trim() || t.trim();
+}
+
+async function boardRunAutoQueue() {
+  const recentlyPlayed = await boardGetRecentlyPlayed();
+  const approved = [...boardTracks]
+    .filter(t => t.approved && !t.spotifyQueued)
+    .sort((a,b) => b.uniqueVoters - a.uniqueVoters);
+  if (!approved.length) return;
+
+  const top = approved.find(t => !recentlyPlayed.includes((t.title+'|||'+t.artist).toLowerCase()));
+  if (!top) return;
+
+  const ct = cleanTitle(top.title);
+  const ca = top.artist.replace(/\s*feat\.?.*/i,'').trim() || top.artist;
+  let found = null;
+  for (const [t,a] of [[ct,ca],[top.title,ca],[ct,top.artist],[top.title,top.artist],[ct,''],[top.title,'']]) {
+    found = await boardSpotifyCall('/search?track='+encodeURIComponent(t)+(a?'&artist='+encodeURIComponent(a):''));
+    if (found?.uri) break;
+  }
+  if (!found?.uri) return;
+
+  const result = await boardSpotifyCall('/queue', 'POST', { uri: found.uri });
+  if (result?.ok) {
+    await updateDoc(doc(db,'tracks',top.id), { spotifyQueued:true, spotifyUri:found.uri, queuedAt:Date.now() });
+    // Update nextQueueAt in settings
+    const nextAt = Date.now() + boardAutoQueueMins * 60 * 1000;
+    updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt }).catch(()=>{});
+    // Auto-remove after 30 seconds
+    setTimeout(async () => {
+      try {
+        await setDoc(doc(db,'played',top.id), {
+          title:top.title, artist:top.artist, playedAt:Date.now(), spotifyUri:found.uri
+        });
+        await deleteDoc(doc(db,'tracks',top.id));
+      } catch(e) {}
+    }, 30000);
+  }
+}
+
+function startBoardAutoQueue(mins) {
+  boardAutoQueueMins = mins || 2;
+  clearInterval(boardAutoQueueTimer);
+  boardRunAutoQueue();
+  boardAutoQueueTimer = setInterval(boardRunAutoQueue, boardAutoQueueMins * 60 * 1000);
+}
+
+function stopBoardAutoQueue() {
+  clearInterval(boardAutoQueueTimer);
+  boardAutoQueueTimer = null;
+}
 
 // ── APPLY VENUE CONFIG ──
 document.getElementById('venue-name').textContent = CONFIG.venueName;
@@ -720,6 +817,7 @@ try {
   const q = query(collection(db, 'tracks'), orderBy('uniqueVoters','desc'));
   onSnapshot(q, (snapshot) => {
     tracks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    boardTracks = tracks; // keep auto-queue engine in sync
     renderLeaderboard();
     statusEl.textContent = '● LIVE';
     statusEl.className = 'ok';
