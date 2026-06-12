@@ -15,8 +15,8 @@ const VENUE_CONFIG = {
   // 1. Create free account at https://last.fm
   // 2. Get API key at https://last.fm/api/account/create
   // 3. Connect Tidal: Tidal Settings → Connected Apps → Last.fm
-  lastfm_user:  "",                      // e.g. "blackrose_tidal"
-  lastfm_key:   "",                      // Your Last.fm API key
+  lastfm_user:  "eddrock79",                      // e.g. "blackrose_tidal"
+  lastfm_key:   "78658e952901ff5d096dc83873d22049",                      // Your Last.fm API key
 
   // ── VOTING RULES ─────────────────────────────────────────
   maxActionsPerHour: 5,                  // Requests + votes combined per device per hour
