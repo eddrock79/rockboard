@@ -164,6 +164,13 @@
         onchange="updateInterval(this.value)">
       <span style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.4)">MINS</span>
     </div>
+    <div id="offset-wrap" style="display:none;align-items:center;gap:6px;margin-left:8px;padding-left:12px;border-left:1px solid rgba(255,255,255,0.1)">
+      <span style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.4)">VIDEO OFFSET</span>
+      <input type="number" id="offset-input" min="-30" max="30" value="0"
+        style="width:56px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,179,71,0.3);border-radius:4px;padding:8px 6px;color:var(--amber);font-family:var(--font-pixel);font-size:18px;letter-spacing:2px;text-align:center;outline:none;-webkit-appearance:none"
+        onchange="updateVideoOffset(this.value)">
+      <span style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.4)">SECS</span>
+    </div>
     <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
@@ -213,6 +220,7 @@ function toggleAutoApprove() { window._toggleAutoApprove && window._toggleAutoAp
 function toggleAutoQueue()   { window._toggleAutoQueue   && window._toggleAutoQueue();   }
 function queueTopTrack()     { window._queueTopTrack     && window._queueTopTrack();     }
 function updateInterval(v)   { window._updateInterval    && window._updateInterval(v);   }
+function updateVideoOffset(v){ window._updateVideoOffset && window._updateVideoOffset(v); }
 function approveAll()        { window._approveAll        && window._approveAll();        }
 function revealWinner()      { window._revealWinner      && window._revealWinner();      }
 function clearNight()        { window._clearNight        && window._clearNight();        }
@@ -268,6 +276,7 @@ async function showApp() {
     document.getElementById('queue-top-btn').style.display = '';
     document.getElementById('auto-queue-btn').style.display = '';
     document.getElementById('interval-wrap').style.display = 'flex';
+    document.getElementById('offset-wrap').style.display = 'flex';
     document.getElementById('interval-input').value = CONFIG.autoQueueMins || 2;
     // Restore saved interval from Firebase
     try {
@@ -277,6 +286,10 @@ async function showApp() {
         const savedMins = snap.data().autoQueueMins;
         document.getElementById('interval-input').value = savedMins;
         CONFIG.autoQueueMins = savedMins;
+      }
+      // Restore video offset
+      if (snap.exists() && typeof snap.data().videoOffset !== 'undefined') {
+        document.getElementById('offset-input').value = snap.data().videoOffset;
       }
     } catch(e) {}
   }
@@ -650,6 +663,15 @@ window._updateInterval = function(mins) {
   } else {
     updateDoc(doc(db,'settings','venue'), { autoQueueMins: m }).catch(()=>{});
   }
+};
+
+// ── VIDEO OFFSET ──
+window._updateVideoOffset = function(secs) {
+  const s = Math.max(-30, Math.min(30, parseInt(secs) || 0));
+  document.getElementById('offset-input').value = s;
+  // Save to Firebase so index.html picks it up
+  updateDoc(doc(db,'settings','venue'), { videoOffset: s }).catch(()=>{});
+  showStaffToast('🎬 VIDEO OFFSET: ' + (s >= 0 ? '+' : '') + s + 's');
 };
 
 window._toggleAutoQueue = function() {

@@ -346,6 +346,11 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   const aqIndicator = document.getElementById('aq-indicator');
   if (aqIndicator) aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
 
+  // Video offset
+  if (typeof data.videoOffset !== 'undefined') {
+    window.videoOffset = data.videoOffset || 0;
+  }
+
   // Countdown timer
   const countdown = document.getElementById('queue-countdown');
   if (data.autoQueue && data.nextQueueAt) {
@@ -518,6 +523,9 @@ async function searchYouTube(title, artist) {
   }
 }
 
+// Video offset (set from staff page)
+window.videoOffset = 0;
+
 // ── YOUTUBE IFRAME API ──
 let ytPlayer = null;
 let ytReady  = false;
@@ -588,9 +596,10 @@ function loadYouTubeVideo(videoId) {
   clearInterval(syncInterval);
 
   setTimeout(async () => {
-    // Get current Spotify progress to sync video
-    const startSecs = await getSpotifyProgress();
-
+    // Get current Spotify progress to sync video + apply offset
+    const spotifySecs = await getSpotifyProgress();
+    const offset      = window.videoOffset || 0;
+    const startSecs   = Math.max(0, spotifySecs + offset);
     loadVideoAtPosition(videoId, startSecs);
 
     setTimeout(() => {
@@ -605,10 +614,12 @@ function loadYouTubeVideo(videoId) {
       try {
         const spotifySecs = await getSpotifyProgress();
         const ytSecs      = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
-        const drift       = Math.abs(spotifySecs - ytSecs);
+        const offset2     = window.videoOffset || 0;
+        const targetSecs  = spotifySecs + offset2;
+        const drift       = Math.abs(targetSecs - ytSecs);
         if (drift > 5) {
-          // More than 5 seconds out — resync
-          ytPlayer.seekTo(Math.max(0, spotifySecs - 1), true);
+          // More than 5 seconds out — resync with offset
+          ytPlayer.seekTo(Math.max(0, targetSecs - 1), true);
           console.log(`YT resync: drift ${drift.toFixed(1)}s → seeking to ${spotifySecs}s`);
         }
       } catch(e) {}
