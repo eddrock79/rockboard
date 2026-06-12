@@ -608,11 +608,26 @@ function renderDD(id, items, header) {
         '</div>' +
       '</div>'
     ).join('');
-  // Attach listeners directly — avoids inline handler issues on mobile
+  // Attach listeners — distinguish tap from scroll before firing
   el.querySelectorAll('.dd-item[data-idx]').forEach(row => {
     const fn = items[parseInt(row.dataset.idx)].onclick;
-    row.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive:false });
-    row.addEventListener('click',    e => { e.stopPropagation(); fn(); });
+    let touchStartY = 0;
+    let touchStartX = 0;
+    row.addEventListener('touchstart', e => {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    row.addEventListener('touchend', e => {
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+      const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+      // Only fire if finger barely moved — genuine tap, not a scroll
+      if (dy < 10 && dx < 10) {
+        e.preventDefault();
+        e.stopPropagation();
+        fn();
+      }
+    }, { passive: false });
+    row.addEventListener('click', e => { e.stopPropagation(); fn(); });
   });
   el.classList.add('open');
 }
