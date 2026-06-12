@@ -13,34 +13,16 @@
     --font-pixel:'VT323',monospace;--font-head:'Bebas Neue',sans-serif;--font-body:'Inter',sans-serif;
   }
   html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--font-body)}
-  body{
-    background-image:
-      radial-gradient(ellipse at 20% 0%,rgba(139,0,0,0.25) 0%,transparent 50%),
-      radial-gradient(ellipse at 80% 100%,rgba(80,0,0,0.15) 0%,transparent 50%);
-    min-height:100vh;padding:0 0 60px;
-  }
+  body{background-image:radial-gradient(ellipse at 20% 0%,rgba(139,0,0,0.25) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(80,0,0,0.15) 0%,transparent 50%);min-height:100vh;padding:0 0 60px}
 
-  /* TOP BAR */
-  #top-bar{
-    background:linear-gradient(180deg,rgba(139,0,0,0.2) 0%,rgba(10,5,5,0.98) 100%);
-    border-bottom:1px solid rgba(139,0,0,0.4);
-    padding:18px 20px 14px;
-    position:sticky;top:0;z-index:50;
-    display:flex;justify-content:space-between;align-items:center;
-    backdrop-filter:blur(20px);
-  }
+  #top-bar{background:linear-gradient(180deg,rgba(139,0,0,0.2) 0%,rgba(10,5,5,0.98) 100%);border-bottom:1px solid rgba(139,0,0,0.4);padding:18px 20px 14px;position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;backdrop-filter:blur(20px)}
   #top-venue{font-family:var(--font-head);font-size:26px;letter-spacing:4px;color:var(--white);line-height:1}
   #top-sub{font-family:var(--font-pixel);font-size:14px;color:var(--accent);letter-spacing:3px;margin-top:2px}
   #votes-left-badge{text-align:right}
   #votes-left-badge .vl-label{font-family:var(--font-pixel);font-size:12px;color:rgba(240,237,232,0.4);letter-spacing:2px}
   #votes-left-badge .vl-num{font-family:var(--font-pixel);font-size:34px;color:var(--amber);line-height:1;display:block}
 
-  /* NOW PLAYING */
-  #now-playing-strip{
-    background:linear-gradient(90deg,rgba(139,0,0,0.15),rgba(139,0,0,0.05));
-    border-bottom:1px solid rgba(139,0,0,0.2);
-    padding:10px 20px;display:flex;align-items:center;gap:10px;
-  }
+  #now-playing-strip{background:linear-gradient(90deg,rgba(139,0,0,0.15),rgba(139,0,0,0.05));border-bottom:1px solid rgba(139,0,0,0.2);padding:10px 20px;display:flex;align-items:center;gap:10px}
   #np-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.4s ease-in-out infinite;flex-shrink:0}
   @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--green)}50%{opacity:0.3;box-shadow:none}}
   #np-label{font-family:var(--font-pixel);font-size:13px;color:rgba(240,237,232,0.35);letter-spacing:2px;flex-shrink:0}
@@ -50,60 +32,85 @@
   .section-title{font-family:var(--font-pixel);font-size:14px;letter-spacing:4px;color:rgba(240,237,232,0.3);margin-bottom:14px;display:flex;align-items:center;gap:8px}
   .section-title::after{content:'';flex:1;height:1px;background:rgba(139,0,0,0.2)}
 
-  /* REQUEST FORM */
+  /* SEARCH MODE TABS */
+  #search-mode{display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid rgba(139,0,0,0.3)}
+  .mode-btn{flex:1;padding:12px;background:transparent;border:none;color:rgba(240,237,232,0.35);font-family:var(--font-pixel);font-size:15px;letter-spacing:3px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none}
+  .mode-btn.active{background:rgba(139,0,0,0.35);color:var(--white)}
+  .mode-btn:first-child{border-right:1px solid rgba(139,0,0,0.3)}
+
   #request-form{background:var(--card);border:1px solid rgba(139,0,0,0.35);border-radius:12px;padding:20px;box-shadow:0 4px 30px rgba(0,0,0,0.5)}
+
   .field{margin-bottom:14px;position:relative}
   .field label{display:block;font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.4);margin-bottom:6px}
-  .field input{
+
+  /* Input with clear/loading state */
+  .input-wrap{position:relative}
+  .input-wrap input{
     width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(139,0,0,0.3);
-    border-radius:8px;padding:14px 16px;color:var(--white);font-family:var(--font-body);
-    font-size:16px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none;
+    border-radius:8px;padding:14px 44px 14px 16px;color:var(--white);
+    font-family:var(--font-body);font-size:16px;outline:none;
+    transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none;
   }
-  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(139,0,0,0.15)}
-  .field input::placeholder{color:rgba(240,237,232,0.15)}
+  .input-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(139,0,0,0.15)}
+  .input-wrap input::placeholder{color:rgba(240,237,232,0.15)}
+  .input-wrap input.locked{background:rgba(139,0,0,0.1);border-color:rgba(139,0,0,0.4);color:var(--amber)}
+  .input-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:rgba(240,237,232,0.3);font-size:18px;cursor:pointer;padding:4px;line-height:1;display:none}
+  .input-clear.show{display:block}
+  .input-spinner{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;border:2px solid rgba(139,0,0,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;display:none}
+  .input-spinner.show{display:block}
+  @keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
 
   /* Autocomplete dropdown */
   .autocomplete-list{
-    position:absolute;top:100%;left:0;right:0;z-index:100;
-    background:rgba(20,8,10,0.98);border:1px solid rgba(139,0,0,0.4);
-    border-top:none;border-radius:0 0 8px 8px;
-    max-height:200px;overflow-y:auto;
-    box-shadow:0 8px 20px rgba(0,0,0,0.6);
+    position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:200;
+    background:rgba(18,6,8,0.99);border:1px solid rgba(139,0,0,0.5);
+    border-radius:8px;max-height:260px;overflow-y:auto;
+    box-shadow:0 8px 30px rgba(0,0,0,0.7);
   }
-  .autocomplete-item{
-    padding:12px 16px;cursor:pointer;display:flex;flex-direction:column;gap:2px;
-    border-bottom:1px solid rgba(139,0,0,0.1);transition:background 0.15s;
-  }
-  .autocomplete-item:last-child{border-bottom:none}
-  .autocomplete-item:hover,.autocomplete-item.selected{background:rgba(139,0,0,0.2)}
-  .ac-track{font-family:var(--font-head);font-size:17px;letter-spacing:0.5px;color:var(--white)}
-  .ac-artist{font-size:12px;color:rgba(240,237,232,0.45)}
+  .autocomplete-list.hidden{display:none}
+  .ac-item{padding:13px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(139,0,0,0.1);transition:background 0.15s}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item:active{background:rgba(139,0,0,0.25)}
+  .ac-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+  .ac-info{flex:1;min-width:0}
+  .ac-name{font-family:var(--font-head);font-size:18px;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ac-sub{font-size:12px;color:rgba(240,237,232,0.4);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ac-item.section-header{background:rgba(139,0,0,0.08);cursor:default;padding:8px 16px}
+  .ac-item.section-header:hover{background:rgba(139,0,0,0.08)}
+  .ac-item.section-header .ac-name{font-size:11px;letter-spacing:3px;color:rgba(240,237,232,0.3)}
 
-  #submit-btn{
-    width:100%;background:linear-gradient(135deg,var(--accent),#6b0000);
-    border:none;border-radius:8px;padding:18px;color:var(--white);
-    font-family:var(--font-head);font-size:26px;letter-spacing:3px;
-    cursor:pointer;transition:all 0.2s;-webkit-appearance:none;
-    box-shadow:0 4px 15px rgba(139,0,0,0.3);
-  }
+  /* Selected artist pill */
+  #artist-pill{display:none;align-items:center;gap:10px;background:rgba(139,0,0,0.15);border:1px solid rgba(139,0,0,0.4);border-radius:8px;padding:10px 14px;margin-bottom:14px}
+  #artist-pill.show{display:flex}
+  #artist-pill-name{font-family:var(--font-head);font-size:20px;letter-spacing:1px;color:var(--amber);flex:1}
+  #artist-pill-clear{background:transparent;border:none;color:rgba(240,237,232,0.3);font-size:20px;cursor:pointer;padding:0 4px;line-height:1}
+
+  /* Track pick hint */
+  #track-hint{font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.3);margin-bottom:8px;display:none}
+  #track-hint.show{display:block}
+
+  .divider{text-align:center;font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.2);margin:6px 0 14px;position:relative}
+  .divider::before,.divider::after{content:'';position:absolute;top:50%;width:35%;height:1px;background:rgba(139,0,0,0.15)}
+  .divider::before{left:0}.divider::after{right:0}
+
+  .field-name{margin-bottom:14px;position:relative}
+  .field-name label{display:block;font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.4);margin-bottom:6px}
+  .field-name input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(139,0,0,0.3);border-radius:8px;padding:14px 16px;color:var(--white);font-family:var(--font-body);font-size:16px;outline:none;transition:border-color 0.2s;-webkit-appearance:none}
+  .field-name input:focus{border-color:var(--accent)}
+  .field-name input::placeholder{color:rgba(240,237,232,0.15)}
+
+  #submit-btn{width:100%;background:linear-gradient(135deg,var(--accent),#6b0000);border:none;border-radius:8px;padding:18px;color:var(--white);font-family:var(--font-head);font-size:26px;letter-spacing:3px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none;box-shadow:0 4px 15px rgba(139,0,0,0.3)}
   #submit-btn:active{transform:scale(0.98);box-shadow:none}
   #submit-btn:disabled{background:rgba(139,0,0,0.2);color:rgba(240,237,232,0.2);cursor:default;box-shadow:none}
   #form-msg{font-family:var(--font-pixel);font-size:16px;letter-spacing:2px;text-align:center;padding-top:12px;min-height:24px}
   #form-msg.ok{color:var(--green)}#form-msg.err{color:#ff4444}
 
-  /* Submitted to gods notice */
-  #gods-notice{
-    display:none;margin-top:14px;
-    background:linear-gradient(135deg,rgba(57,255,20,0.08),rgba(57,255,20,0.03));
-    border:1px solid rgba(57,255,20,0.25);border-radius:8px;
-    padding:16px;text-align:center;
-  }
+  #gods-notice{display:none;margin-top:14px;background:linear-gradient(135deg,rgba(57,255,20,0.08),rgba(57,255,20,0.03));border:1px solid rgba(57,255,20,0.25);border-radius:8px;padding:16px;text-align:center}
   #gods-notice.show{display:block}
   #gods-notice .gods-icon{font-size:32px;margin-bottom:6px}
   #gods-notice .gods-title{font-family:var(--font-head);font-size:22px;letter-spacing:3px;color:var(--green);margin-bottom:4px}
   #gods-notice .gods-sub{font-family:var(--font-pixel);font-size:14px;color:rgba(240,237,232,0.4);letter-spacing:2px;line-height:1.5}
 
-  /* Rate limit */
   #rate-limit-screen{display:none;text-align:center;padding:40px 20px;background:var(--card);border:1px solid rgba(139,0,0,0.3);border-radius:12px}
   #rate-limit-screen.show{display:block}
   #rate-limit-screen .big-icon{font-size:52px;margin-bottom:16px}
@@ -111,13 +118,7 @@
   #rate-limit-screen p{font-family:var(--font-pixel);font-size:17px;color:rgba(240,237,232,0.45);letter-spacing:2px;line-height:1.6}
   #countdown{font-family:var(--font-pixel);font-size:42px;color:var(--accent);margin-top:16px;letter-spacing:4px}
 
-  /* Vote list */
-  .vote-card{
-    background:var(--card2);border:1px solid rgba(139,0,0,0.18);
-    border-radius:10px;padding:14px 16px;margin-bottom:10px;
-    display:flex;align-items:center;gap:12px;
-    transition:border-color 0.2s,background 0.2s;
-  }
+  .vote-card{background:var(--card2);border:1px solid rgba(139,0,0,0.18);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;transition:border-color 0.2s,background 0.2s}
   .vote-card.voted{border-color:rgba(57,255,20,0.25);background:rgba(20,35,15,0.9)}
   .vote-card.top{border-color:rgba(255,179,71,0.35);background:rgba(35,20,0,0.9);box-shadow:0 0 15px rgba(255,179,71,0.05)}
   .vc-rank{font-family:var(--font-head);font-size:32px;color:rgba(240,237,232,0.12);min-width:38px;text-align:center;line-height:1}
@@ -130,18 +131,12 @@
   .vc-votes{font-family:var(--font-pixel);font-size:30px;color:var(--white);line-height:1}
   .vote-card.top .vc-votes{color:var(--amber)}
   .vc-votes-label{font-family:var(--font-pixel);font-size:10px;color:rgba(240,237,232,0.25);letter-spacing:2px}
-  .vote-btn{
-    width:100%;background:rgba(139,0,0,0.18);border:1px solid rgba(139,0,0,0.35);
-    border-radius:6px;padding:8px 10px;color:var(--white);
-    font-family:var(--font-pixel);font-size:15px;letter-spacing:1px;
-    cursor:pointer;transition:all 0.15s;-webkit-appearance:none;text-align:center;
-  }
+  .vote-btn{width:100%;background:rgba(139,0,0,0.18);border:1px solid rgba(139,0,0,0.35);border-radius:6px;padding:8px 10px;color:var(--white);font-family:var(--font-pixel);font-size:15px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none;text-align:center}
   .vote-btn:active{background:var(--accent);transform:scale(0.95)}
   .vote-btn.voted-state{background:rgba(57,255,20,0.08);border-color:rgba(57,255,20,0.25);color:var(--green);cursor:default}
 
   #empty-board{text-align:center;padding:40px 20px;font-family:var(--font-pixel);font-size:18px;color:rgba(240,237,232,0.2);letter-spacing:3px;line-height:2}
-
-  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(20,8,10,0.97);border:1px solid rgba(139,0,0,0.5);border-radius:10px;padding:14px 28px;font-family:var(--font-pixel);font-size:18px;letter-spacing:2px;color:var(--white);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:200;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(20,8,10,0.97);border:1px solid rgba(139,0,0,0.5);border-radius:10px;padding:14px 28px;font-family:var(--font-pixel);font-size:18px;letter-spacing:2px;color:var(--white);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:300;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
   #toast.show{transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -160,29 +155,80 @@
 
 <div class="section">
   <div class="section-title">▸ REQUEST A TRACK</div>
+
+  <!-- Mode toggle -->
+  <div id="search-mode">
+    <button class="mode-btn active" id="mode-artist" onclick="setMode('artist')">🎸 I KNOW THE ARTIST</button>
+    <button class="mode-btn" id="mode-track" onclick="setMode('track')">🎵 I KNOW THE SONG</button>
+  </div>
+
   <div id="request-form">
-    <div class="field">
-      <label>TRACK NAME</label>
-      <input type="text" id="inp-track" placeholder="e.g. Bohemian Rhapsody" maxlength="80" autocomplete="off" oninput="searchTracks()">
-      <div class="autocomplete-list" id="ac-tracks" style="display:none"></div>
+
+    <!-- ── ARTIST MODE ── -->
+    <div id="artist-mode-fields">
+
+      <!-- Step 1: Artist search -->
+      <div class="field" id="artist-field">
+        <label>ARTIST NAME</label>
+        <div class="input-wrap">
+          <input type="text" id="inp-artist" placeholder="e.g. Queen, Metallica, AC/DC..." maxlength="80" autocomplete="off" oninput="onArtistInput()">
+          <div class="input-spinner" id="artist-spinner"></div>
+          <button class="input-clear" id="artist-clear" onclick="clearArtist()">✕</button>
+        </div>
+        <div class="autocomplete-list hidden" id="ac-artists"></div>
+      </div>
+
+      <!-- Step 2: Artist selected → track picker -->
+      <div id="artist-pill" class="artist-pill">
+        <div id="artist-pill-name">—</div>
+        <button id="artist-pill-clear" onclick="clearArtist()">✕</button>
+      </div>
+
+      <div id="track-hint" class="show" style="display:none">▸ NOW PICK A TRACK — OR TYPE TO SEARCH</div>
+
+      <div class="field" id="track-field" style="display:none">
+        <label id="track-field-label">TRACK</label>
+        <div class="input-wrap">
+          <input type="text" id="inp-track" placeholder="Choose or type a track..." maxlength="80" autocomplete="off" oninput="onTrackInput()">
+          <div class="input-spinner" id="track-spinner"></div>
+          <button class="input-clear" id="track-clear" onclick="clearTrack()">✕</button>
+        </div>
+        <div class="autocomplete-list hidden" id="ac-tracks"></div>
+      </div>
+
     </div>
-    <div class="field">
-      <label>ARTIST</label>
-      <input type="text" id="inp-artist" placeholder="e.g. Queen" maxlength="80" autocomplete="off" oninput="searchArtist()">
-      <div class="autocomplete-list" id="ac-artists" style="display:none"></div>
+
+    <!-- ── TRACK MODE ── -->
+    <div id="track-mode-fields" style="display:none">
+      <div class="field">
+        <label>TRACK NAME</label>
+        <div class="input-wrap">
+          <input type="text" id="inp-track-only" placeholder="e.g. Bohemian Rhapsody..." maxlength="80" autocomplete="off" oninput="onTrackOnlyInput()">
+          <div class="input-spinner" id="track-only-spinner"></div>
+        </div>
+        <div class="autocomplete-list hidden" id="ac-tracks-only"></div>
+      </div>
+      <div class="field-name" id="artist-readonly-wrap" style="display:none">
+        <label>ARTIST</label>
+        <input type="text" id="inp-artist-readonly" readonly style="background:rgba(139,0,0,0.1);border-color:rgba(139,0,0,0.4);color:var(--amber)">
+      </div>
     </div>
-    <div class="field">
+
+    <div class="field-name">
       <label>YOUR NAME (OPTIONAL)</label>
       <input type="text" id="inp-name" placeholder="e.g. Dave" maxlength="30" autocomplete="off">
     </div>
+
     <button id="submit-btn" onclick="submitRequest()">🎵 REQUEST THIS TRACK</button>
     <div id="form-msg"></div>
+
     <div id="gods-notice">
       <div class="gods-icon">⚡</div>
       <div class="gods-title">SUBMITTED TO THE GODS OF ROCK</div>
       <div class="gods-sub">YOUR REQUEST AWAITS DIVINE JUDGEMENT<br>THE ROCK GODS WILL DECIDE YOUR FATE</div>
     </div>
   </div>
+
   <div id="rate-limit-screen">
     <div class="big-icon">🤘</div>
     <h2>YOU'VE MADE YOUR MARK</h2>
@@ -201,8 +247,8 @@
 
 <script src="config.js"></script>
 <script type="module">
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, updateDoc, deleteDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const CONFIG = {
   venueName:          (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)          || "THE BLACK ROSE",
@@ -227,188 +273,282 @@ function getDeviceId() {
 }
 const DEVICE_ID = getDeviceId();
 
-// ── RATE LIMITING — separate buckets for requests and votes ──
-function getBucket(key, max) {
-  try {
-    const r = localStorage.getItem(key);
-    const d = r ? JSON.parse(r) : { count:0, windowStart:Date.now(), used:{} };
-    if (Date.now() - d.windowStart > 3600000) { return { count:0, windowStart:Date.now(), used:{} }; }
-    return d;
-  } catch(e) { return { count:0, windowStart:Date.now(), used:{} }; }
+// ── RATE LIMITING ──
+function getBucket(key) {
+  try { const r = localStorage.getItem(key); const d = r ? JSON.parse(r) : { count:0, windowStart:Date.now(), used:{} }; if (Date.now() - d.windowStart > 3600000) return { count:0, windowStart:Date.now(), used:{} }; return d; }
+  catch(e) { return { count:0, windowStart:Date.now(), used:{} }; }
 }
 function saveBucket(key, d) { try { localStorage.setItem(key, JSON.stringify(d)); } catch(e) {} }
-
-function canRequest() { return getBucket('rb_requests', CONFIG.maxRequestsPerHour).count < CONFIG.maxRequestsPerHour; }
-function canVote(trackId) {
-  const d = getBucket('rb_votes', CONFIG.maxVotesPerHour);
-  return d.count < CONFIG.maxVotesPerHour && !d.used[trackId];
-}
-function useRequest() {
-  const d = getBucket('rb_requests', CONFIG.maxRequestsPerHour);
-  d.count++; saveBucket('rb_requests', d);
-}
-function useVote(trackId) {
-  const d = getBucket('rb_votes', CONFIG.maxVotesPerHour);
-  d.count++; d.used[trackId] = true; saveBucket('rb_votes', d);
-}
-function hasVotedFor(id) { return !!getBucket('rb_votes', CONFIG.maxVotesPerHour).used[id]; }
-function votesRemaining() { const d = getBucket('rb_votes', CONFIG.maxVotesPerHour); return Math.max(0, CONFIG.maxVotesPerHour - d.count); }
-function requestsRemaining() { const d = getBucket('rb_requests', CONFIG.maxRequestsPerHour); return Math.max(0, CONFIG.maxRequestsPerHour - d.count); }
+function canRequest() { return getBucket('rb_requests').count < CONFIG.maxRequestsPerHour; }
+function canVote(id)  { const d = getBucket('rb_votes'); return d.count < CONFIG.maxVotesPerHour && !d.used[id]; }
+function useRequest() { const d = getBucket('rb_requests'); d.count++; saveBucket('rb_requests', d); }
+function useVote(id)  { const d = getBucket('rb_votes'); d.count++; d.used[id]=true; saveBucket('rb_votes', d); }
+function hasVotedFor(id) { return !!getBucket('rb_votes').used[id]; }
+function votesRemaining() { const d = getBucket('rb_votes'); return Math.max(0, CONFIG.maxVotesPerHour - d.count); }
+function requestsRemaining() { const d = getBucket('rb_requests'); return Math.max(0, CONFIG.maxRequestsPerHour - d.count); }
 
 function updateVoteBadge() {
   document.getElementById('votes-left-num').textContent = votesRemaining();
-  const form  = document.getElementById('request-form');
-  const limit = document.getElementById('rate-limit-screen');
+  const form = document.getElementById('request-form'), limit = document.getElementById('rate-limit-screen');
   if (requestsRemaining() <= 0) {
-    form.style.display = 'none'; limit.classList.add('show');
-    const d = getBucket('rb_requests', CONFIG.maxRequestsPerHour);
-    startCountdown(d.windowStart);
-  } else {
-    form.style.display = ''; limit.classList.remove('show');
-  }
+    form.style.display='none'; limit.classList.add('show');
+    startCountdown(getBucket('rb_requests').windowStart);
+  } else { form.style.display=''; limit.classList.remove('show'); }
 }
-
-function startCountdown(windowStart) {
+function startCountdown(ws) {
   const el = document.getElementById('countdown');
-  function tick() {
-    const rem = (windowStart + 3600000) - Date.now();
-    if (rem <= 0) { updateVoteBadge(); return; }
-    const m = Math.floor(rem/60000), s = Math.floor((rem%60000)/1000);
-    el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    setTimeout(tick, 1000);
-  }
+  function tick() { const r=(ws+3600000)-Date.now(); if(r<=0){updateVoteBadge();return;} el.textContent=`${String(Math.floor(r/60000)).padStart(2,'0')}:${String(Math.floor((r%60000)/1000)).padStart(2,'0')}`; setTimeout(tick,1000); }
   tick();
 }
 
-// ── LAST.FM SEARCH (autocomplete) ──
-let searchTimer;
-window.searchTracks = function() {
-  const val = document.getElementById('inp-track').value.trim();
-  clearTimeout(searchTimer);
-  if (val.length < 2) { document.getElementById('ac-tracks').style.display='none'; return; }
-  searchTimer = setTimeout(() => lastfmSearch('track', val), 400);
-};
-window.searchArtist = function() {
-  const val = document.getElementById('inp-artist').value.trim();
-  clearTimeout(searchTimer);
-  if (val.length < 2) { document.getElementById('ac-artists').style.display='none'; return; }
-  searchTimer = setTimeout(() => lastfmSearch('artist', val), 400);
+// ── MODE SWITCHING ──
+let currentMode = 'artist';
+let selectedArtist = '';
+let selectedTrack  = '';
+let selectedTrackArtist = '';
+
+window.setMode = function(mode) {
+  currentMode = mode;
+  document.getElementById('mode-artist').classList.toggle('active', mode==='artist');
+  document.getElementById('mode-track').classList.toggle('active', mode==='track');
+  document.getElementById('artist-mode-fields').style.display = mode==='artist' ? '' : 'none';
+  document.getElementById('track-mode-fields').style.display  = mode==='track'  ? '' : 'none';
+  clearAll();
 };
 
-async function lastfmSearch(type, query) {
-  if (!CONFIG.lastfm_key) return;
-  try {
-    const method = type === 'track' ? 'track.search' : 'artist.search';
-    const url = `https://ws.audioscrobbler.com/2.0/?method=${method}&${type}=${encodeURIComponent(query)}&api_key=${CONFIG.lastfm_key}&format=json&limit=5`;
-    const res  = await fetch(url);
-    const data = await res.json();
-
-    if (type === 'track') {
-      const tracks = data.results?.trackmatches?.track || [];
-      const list = document.getElementById('ac-tracks');
-      if (!tracks.length) { list.style.display='none'; return; }
-      list.innerHTML = tracks.map((t,i) => `
-        <div class="autocomplete-item" onclick="selectTrack('${escape(t.name)}','${escape(t.artist)}')">
-          <div class="ac-track">${t.name}</div>
-          <div class="ac-artist">${t.artist}</div>
-        </div>`).join('');
-      list.style.display = 'block';
-    } else {
-      const artists = data.results?.artistmatches?.artist || [];
-      const list = document.getElementById('ac-artists');
-      if (!artists.length) { list.style.display='none'; return; }
-      list.innerHTML = artists.map(a => `
-        <div class="autocomplete-item" onclick="selectArtist('${escape(a.name)}')">
-          <div class="ac-track">${a.name}</div>
-        </div>`).join('');
-      list.style.display = 'block';
-    }
-  } catch(e) { console.warn('Search error', e); }
+function clearAll() {
+  selectedArtist = ''; selectedTrack = ''; selectedTrackArtist = '';
+  document.getElementById('inp-artist').value = '';
+  document.getElementById('inp-track').value  = '';
+  document.getElementById('inp-track-only').value = '';
+  document.getElementById('inp-artist-readonly').value = '';
+  document.getElementById('artist-pill').classList.remove('show');
+  document.getElementById('track-field').style.display = 'none';
+  document.getElementById('track-hint').style.display  = 'none';
+  document.getElementById('artist-field').style.display = '';
+  document.getElementById('artist-readonly-wrap').style.display = 'none';
+  hideAllDropdowns();
 }
 
-window.selectTrack = function(track, artist) {
-  document.getElementById('inp-track').value  = unescape(track);
-  document.getElementById('inp-artist').value = unescape(artist);
-  document.getElementById('ac-tracks').style.display  = 'none';
-  document.getElementById('ac-artists').style.display = 'none';
-};
-window.selectArtist = function(artist) {
-  document.getElementById('inp-artist').value = unescape(artist);
-  document.getElementById('ac-artists').style.display = 'none';
+// ── ARTIST INPUT ──
+let artistTimer, trackTimer, trackOnlyTimer;
+
+window.onArtistInput = function() {
+  const val = document.getElementById('inp-artist').value.trim();
+  document.getElementById('artist-clear').classList.toggle('show', val.length > 0);
+  clearTimeout(artistTimer);
+  hideDropdown('ac-artists');
+  if (val.length < 2) return;
+  showSpinner('artist-spinner');
+  artistTimer = setTimeout(() => searchArtists(val), 350);
 };
 
-// Hide autocomplete on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('.field')) {
-    document.getElementById('ac-tracks').style.display  = 'none';
-    document.getElementById('ac-artists').style.display = 'none';
+async function searchArtists(q) {
+  if (!CONFIG.lastfm_key) return;
+  try {
+    const url  = `https://ws.audioscrobbler.com/2.0/?method=artist.search&artist=${encodeURIComponent(q)}&api_key=${CONFIG.lastfm_key}&format=json&limit=6`;
+    const data = await (await fetch(url)).json();
+    const list = data.results?.artistmatches?.artist || [];
+    hideSpinner('artist-spinner');
+    if (!list.length) return;
+    const dd = document.getElementById('ac-artists');
+    dd.innerHTML = list.map(a => `
+      <div class="ac-item" onclick="selectArtist(${JSON.stringify(a.name)})">
+        <div class="ac-icon">🎸</div>
+        <div class="ac-info"><div class="ac-name">${a.name}</div></div>
+      </div>`).join('');
+    dd.classList.remove('hidden');
+  } catch(e) { hideSpinner('artist-spinner'); }
+}
+
+window.selectArtist = function(name) {
+  selectedArtist = name;
+  document.getElementById('inp-artist').value = '';
+  document.getElementById('artist-field').style.display = 'none';
+  document.getElementById('artist-pill-name').textContent = name;
+  document.getElementById('artist-pill').classList.add('show');
+  document.getElementById('track-field').style.display = '';
+  document.getElementById('track-hint').style.display  = '';
+  document.getElementById('track-hint').textContent    = '▸ PICK A TRACK BY ' + name.toUpperCase() + ' — OR TYPE TO SEARCH';
+  document.getElementById('inp-track').placeholder     = 'Choose a track...';
+  hideDropdown('ac-artists');
+  // Auto-load top tracks
+  loadTopTracks(name);
+  document.getElementById('inp-track').focus();
+};
+
+window.clearArtist = function() {
+  selectedArtist = ''; selectedTrack = '';
+  document.getElementById('artist-field').style.display = '';
+  document.getElementById('artist-pill').classList.remove('show');
+  document.getElementById('track-field').style.display = 'none';
+  document.getElementById('track-hint').style.display  = 'none';
+  document.getElementById('inp-artist').value = '';
+  document.getElementById('inp-track').value  = '';
+  document.getElementById('artist-clear').classList.remove('show');
+  document.getElementById('track-clear').classList.remove('show');
+  hideAllDropdowns();
+  document.getElementById('inp-artist').focus();
+};
+
+// ── TOP TRACKS for selected artist ──
+async function loadTopTracks(artist) {
+  if (!CONFIG.lastfm_key) return;
+  showSpinner('track-spinner');
+  try {
+    const url  = `https://ws.audioscrobbler.com/2.0/?method=artist.gettoptracks&artist=${encodeURIComponent(artist)}&api_key=${CONFIG.lastfm_key}&format=json&limit=10`;
+    const data = await (await fetch(url)).json();
+    const list = data.toptracks?.track || [];
+    hideSpinner('track-spinner');
+    if (!list.length) return;
+    showTrackDropdown(list.map(t => ({ name: t.name, artist })), 'ac-tracks', true);
+  } catch(e) { hideSpinner('track-spinner'); }
+}
+
+// ── TRACK INPUT (when artist already selected) ──
+window.onTrackInput = function() {
+  const val = document.getElementById('inp-track').value.trim();
+  document.getElementById('track-clear').classList.toggle('show', val.length > 0);
+  clearTimeout(trackTimer);
+  if (val.length < 2) { loadTopTracks(selectedArtist); return; }
+  showSpinner('track-spinner');
+  trackTimer = setTimeout(() => searchTracksForArtist(val, selectedArtist), 350);
+};
+
+async function searchTracksForArtist(q, artist) {
+  if (!CONFIG.lastfm_key) return;
+  try {
+    const url  = `https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&artist=${encodeURIComponent(artist)}&api_key=${CONFIG.lastfm_key}&format=json&limit=8`;
+    const data = await (await fetch(url)).json();
+    let list = data.results?.trackmatches?.track || [];
+    // Fall back to unfiltered track search if no results
+    if (!list.length) {
+      const url2  = `https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&api_key=${CONFIG.lastfm_key}&format=json&limit=8`;
+      const data2 = await (await fetch(url2)).json();
+      list = (data2.results?.trackmatches?.track || []).filter(t => t.artist.toLowerCase().includes(artist.toLowerCase()));
+    }
+    hideSpinner('track-spinner');
+    showTrackDropdown(list.map(t => ({ name:t.name, artist:t.artist })), 'ac-tracks', false);
+  } catch(e) { hideSpinner('track-spinner'); }
+}
+
+function showTrackDropdown(tracks, ddId, isTopTracks) {
+  const dd = document.getElementById(ddId);
+  if (!tracks.length) { dd.classList.add('hidden'); return; }
+  dd.innerHTML = (isTopTracks ? `<div class="ac-item section-header"><div class="ac-info"><div class="ac-name">TOP TRACKS</div></div></div>` : '') +
+    tracks.map(t => `
+      <div class="ac-item" onclick="selectTrack(${JSON.stringify(t.name)}, ${JSON.stringify(t.artist)}, '${ddId}')">
+        <div class="ac-icon">🎵</div>
+        <div class="ac-info"><div class="ac-name">${t.name}</div>${t.artist !== selectedArtist ? `<div class="ac-sub">${t.artist}</div>` : ''}</div>
+      </div>`).join('');
+  dd.classList.remove('hidden');
+}
+
+window.selectTrack = function(name, artist, ddId) {
+  selectedTrack = name;
+  if (ddId === 'ac-tracks') {
+    document.getElementById('inp-track').value = name;
+    document.getElementById('track-clear').classList.add('show');
+  } else {
+    selectedTrackArtist = artist;
+    document.getElementById('inp-track-only').value = name;
+    document.getElementById('inp-artist-readonly').value = artist;
+    document.getElementById('artist-readonly-wrap').style.display = '';
   }
-});
+  hideDropdown(ddId);
+};
 
-// ── SUBMIT REQUEST ──
+window.clearTrack = function() {
+  selectedTrack = '';
+  document.getElementById('inp-track').value = '';
+  document.getElementById('track-clear').classList.remove('show');
+  loadTopTracks(selectedArtist);
+};
+
+// ── TRACK-ONLY MODE ──
+window.onTrackOnlyInput = function() {
+  const val = document.getElementById('inp-track-only').value.trim();
+  document.getElementById('artist-readonly-wrap').style.display = 'none';
+  selectedTrackArtist = '';
+  clearTimeout(trackOnlyTimer);
+  hideDropdown('ac-tracks-only');
+  if (val.length < 2) return;
+  showSpinner('track-only-spinner');
+  trackOnlyTimer = setTimeout(() => searchTracksOnly(val), 350);
+};
+
+async function searchTracksOnly(q) {
+  if (!CONFIG.lastfm_key) return;
+  try {
+    const url  = `https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&api_key=${CONFIG.lastfm_key}&format=json&limit=8`;
+    const data = await (await fetch(url)).json();
+    const list = data.results?.trackmatches?.track || [];
+    hideSpinner('track-only-spinner');
+    const dd = document.getElementById('ac-tracks-only');
+    if (!list.length) { dd.classList.add('hidden'); return; }
+    dd.innerHTML = list.map(t => `
+      <div class="ac-item" onclick="selectTrack(${JSON.stringify(t.name)}, ${JSON.stringify(t.artist)}, 'ac-tracks-only')">
+        <div class="ac-icon">🎵</div>
+        <div class="ac-info">
+          <div class="ac-name">${t.name}</div>
+          <div class="ac-sub">${t.artist}</div>
+        </div>
+      </div>`).join('');
+    dd.classList.remove('hidden');
+  } catch(e) { hideSpinner('track-only-spinner'); }
+}
+
+// ── SUBMIT ──
 window.submitRequest = async function() {
-  const title  = document.getElementById('inp-track').value.trim();
-  const artist = document.getElementById('inp-artist').value.trim();
-  const name   = document.getElementById('inp-name').value.trim() || 'Anonymous';
-  if (!title)  { showMsg('TRACK NAME IS REQUIRED','err'); return; }
-  if (!artist) { showMsg('ARTIST NAME IS REQUIRED','err'); return; }
+  let title, artist;
+  if (currentMode === 'artist') {
+    title  = document.getElementById('inp-track').value.trim();
+    artist = selectedArtist || document.getElementById('inp-artist').value.trim();
+  } else {
+    title  = document.getElementById('inp-track-only').value.trim();
+    artist = selectedTrackArtist || document.getElementById('inp-artist-readonly').value.trim() || 'Unknown Artist';
+  }
+  const name = document.getElementById('inp-name').value.trim() || 'Anonymous';
+  if (!title)  { showMsg('PICK A TRACK FIRST','err'); return; }
+  if (!artist) { showMsg('ARTIST IS REQUIRED','err'); return; }
   if (!canRequest()) { updateVoteBadge(); return; }
   useRequest();
   try {
-    await addDoc(collection(db,'tracks'), {
-      title, artist, requester: name,
-      votes:1, uniqueVoters:1, voters:[DEVICE_ID],
-      approved:false, createdAt:Date.now(),
-    });
-    document.getElementById('inp-track').value  = '';
-    document.getElementById('inp-artist').value = '';
-    document.getElementById('inp-name').value   = '';
+    await addDoc(collection(db,'tracks'), { title, artist, requester:name, votes:1, uniqueVoters:1, voters:[DEVICE_ID], approved:false, createdAt:Date.now() });
+    clearAll();
+    document.getElementById('inp-name').value = '';
     document.getElementById('form-msg').textContent = '';
-    const notice = document.getElementById('gods-notice');
-    notice.classList.add('show');
-    setTimeout(() => notice.classList.remove('show'), 6000);
+    const n = document.getElementById('gods-notice'); n.classList.add('show');
+    setTimeout(() => n.classList.remove('show'), 6000);
   } catch(e) { showMsg('ERROR · TRY AGAIN','err'); console.error(e); }
   updateVoteBadge();
 };
 
 // ── VOTE ──
-window.voteFor = async function(trackId) {
-  if (hasVotedFor(trackId)) { showToast('ALREADY VOTED FOR THIS ONE'); return; }
-  if (!canVote(trackId))    { showToast("YOU'VE USED ALL YOUR VOTES"); updateVoteBadge(); return; }
-  useVote(trackId);
-  try {
-    await updateDoc(doc(db,'tracks',trackId), { votes:increment(1), uniqueVoters:increment(1), voters:arrayUnion(DEVICE_ID) });
-    showToast('🤘 VOTE CAST!');
-  } catch(e) { showToast('ERROR · TRY AGAIN'); console.error(e); }
+window.voteFor = async function(id) {
+  if (hasVotedFor(id))  { showToast('ALREADY VOTED FOR THIS ONE'); return; }
+  if (!canVote(id))     { showToast("YOU'VE USED ALL YOUR VOTES"); updateVoteBadge(); return; }
+  useVote(id);
+  try { await updateDoc(doc(db,'tracks',id), { votes:increment(1), uniqueVoters:increment(1), voters:arrayUnion(DEVICE_ID) }); showToast('🤘 VOTE CAST!'); }
+  catch(e) { showToast('ERROR · TRY AGAIN'); }
   updateVoteBadge();
 };
 
 // ── LIVE LEADERBOARD ──
 const q = query(collection(db,'tracks'), orderBy('uniqueVoters','desc'));
-onSnapshot(q, (snapshot) => {
-  const tracks = snapshot.docs.map(d => ({ id:d.id, ...d.data() })).filter(t => t.approved);
-  const list   = document.getElementById('vote-list');
-  if (!tracks.length) {
-    list.innerHTML = '<div id="empty-board">NO TRACKS ON THE BOARD YET<br>BE THE FIRST TO REQUEST ONE<br>🎸</div>';
-    return;
-  }
+onSnapshot(q, (snap) => {
+  const tracks = snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.approved);
+  const list = document.getElementById('vote-list');
+  if (!tracks.length) { list.innerHTML='<div id="empty-board">NO TRACKS ON THE BOARD YET<br>BE THE FIRST TO REQUEST ONE<br>🎸</div>'; return; }
   list.innerHTML = tracks.slice(0,10).map((t,i) => {
-    const voted = hasVotedFor(t.id);
-    return `
-      <div class="vote-card ${i===0?'top':''} ${voted?'voted':''}">
-        <div class="vc-rank">${String(i+1).padStart(2,'0')}</div>
-        <div class="vc-details">
-          <div class="vc-title">${t.title}</div>
-          <div class="vc-artist">${t.artist}</div>
-          <div class="vc-requester">↳ ${t.requester}</div>
-        </div>
-        <div class="vc-right">
-          <div><div class="vc-votes">${t.uniqueVoters}</div><div class="vc-votes-label">VOTES</div></div>
-          <button class="vote-btn ${voted?'voted-state':''}" onclick="voteFor('${t.id}')" ${voted?'disabled':''}>
-            ${voted ? '✓ VOTED' : '▲ VOTE'}
-          </button>
-        </div>
-      </div>`;
+    const v = hasVotedFor(t.id);
+    return `<div class="vote-card ${i===0?'top':''} ${v?'voted':''}">
+      <div class="vc-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="vc-details"><div class="vc-title">${t.title}</div><div class="vc-artist">${t.artist}</div><div class="vc-requester">↳ ${t.requester}</div></div>
+      <div class="vc-right">
+        <div><div class="vc-votes">${t.uniqueVoters}</div><div class="vc-votes-label">VOTES</div></div>
+        <button class="vote-btn ${v?'voted-state':''}" onclick="voteFor('${t.id}')" ${v?'disabled':''}>${v?'✓ VOTED':'▲ VOTE'}</button>
+      </div></div>`;
   }).join('');
 });
 
@@ -416,31 +556,26 @@ onSnapshot(q, (snapshot) => {
 async function fetchNowPlaying() {
   if (!CONFIG.lastfm_key || !CONFIG.lastfm_user) return;
   try {
-    const url  = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${CONFIG.lastfm_user}&api_key=${CONFIG.lastfm_key}&format=json&limit=1`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    const track = data.recenttracks?.track?.[0];
-    if (!track) return;
-    const isNow = track['@attr']?.nowplaying === 'true';
-    document.getElementById('np-text').textContent = (isNow ? '' : 'Last: ') + track.name + ' — ' + track.artist['#text'];
+    const data = await (await fetch(`https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${CONFIG.lastfm_user}&api_key=${CONFIG.lastfm_key}&format=json&limit=1`)).json();
+    const t = data.recenttracks?.track?.[0];
+    if (!t) return;
+    document.getElementById('np-text').textContent = (t['@attr']?.nowplaying==='true' ? '' : 'Last: ') + t.name + ' — ' + t.artist['#text'];
   } catch(e) {}
 }
 fetchNowPlaying();
 setInterval(fetchNowPlaying, 15000);
 
 // ── HELPERS ──
-function showMsg(text, type) {
-  const el = document.getElementById('form-msg');
-  el.textContent = text; el.className = type;
-  setTimeout(() => { el.textContent=''; el.className=''; }, 4000);
-}
-let toastTimer;
-function showToast(text) {
-  const el = document.getElementById('toast');
-  el.textContent = text; el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-}
+function showSpinner(id) { document.getElementById(id)?.classList.add('show'); }
+function hideSpinner(id) { document.getElementById(id)?.classList.remove('show'); }
+function hideDropdown(id) { document.getElementById(id)?.classList.add('hidden'); }
+function hideAllDropdowns() { ['ac-artists','ac-tracks','ac-tracks-only'].forEach(hideDropdown); }
+
+function showMsg(t,c) { const el=document.getElementById('form-msg'); el.textContent=t; el.className=c; setTimeout(()=>{el.textContent='';el.className='';},4000); }
+let toastT;
+function showToast(t) { const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2500); }
+
+document.addEventListener('click', e => { if (!e.target.closest('.field') && !e.target.closest('.autocomplete-list')) hideAllDropdowns(); });
 
 updateVoteBadge();
 </script>
