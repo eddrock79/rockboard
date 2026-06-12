@@ -39,6 +39,10 @@
   .ctrl-btn.winner-btn{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.4);color:var(--green)}
   .ctrl-btn.clear-btn{background:rgba(255,68,68,0.1);border-color:rgba(255,68,68,0.3);color:#ff6666}
   .ctrl-btn.lock-btn{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
+  .ctrl-btn.approve-btn{background:rgba(57,255,20,0.08);border-color:rgba(57,255,20,0.25);color:rgba(57,255,20,0.5)}
+  .ctrl-btn.approve-btn.on{background:rgba(57,255,20,0.18);border-color:rgba(57,255,20,0.6);color:var(--green)}
+  .approve-all-btn{padding:6px 14px;border-radius:6px;border:1px solid rgba(57,255,20,0.4);background:rgba(57,255,20,0.1);color:var(--green);font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;cursor:pointer;-webkit-appearance:none}
+  .approve-all-btn:active{background:rgba(57,255,20,0.25)}
 
   #tabs{display:flex;border-bottom:1px solid rgba(139,0,0,0.2)}
   .tab{flex:1;padding:12px;font-family:var(--font-pixel);font-size:14px;letter-spacing:3px;text-align:center;color:rgba(240,237,232,0.35);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
@@ -131,6 +135,7 @@
   </div>
   <div id="controls-bar">
     <button class="ctrl-btn tshirt-on" id="tshirt-btn" onclick="toggleTshirt()">🏆 T-SHIRT: ON</button>
+    <button class="ctrl-btn approve-btn" id="auto-approve-btn" onclick="toggleAutoApprove()">⚡ AUTO-APPROVE: OFF</button>
     <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
@@ -139,7 +144,10 @@
     <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
   </div>
   <div class="list-section show" id="section-pending">
-    <div class="list-label">REQUESTS AWAITING REVIEW · <span id="pending-count-num">0</span></div>
+    <div class="list-label" style="display:flex;justify-content:space-between;align-items:center">
+      <span>AWAITING REVIEW · <span id="pending-count-num">0</span></span>
+      <button class="ctrl-btn approve-all-btn" onclick="approveAll()" id="approve-all-btn" style="display:none">✓ APPROVE ALL</button>
+    </div>
     <div id="pending-list"></div>
   </div>
   <div class="list-section" id="section-approved">
@@ -256,13 +264,53 @@ window.ditchTrack = async function(id) {
   }, 300);
 };
 
-// ── T-SHIRT ──
+// ── T-SHIRT — writes to Firebase so main board updates ──
 let tshirtOn = CONFIG.tshirtMode;
-window.toggleTshirt = function() {
-  tshirtOn = !tshirtOn;
+
+async function syncTshirtState() {
+  try {
+    await updateDoc(doc(db,'settings','venue'), { tshirtMode: tshirtOn });
+  } catch(e) {
+    // doc may not exist yet — create it
+    try {
+      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      await setDoc(doc(db,'settings','venue'), { tshirtMode: tshirtOn }, { merge: true });
+    } catch(e2) { console.warn('Could not sync tshirt state', e2); }
+  }
+}
+
+function applyTshirtUI() {
   const btn = document.getElementById('tshirt-btn');
   btn.textContent = tshirtOn ? '🏆 T-SHIRT: ON' : '🏆 T-SHIRT: OFF';
   btn.className = 'ctrl-btn ' + (tshirtOn ? 'tshirt-on' : 'tshirt-off');
+}
+
+window.toggleTshirt = function() {
+  tshirtOn = !tshirtOn;
+  applyTshirtUI();
+  syncTshirtState();
+};
+
+// ── AUTO-APPROVE ──
+let autoApprove = false;
+window.toggleAutoApprove = function() {
+  autoApprove = !autoApprove;
+  const btn = document.getElementById('auto-approve-btn');
+  btn.textContent = autoApprove ? '⚡ AUTO-APPROVE: ON' : '⚡ AUTO-APPROVE: OFF';
+  btn.classList.toggle('on', autoApprove);
+  // If turning on, approve everything currently pending
+  if (autoApprove) approveAll();
+};
+
+// ── APPROVE ALL ──
+window.approveAll = async function() {
+  const pending = allTracks.filter(t => !t.approved);
+  if (!pending.length) return;
+  try {
+    const batch = writeBatch(db);
+    pending.forEach(t => batch.update(doc(db,'tracks',t.id), { approved: true }));
+    await batch.commit();
+  } catch(e) { console.error('Approve all failed', e); }
 };
 
 // ── WINNER ──
@@ -305,11 +353,22 @@ window.switchTab = function(tab) {
 
 // ── RENDER ──
 function renderPending() {
+  // If auto-approve is on, immediately approve any new pending tracks
+  if (autoApprove) {
+    const newPending = allTracks.filter(t => !t.approved);
+    if (newPending.length) approveAll();
+  }
   const pending = allTracks.filter(t => !t.approved);
   document.getElementById('pending-count-num').textContent = pending.length;
   const badge = document.getElementById('pending-badge');
-  if (pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'inline-block'; }
-  else { badge.style.display = 'none'; }
+  const approveAllBtn = document.getElementById('approve-all-btn');
+  if (pending.length > 0) {
+    badge.textContent = pending.length; badge.style.display = 'inline-block';
+    approveAllBtn.style.display = '';
+  } else {
+    badge.style.display = 'none';
+    approveAllBtn.style.display = 'none';
+  }
   const list = document.getElementById('pending-list');
   if (!pending.length) { list.innerHTML = '<div class="empty-state">NO PENDING REQUESTS<br>ALL QUIET FOR NOW...</div>'; return; }
   list.innerHTML = pending.map(t => `

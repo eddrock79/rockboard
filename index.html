@@ -173,7 +173,7 @@
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── CONFIG from config.js ──
 const CONFIG = {
@@ -247,6 +247,17 @@ const app = initializeApp(CONFIG.firebase);
 const db = getFirestore(app);
 
 const statusEl = document.getElementById('firebase-status');
+
+// ── LISTEN TO SETTINGS (tshirt toggle from staff page) ──
+onSnapshot(doc(db,'settings','venue'), (snap) => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+  if (typeof data.tshirtMode !== 'undefined') {
+    const badge = document.getElementById('tshirt-badge');
+    if (data.tshirtMode) badge.classList.add('active');
+    else badge.classList.remove('active');
+  }
+});
 
 // ── APPLY VENUE CONFIG ──
 document.getElementById('venue-name').textContent = CONFIG.venueName;
