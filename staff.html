@@ -74,7 +74,14 @@
   .ac-meta small{font-size:10px;color:rgba(240,237,232,0.3);display:block;letter-spacing:2px}
   .ac-ditch{background:transparent;border:1px solid rgba(139,0,0,0.3);border-radius:5px;padding:6px 10px;color:rgba(255,68,68,0.5);font-family:var(--font-pixel);font-size:13px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
   .ac-ditch:active{background:rgba(139,0,0,0.3);color:#ff4444}
+  .spotify-btn{display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:rgba(30,215,96,0.15);border:1px solid rgba(30,215,96,0.4);border-radius:5px;color:#1ED760;font-size:18px;text-decoration:none;flex-shrink:0;transition:all 0.15s}
+  .spotify-btn:active{background:rgba(30,215,96,0.3);transform:scale(0.95)}
+  .approved-card.top-track{border-color:rgba(30,215,96,0.3);background:rgba(10,30,15,0.9);box-shadow:0 0 15px rgba(30,215,96,0.05)}
+  .approved-card.top-track .ac-rank{color:#1ED760}
   .empty-state{text-align:center;padding:40px 20px;font-family:var(--font-pixel);font-size:18px;color:rgba(240,237,232,0.25);letter-spacing:3px;line-height:1.8}
+  .rc-spotify{margin-bottom:10px}
+  .spotify-preview-btn{display:block;text-align:center;padding:10px;background:rgba(30,215,96,0.08);border:1px solid rgba(30,215,96,0.25);border-radius:6px;color:#1ED760;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;text-decoration:none;transition:all 0.15s}
+  .spotify-preview-btn:active{background:rgba(30,215,96,0.2)}
 
   #winner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:40px}
   #winner-overlay.show{display:flex}
@@ -312,6 +319,14 @@ function renderPending() {
         <div class="rc-meta"><span class="votes">${t.uniqueVoters||1}</span>VOTES</div>
       </div>
       <div class="rc-requester">↳ REQUESTED BY ${(t.requester||'ANONYMOUS').toUpperCase()}</div>
+      <div class="rc-spotify">
+        <a class="spotify-preview-btn"
+           href="spotify:search:${encodeURIComponent(t.title + ' ' + t.artist)}"
+           onclick="var q=encodeURIComponent('${t.title} ${t.artist}');this.href='spotify:search:'+q;setTimeout(()=>{this.href='https://open.spotify.com/search/'+q},500);return true;"
+           target="_blank">
+          🎵 PREVIEW ON SPOTIFY BEFORE DECIDING
+        </a>
+      </div>
       <div class="rc-actions">
         <button class="keep-btn" onclick="keepTrack('${t.id}')">🤘 KEEP IT</button>
         <button class="ditch-btn" onclick="ditchTrack('${t.id}')">✕ DITCH IT</button>
@@ -324,13 +339,18 @@ function renderApproved() {
   document.getElementById('approved-count-num').textContent = approved.length;
   const list = document.getElementById('approved-list');
   if (!approved.length) { list.innerHTML = '<div class="empty-state">NO APPROVED TRACKS YET<br>APPROVE SOME REQUESTS...</div>'; return; }
-  list.innerHTML = approved.map((t,i) => `
-    <div class="approved-card">
-      <div class="ac-rank">${String(i+1).padStart(2,'0')}</div>
+  list.innerHTML = approved.map((t,i) => {
+    const spotifyUrl = 'https://open.spotify.com/search/' + encodeURIComponent(t.title + ' ' + t.artist);
+    const spotifyApp = 'spotify:search:' + encodeURIComponent(t.title + ' ' + t.artist);
+    return `
+    <div class="approved-card ${i===0?'top-track':''}">
+      <div class="ac-rank">${i===0?'🔥':String(i+1).padStart(2,'0')}</div>
       <div class="ac-details"><div class="ac-title">${t.title}</div><div class="ac-artist">${t.artist} · ${t.requester||'?'}</div></div>
       <div class="ac-meta">${t.uniqueVoters||1}<small>VOTES</small></div>
+      <a class="spotify-btn" href="${spotifyApp}" onclick="this.href='${spotifyApp}';setTimeout(()=>this.href='${spotifyUrl}',500)" target="_blank">▶</a>
       <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── INIT ──
