@@ -163,6 +163,7 @@
   <div id="tabs">
     <div class="tab active" id="tab-pending" onclick="switchTab('pending')">PENDING <span class="badge" id="pending-badge" style="display:none">0</span></div>
     <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
+    <div class="tab" id="tab-played" onclick="switchTab('played')">PLAYED</div>
   </div>
   <div class="list-section show" id="section-pending">
     <div class="list-label" style="display:flex;justify-content:space-between;align-items:center">
@@ -176,6 +177,11 @@
     <div id="approved-list"></div>
   </div>
 </div>
+
+  <div class="list-section" id="section-played">
+    <div class="list-label">PLAYED TONIGHT · NO REPEATS FOR 1HR · <span id="played-count-num">0</span></div>
+    <div id="played-list"></div>
+  </div>
 
 <div id="winner-overlay">
   <div style="font-size:60px">🏆</div>
@@ -373,11 +379,39 @@ window.clearNight = async function() {
 
 // ── TABS ──
 window.switchTab = function(tab) {
-  document.getElementById('tab-pending').classList.toggle('active', tab==='pending');
-  document.getElementById('tab-approved').classList.toggle('active', tab==='approved');
-  document.getElementById('section-pending').classList.toggle('show', tab==='pending');
-  document.getElementById('section-approved').classList.toggle('show', tab==='approved');
+  ['pending','approved','played'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', tab===t);
+    document.getElementById('section-'+t).classList.toggle('show', tab===t);
+  });
+  if (tab === 'played') renderPlayedHistory();
 };
+
+async function renderPlayedHistory() {
+  const list = document.getElementById('played-list');
+  list.innerHTML = '<div class="empty-state">LOADING...</div>';
+  try {
+    const { getDocs: getD, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getD(col(db,'played'));
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    const played = snap.docs
+      .map(d => ({ id:d.id, ...d.data() }))
+      .sort((a,b) => b.playedAt - a.playedAt);
+    document.getElementById('played-count-num').textContent = played.length;
+    if (!played.length) { list.innerHTML = '<div class="empty-state">NOTHING PLAYED YET TONIGHT</div>'; return; }
+    list.innerHTML = played.map(t => {
+      const minsAgo = Math.floor((Date.now() - t.playedAt) / 60000);
+      const blocked = t.playedAt > cutoff;
+      return `<div class="approved-card" style="${blocked?'border-color:rgba(255,68,68,0.2)':'opacity:0.5'}">
+        <div class="ac-rank" style="font-size:16px">${blocked?'🚫':'✓'}</div>
+        <div class="ac-details">
+          <div class="ac-title">${t.title}</div>
+          <div class="ac-artist">${t.artist}</div>
+        </div>
+        <div class="ac-meta" style="font-size:13px">${minsAgo}m<small>AGO</small></div>
+      </div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = '<div class="empty-state">ERROR LOADING</div>'; }
+}
 
 // ── RENDER ──
 function renderPending() {
@@ -433,9 +467,13 @@ async function spotifyCall(endpoint, method='GET', body=null) {
 }
 
 window.queueTopTrack = async function() {
+  const recentlyPlayed = await getRecentlyPlayed();
   const approved = [...allTracks.filter(t=>t.approved && !t.spotifyQueued)].sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
   if (!approved.length) { showStaffToast('NO TRACKS TO QUEUE'); return; }
-  const top = approved[0];
+  // Skip recently played, warn staff
+  const top = approved.find(t => !recentlyPlayed.includes((t.title+'|||'+t.artist).toLowerCase())) || approved[0];
+  const wasSkipped = recentlyPlayed.includes((top.title+'|||'+top.artist).toLowerCase());
+  if (wasSkipped) showStaffToast('⚠ ALL TOP TRACKS PLAYED RECENTLY');
   showStaffToast('🔍 SEARCHING SPOTIFY...');
   const found = await spotifyCall('/search?track=' + encodeURIComponent(top.title) + '&artist=' + encodeURIComponent(top.artist));
   if (!found?.uri) { showStaffToast('❌ NOT FOUND ON SPOTIFY: ' + top.title); return; }
@@ -482,16 +520,40 @@ window.toggleAutoQueue = function() {
   }
 };
 
+async function getRecentlyPlayed() {
+  try {
+    const { getDocs: getD, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getD(col(db,'played'));
+    const cutoff = Date.now() - 60 * 60 * 1000; // 1 hour ago
+    return snap.docs
+      .filter(d => d.data().playedAt > cutoff)
+      .map(d => (d.data().title + '|||' + d.data().artist).toLowerCase());
+  } catch(e) { return []; }
+}
+
 async function runAutoQueue() {
-  const approved = [...allTracks.filter(t=>t.approved && !t.spotifyQueued)]
-    .sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
+  // Get list of tracks played in last hour
+  const recentlyPlayed = await getRecentlyPlayed();
+
+  const approved = [...allTracks.filter(t => t.approved && !t.spotifyQueued)]
+    .sort((a,b) => b.uniqueVoters - a.uniqueVoters);
+
   if (!approved.length) {
     showStaffToast('⏱ AUTO-QUEUE: NO TRACKS READY');
     return;
   }
-  const top = approved[0];
-  // Only auto-queue if track has at least 1 unique voter
-  if ((top.uniqueVoters||1) < 1) return;
+
+  // Find the top track that hasn't been played in the last hour
+  const top = approved.find(t => {
+    const key = (t.title + '|||' + t.artist).toLowerCase();
+    return !recentlyPlayed.includes(key);
+  });
+
+  if (!top) {
+    showStaffToast('⏱ ALL TOP TRACKS PLAYED RECENTLY — WAITING');
+    return;
+  }
+
   showStaffToast('⏱ AUTO-QUEUING: ' + top.title);
   const found = await spotifyCall('/search?track=' + encodeURIComponent(top.title) + '&artist=' + encodeURIComponent(top.artist));
   if (!found?.uri) { showStaffToast('⏱ AUTO-QUEUE: NOT FOUND ON SPOTIFY'); return; }
@@ -503,13 +565,41 @@ async function runAutoQueue() {
 }
 
 window.markPlayed = async function(id) {
+  // Find the track before deleting it
+  const track = allTracks.find(t => t.id === id);
+  // Delete from active board
   await deleteDoc(doc(db,'tracks',id));
+  // Record in played history with timestamp
+  if (track) {
+    try {
+      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      await setDoc(doc(db,'played', id), {
+        title:    track.title,
+        artist:   track.artist,
+        playedAt: Date.now(),
+        spotifyUri: track.spotifyUri || '',
+      });
+    } catch(e) { console.warn('Could not record played track', e); }
+  }
   showStaffToast('✅ MARKED AS PLAYED — QUEUING NEXT...');
   setTimeout(() => {
     if (autoQueueOn) runAutoQueue();
     else queueTopTrack();
   }, 1500);
 };
+
+// Auto-expire played history after 1 hour (clean up old records)
+async function cleanPlayedHistory() {
+  try {
+    const { getDocs: getD, collection: col, where, query: q2, deleteDoc: delD, doc: d2 } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    const snap = await getD(col(db,'played'));
+    snap.docs.forEach(async docSnap => {
+      if (docSnap.data().playedAt < cutoff) await delD(docSnap.ref);
+    });
+  } catch(e) {}
+}
+setInterval(cleanPlayedHistory, 5 * 60 * 1000); // clean up every 5 mins
 
 // Auto-remove tracks queued more than 15 mins ago (assume they played)
 setInterval(async () => {
