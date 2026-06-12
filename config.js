@@ -14,8 +14,13 @@ const VENUE_CONFIG = {
   lastfm_user:  "eddrock79",
   lastfm_key:   "78658e952901ff5d096dc83873d22049",
 
+  // ── YOUTUBE (Music video background) ─────────────────────
+  // Get free key at: console.cloud.google.com
+  // Enable: YouTube Data API v3 → Credentials → API Key
+  youtube_key:  "AIzaSyCjTo6q-KwV051JIT70GB9F4-ZPDS8dMo4",
+
   // ── SPOTIFY (Auto-queue via Cloudflare Worker) ───────────
-  spotify_worker_url: "https://rockboard.eddrock79.workers.dev",  // ← fill this in after deploying worker
+  spotify_worker_url:    "https://rockboard.YOUR-SUBDOMAIN.workers.dev",  // ← fill this in after deploying worker
   spotify_playlist_id:   "3lj6qRLWbJKbFkXtrlJCHc",
 
   // ── VOTING RULES ─────────────────────────────────────────
