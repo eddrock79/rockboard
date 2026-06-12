@@ -6,305 +6,93 @@
 <title>ROCKBOARD · Staff</title>
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0a0a0a;--accent:#8B0000;--green:#39FF14;--amber:#FFB347;--white:#f0ede8;--card:rgba(20,10,10,0.9);--font-pixel:'VT323',monospace;--font-head:'Bebas Neue',sans-serif;--font-body:'Inter',sans-serif}
+  html,body{min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse at top,rgba(139,0,0,0.12) 0%,transparent 60%);color:var(--white);font-family:var(--font-body)}
 
-  :root {
-    --bg: #0a0a0a;
-    --accent: #8B0000;
-    --green: #39FF14;
-    --amber: #FFB347;
-    --white: #f0ede8;
-    --card: rgba(20,10,10,0.9);
-    --font-pixel: 'VT323', monospace;
-    --font-head: 'Bebas Neue', sans-serif;
-    --font-body: 'Inter', sans-serif;
-  }
+  #pin-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:40px 20px}
+  #pin-screen h1{font-family:var(--font-head);font-size:42px;letter-spacing:6px}
+  #pin-screen p{font-family:var(--font-pixel);font-size:16px;letter-spacing:3px;color:rgba(240,237,232,0.4)}
+  #pin-dots{display:flex;gap:16px}
+  .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(139,0,0,0.5);background:transparent;transition:background 0.15s}
+  .pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+  #pin-keypad{display:grid;grid-template-columns:repeat(3,72px);gap:10px}
+  .pin-key{height:64px;background:var(--card);border:1px solid rgba(139,0,0,0.3);border-radius:8px;color:var(--white);font-family:var(--font-head);font-size:28px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
+  .pin-key:active{background:rgba(139,0,0,0.4);transform:scale(0.96)}
+  .pin-key.clear{font-size:18px;color:rgba(240,237,232,0.4)}
+  #pin-error{font-family:var(--font-pixel);font-size:16px;color:#ff4444;letter-spacing:3px;min-height:24px;text-align:center}
 
-  html, body {
-    min-height: 100vh;
-    background: var(--bg);
-    background-image: radial-gradient(ellipse at top, rgba(139,0,0,0.12) 0%, transparent 60%);
-    color: var(--white);
-    font-family: var(--font-body);
-  }
+  #staff-app{display:none}
+  #staff-app.show{display:block}
+  #staff-header{background:rgba(10,10,10,0.95);border-bottom:1px solid rgba(139,0,0,0.3);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+  #staff-header h1{font-family:var(--font-head);font-size:24px;letter-spacing:4px}
+  #staff-header .sub{font-family:var(--font-pixel);font-size:12px;color:var(--accent);letter-spacing:3px}
 
-  /* PIN SCREEN */
-  #pin-screen {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    padding: 40px 20px;
-  }
-  #pin-screen h1 {
-    font-family: var(--font-head);
-    font-size: 42px;
-    letter-spacing: 6px;
-    color: var(--white);
-  }
-  #pin-screen p {
-    font-family: var(--font-pixel);
-    font-size: 16px;
-    letter-spacing: 3px;
-    color: rgba(240,237,232,0.4);
-  }
-  #pin-dots {
-    display: flex;
-    gap: 16px;
-  }
-  .pin-dot {
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    border: 2px solid rgba(139,0,0,0.5);
-    background: transparent;
-    transition: background 0.15s;
-  }
-  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
-  #pin-keypad {
-    display: grid;
-    grid-template-columns: repeat(3, 72px);
-    gap: 10px;
-  }
-  .pin-key {
-    height: 64px;
-    background: var(--card);
-    border: 1px solid rgba(139,0,0,0.3);
-    border-radius: 8px;
-    color: var(--white);
-    font-family: var(--font-head);
-    font-size: 28px;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-appearance: none;
-  }
-  .pin-key:active { background: rgba(139,0,0,0.4); transform: scale(0.96); }
-  .pin-key.clear { font-size: 18px; color: rgba(240,237,232,0.4); }
-  #pin-error {
-    font-family: var(--font-pixel);
-    font-size: 16px;
-    color: #ff4444;
-    letter-spacing: 3px;
-    min-height: 24px;
-    text-align: center;
-  }
+  #controls-bar{padding:16px 20px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid rgba(139,0,0,0.15)}
+  .ctrl-btn{padding:10px 18px;border-radius:6px;border:1px solid;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
+  .ctrl-btn:active{transform:scale(0.97)}
+  .ctrl-btn.tshirt-on{background:rgba(255,179,71,0.15);border-color:rgba(255,179,71,0.5);color:var(--amber)}
+  .ctrl-btn.tshirt-off{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
+  .ctrl-btn.winner-btn{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.4);color:var(--green)}
+  .ctrl-btn.clear-btn{background:rgba(255,68,68,0.1);border-color:rgba(255,68,68,0.3);color:#ff6666}
+  .ctrl-btn.lock-btn{background:rgba(20,10,10,0.5);border-color:rgba(255,255,255,0.1);color:rgba(240,237,232,0.3)}
 
-  /* STAFF APP */
-  #staff-app { display: none; }
-  #staff-app.show { display: block; }
+  #tabs{display:flex;border-bottom:1px solid rgba(139,0,0,0.2)}
+  .tab{flex:1;padding:12px;font-family:var(--font-pixel);font-size:14px;letter-spacing:3px;text-align:center;color:rgba(240,237,232,0.35);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
+  .tab.active{color:var(--white);border-bottom-color:var(--accent)}
 
-  #staff-header {
-    background: rgba(10,10,10,0.95);
-    border-bottom: 1px solid rgba(139,0,0,0.3);
-    padding: 14px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky; top: 0; z-index: 50;
-  }
-  #staff-header h1 {
-    font-family: var(--font-head);
-    font-size: 24px;
-    letter-spacing: 4px;
-  }
-  #staff-header .sub {
-    font-family: var(--font-pixel);
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 3px;
-  }
+  .list-section{padding:16px 20px;display:none}
+  .list-section.show{display:block}
+  .list-label{font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.35);margin-bottom:12px}
+  .list-label span{color:var(--amber)}
 
-  /* Controls bar */
-  #controls-bar {
-    padding: 16px 20px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    border-bottom: 1px solid rgba(139,0,0,0.15);
-  }
-  .ctrl-btn {
-    padding: 10px 18px;
-    border-radius: 6px;
-    border: 1px solid;
-    font-family: var(--font-pixel);
-    font-size: 15px;
-    letter-spacing: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-appearance: none;
-  }
-  .ctrl-btn:active { transform: scale(0.97); }
-  .ctrl-btn.tshirt-on  { background: rgba(255,179,71,0.15); border-color: rgba(255,179,71,0.5); color: var(--amber); }
-  .ctrl-btn.tshirt-off { background: rgba(20,10,10,0.5);    border-color: rgba(255,255,255,0.1); color: rgba(240,237,232,0.3); }
-  .ctrl-btn.winner-btn { background: rgba(57,255,20,0.1); border-color: rgba(57,255,20,0.4); color: var(--green); }
-  .ctrl-btn.clear-btn  { background: rgba(255,68,68,0.1); border-color: rgba(255,68,68,0.3); color: #ff6666; }
-  .ctrl-btn.lock-btn   { background: rgba(20,10,10,0.5); border-color: rgba(255,255,255,0.1); color: rgba(240,237,232,0.3); }
+  .request-card{background:var(--card);border:1px solid rgba(139,0,0,0.25);border-radius:8px;padding:14px 16px;margin-bottom:12px;transition:opacity 0.3s,transform 0.3s}
+  .request-card.ditching{opacity:0;transform:translateX(60px)}
+  .request-card.keeping{opacity:0;transform:translateX(-60px)}
+  .rc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  .rc-track{font-family:var(--font-head);font-size:22px;letter-spacing:1px}
+  .rc-artist{font-size:13px;color:rgba(240,237,232,0.5);margin-top:2px}
+  .rc-meta{font-family:var(--font-pixel);font-size:12px;color:rgba(240,237,232,0.35);letter-spacing:2px;text-align:right}
+  .rc-meta .votes{font-size:22px;color:var(--white);display:block;line-height:1}
+  .rc-requester{font-family:var(--font-pixel);font-size:12px;color:var(--accent);letter-spacing:2px;margin-bottom:12px}
+  .rc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .keep-btn,.ditch-btn{padding:14px;border-radius:6px;border:none;font-family:var(--font-head);font-size:20px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
+  .keep-btn:active,.ditch-btn:active{transform:scale(0.97)}
+  .keep-btn{background:rgba(57,255,20,0.15);border:1px solid rgba(57,255,20,0.4);color:var(--green)}
+  .ditch-btn{background:rgba(139,0,0,0.25);border:1px solid rgba(139,0,0,0.5);color:#ff6666}
 
-  /* Tabs */
-  #tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(139,0,0,0.2);
-  }
-  .tab {
-    flex: 1;
-    padding: 12px;
-    font-family: var(--font-pixel);
-    font-size: 14px;
-    letter-spacing: 3px;
-    text-align: center;
-    color: rgba(240,237,232,0.35);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-  }
-  .tab.active { color: var(--white); border-bottom-color: var(--accent); }
+  .approved-card{background:var(--card);border:1px solid rgba(57,255,20,0.15);border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+  .ac-rank{font-family:var(--font-head);font-size:28px;color:rgba(240,237,232,0.15);min-width:36px;text-align:center}
+  .ac-details{flex:1}
+  .ac-title{font-family:var(--font-head);font-size:18px;letter-spacing:0.5px}
+  .ac-artist{font-size:12px;color:rgba(240,237,232,0.4);margin-top:2px}
+  .ac-meta{font-family:var(--font-pixel);font-size:22px;color:var(--white);text-align:right;min-width:48px}
+  .ac-meta small{font-size:10px;color:rgba(240,237,232,0.3);display:block;letter-spacing:2px}
+  .ac-ditch{background:transparent;border:1px solid rgba(139,0,0,0.3);border-radius:5px;padding:6px 10px;color:rgba(255,68,68,0.5);font-family:var(--font-pixel);font-size:13px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
+  .ac-ditch:active{background:rgba(139,0,0,0.3);color:#ff4444}
 
-  /* Pending / Approved lists */
-  .list-section { padding: 16px 20px; display: none; }
-  .list-section.show { display: block; }
+  .empty-state{text-align:center;padding:40px 20px;font-family:var(--font-pixel);font-size:18px;color:rgba(240,237,232,0.25);letter-spacing:3px;line-height:1.8}
 
-  .pending-count {
-    font-family: var(--font-pixel);
-    font-size: 13px;
-    letter-spacing: 3px;
-    color: rgba(240,237,232,0.35);
-    margin-bottom: 12px;
-  }
-  .pending-count span { color: var(--amber); }
-
-  .request-card {
-    background: var(--card);
-    border: 1px solid rgba(139,0,0,0.25);
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 12px;
-    transition: opacity 0.3s, transform 0.3s;
-  }
-  .request-card.ditching {
-    opacity: 0;
-    transform: translateX(60px);
-  }
-  .request-card.keeping {
-    opacity: 0;
-    transform: translateX(-60px);
-  }
-
-  .rc-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-  }
-  .rc-track {
-    font-family: var(--font-head);
-    font-size: 22px;
-    letter-spacing: 1px;
-  }
-  .rc-artist { font-size: 13px; color: rgba(240,237,232,0.5); margin-top: 2px; }
-  .rc-meta {
-    font-family: var(--font-pixel);
-    font-size: 12px;
-    color: rgba(240,237,232,0.35);
-    letter-spacing: 2px;
-    text-align: right;
-  }
-  .rc-meta .votes { font-size: 22px; color: var(--white); display: block; line-height: 1; }
-  .rc-requester {
-    font-family: var(--font-pixel);
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    margin-bottom: 12px;
-  }
-
-  .rc-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .keep-btn, .ditch-btn {
-    padding: 14px;
-    border-radius: 6px;
-    border: none;
-    font-family: var(--font-head);
-    font-size: 20px;
-    letter-spacing: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-appearance: none;
-  }
-  .keep-btn:active, .ditch-btn:active { transform: scale(0.97); }
-  .keep-btn  { background: rgba(57,255,20,0.15);  border: 1px solid rgba(57,255,20,0.4);  color: var(--green); }
-  .ditch-btn { background: rgba(139,0,0,0.25);    border: 1px solid rgba(139,0,0,0.5);   color: #ff6666; }
-
-  /* Approved list */
-  .approved-card {
-    background: var(--card);
-    border: 1px solid rgba(57,255,20,0.15);
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .ac-rank {
-    font-family: var(--font-head);
-    font-size: 28px;
-    color: rgba(240,237,232,0.15);
-    min-width: 36px;
-    text-align: center;
-  }
-  .ac-details { flex: 1; }
-  .ac-title { font-family: var(--font-head); font-size: 18px; letter-spacing: 0.5px; }
-  .ac-artist { font-size: 12px; color: rgba(240,237,232,0.4); margin-top: 2px; }
-  .ac-meta {
-    font-family: var(--font-pixel);
-    font-size: 22px;
-    color: var(--white);
-    text-align: right;
-    min-width: 48px;
-  }
-  .ac-meta small { font-size: 10px; color: rgba(240,237,232,0.3); display: block; letter-spacing: 2px; }
-  .ac-ditch {
-    background: transparent;
-    border: 1px solid rgba(139,0,0,0.3);
-    border-radius: 5px;
-    padding: 6px 10px;
-    color: rgba(255,68,68,0.5);
-    font-family: var(--font-pixel);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-appearance: none;
-  }
-  .ac-ditch:active { background: rgba(139,0,0,0.3); color: #ff4444; }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    font-family: var(--font-pixel);
-    font-size: 18px;
-    color: rgba(240,237,232,0.25);
-    letter-spacing: 3px;
-    line-height: 1.8;
-  }
+  /* Winner overlay */
+  #winner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:40px}
+  #winner-overlay.show{display:flex}
+  #winner-overlay h1{font-family:var(--font-head);font-size:56px;letter-spacing:6px;color:var(--amber)}
+  #winner-overlay .w-track{font-family:var(--font-head);font-size:38px;color:var(--white)}
+  #winner-overlay .w-artist{font-size:18px;color:rgba(240,237,232,0.6)}
+  #winner-overlay .w-quote{font-family:var(--font-pixel);font-size:24px;color:var(--green);max-width:600px;line-height:1.5}
+  #winner-overlay .w-votes{font-family:var(--font-pixel);font-size:16px;color:rgba(240,237,232,0.4);letter-spacing:3px}
+  #winner-close{margin-top:16px;font-family:var(--font-pixel);font-size:16px;letter-spacing:3px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:10px 24px;border-radius:4px;background:transparent;color:rgba(240,237,232,0.4);transition:all 0.2s}
+  #winner-close:hover{border-color:var(--amber);color:var(--amber)}
 </style>
 </head>
 <body>
 
 <!-- PIN SCREEN -->
 <div id="pin-screen">
-  <div>
-    <h1>ROCKBOARD</h1>
-    <p style="text-align:center; margin-top:4px;">STAFF ACCESS</p>
-  </div>
+  <div><h1>ROCKBOARD</h1><p style="text-align:center;margin-top:4px;">STAFF ACCESS</p></div>
   <div id="pin-dots">
-    <div class="pin-dot" id="pd0"></div>
-    <div class="pin-dot" id="pd1"></div>
-    <div class="pin-dot" id="pd2"></div>
-    <div class="pin-dot" id="pd3"></div>
+    <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
   </div>
   <div id="pin-keypad">
     <button class="pin-key" onclick="pinKey('1')">1</button>
@@ -326,225 +114,190 @@
 <!-- STAFF APP -->
 <div id="staff-app">
   <div id="staff-header">
-    <div>
-      <h1>STAFF · ROCKBOARD</h1>
-      <div class="sub">THE BLACK ROSE</div>
-    </div>
+    <div><h1 id="s-venue">STAFF · ROCKBOARD</h1><div class="sub" id="s-sub">THE BLACK ROSE</div></div>
     <button class="ctrl-btn lock-btn" onclick="lock()">LOCK</button>
   </div>
-
   <div id="controls-bar">
     <button class="ctrl-btn tshirt-on" id="tshirt-btn" onclick="toggleTshirt()">🏆 T-SHIRT: ON</button>
     <button class="ctrl-btn winner-btn" onclick="revealWinner()">🏆 REVEAL WINNER</button>
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
-
   <div id="tabs">
-    <div class="tab active" id="tab-pending" onclick="switchTab('pending')">
-      PENDING <span id="pending-badge"></span>
-    </div>
+    <div class="tab active" id="tab-pending" onclick="switchTab('pending')">PENDING <span id="pending-badge"></span></div>
     <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
   </div>
-
   <div class="list-section show" id="section-pending">
-    <div class="pending-count">REQUESTS AWAITING REVIEW · <span id="pending-count-num">0</span></div>
+    <div class="list-label">REQUESTS AWAITING REVIEW · <span id="pending-count-num">0</span></div>
     <div id="pending-list"></div>
   </div>
-
   <div class="list-section" id="section-approved">
-    <div class="pending-count">LIVE ON THE BOARD · <span id="approved-count-num">0</span></div>
+    <div class="list-label">LIVE ON THE BOARD · <span id="approved-count-num">0</span></div>
     <div id="approved-list"></div>
   </div>
 </div>
 
-<script>
-// ============================================================
-//  CONFIG
-// ============================================================
-const STAFF_PIN = "1234"; // Change this!
-const CONFIG = { venueName: "THE BLACK ROSE", tshirtMode: true };
+<!-- Winner overlay -->
+<div id="winner-overlay">
+  <div>🏆</div>
+  <h1>TONIGHT'S CHAMPION</h1>
+  <div class="w-track" id="w-track">—</div>
+  <div class="w-artist" id="w-artist">—</div>
+  <div class="w-quote" id="w-quote">—</div>
+  <div class="w-votes" id="w-votes">— UNIQUE VOTES</div>
+  <button id="winner-close" onclick="document.getElementById('winner-overlay').classList.remove('show')">[ CLOSE ]</button>
+</div>
 
-// ============================================================
-//  PIN
-// ============================================================
+<script src="config.js"></script>
+<script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const CONFIG = {
+  venueName: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName) || "THE BLACK ROSE",
+  staffPin:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.staffPin)  || "1234",
+  tshirtMode:(typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode  : true,
+  firebase:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)  || {},
+};
+
+const fbApp = initializeApp(CONFIG.firebase);
+const db    = getFirestore(fbApp);
+
+document.getElementById('s-sub').textContent = CONFIG.venueName;
+document.title = 'Staff · ' + CONFIG.venueName;
+if (!CONFIG.tshirtMode) { document.getElementById('tshirt-btn').className = 'ctrl-btn tshirt-off'; document.getElementById('tshirt-btn').textContent = '🏆 T-SHIRT: OFF'; }
+
+// ── PIN ──
 let pinEntry = '';
-
-function pinKey(k) {
-  if (pinEntry.length >= 4) return;
-  pinEntry += k;
-  updatePinDots();
-  if (pinEntry.length === 4) checkPin();
-}
-function pinBack() { pinEntry = pinEntry.slice(0, -1); updatePinDots(); }
-function pinClear() { pinEntry = ''; updatePinDots(); }
-
-function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    document.getElementById('pd' + i).classList.toggle('filled', i < pinEntry.length);
-  }
-}
-
+window.pinKey = k => { if (pinEntry.length >= 4) return; pinEntry += k; updatePinDots(); if (pinEntry.length === 4) checkPin(); };
+window.pinBack  = () => { pinEntry = pinEntry.slice(0,-1); updatePinDots(); };
+window.pinClear = () => { pinEntry = ''; updatePinDots(); };
+function updatePinDots() { for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('filled', i < pinEntry.length); }
 function checkPin() {
-  if (pinEntry === STAFF_PIN) {
+  if (pinEntry === CONFIG.staffPin) {
     document.getElementById('pin-screen').style.display = 'none';
     document.getElementById('staff-app').classList.add('show');
-    renderAll();
+    startListening();
   } else {
     document.getElementById('pin-error').textContent = 'WRONG PIN · TRY AGAIN';
-    pinEntry = '';
-    updatePinDots();
+    pinEntry = ''; updatePinDots();
     setTimeout(() => { document.getElementById('pin-error').textContent = ''; }, 2000);
   }
 }
+window.lock = () => { pinEntry = ''; updatePinDots(); document.getElementById('pin-screen').style.display=''; document.getElementById('staff-app').classList.remove('show'); };
 
-function lock() {
-  pinEntry = '';
-  updatePinDots();
-  document.getElementById('pin-screen').style.display = '';
-  document.getElementById('staff-app').classList.remove('show');
+// ── LIVE DATA ──
+let allTracks = [];
+let unsubscribe = null;
+
+function startListening() {
+  if (unsubscribe) return;
+  const q = query(collection(db,'tracks'), orderBy('createdAt','desc'));
+  unsubscribe = onSnapshot(q, (snapshot) => {
+    allTracks = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderPending();
+    renderApproved();
+  });
 }
 
-// ============================================================
-//  DATA (replace with Firebase)
-// ============================================================
-let tracks = {
-  pending: [
-    { id:'p1', title:'Killing in the Name', artist:'Rage Against the Machine', requester:'Alex', votes:1, uniqueVoters:1 },
-    { id:'p2', title:'Everlong', artist:'Foo Fighters', requester:'Sam', votes:1, uniqueVoters:1 },
-    { id:'p3', title:'Paranoid', artist:'Black Sabbath', requester:'Charlie', votes:1, uniqueVoters:1 },
-  ],
-  approved: [
-    { id:'t1', title:'Bohemian Rhapsody', artist:'Queen', requester:'Dave', votes:12, uniqueVoters:9 },
-    { id:'t2', title:'Enter Sandman', artist:'Metallica', requester:'Sarah', votes:9, uniqueVoters:7 },
-    { id:'t3', title:'Back in Black', artist:'AC/DC', requester:'Mike', votes:7, uniqueVoters:6 },
-    { id:'t4', title:'Smells Like Teen Spirit', artist:'Nirvana', requester:'Jen', votes:6, uniqueVoters:5 },
-    { id:'t5', title:'Mr. Brightside', artist:'The Killers', requester:'Tom', votes:5, uniqueVoters:4 },
-  ]
+// ── KEEP / DITCH ──
+window.keepTrack = async function(id) {
+  const card = document.getElementById('rc-'+id);
+  if (card) card.classList.add('keeping');
+  setTimeout(async () => {
+    try { await updateDoc(doc(db,'tracks',id), { approved: true }); }
+    catch(e) { console.error(e); }
+  }, 300);
 };
 
+window.ditchTrack = async function(id) {
+  const card = document.getElementById('rc-'+id);
+  if (card) card.classList.add('ditching');
+  setTimeout(async () => {
+    try { await deleteDoc(doc(db,'tracks',id)); }
+    catch(e) { console.error(e); }
+  }, 300);
+};
+
+// ── TSHIRT TOGGLE ──
 let tshirtOn = CONFIG.tshirtMode;
-
-// ============================================================
-//  ACTIONS
-// ============================================================
-function keepTrack(id) {
-  const card = document.getElementById('rc-' + id);
-  if (card) { card.classList.add('keeping'); }
-  setTimeout(() => {
-    const idx = tracks.pending.findIndex(t => t.id === id);
-    if (idx === -1) return;
-    const track = tracks.pending.splice(idx, 1)[0];
-    track.pending = false;
-    tracks.approved.push(track);
-    renderAll();
-  }, 300);
-}
-
-function ditchTrack(id) {
-  const card = document.getElementById('rc-' + id);
-  if (card) { card.classList.add('ditching'); }
-  setTimeout(() => {
-    tracks.pending = tracks.pending.filter(t => t.id !== id);
-    tracks.approved = tracks.approved.filter(t => t.id !== id);
-    renderAll();
-  }, 300);
-}
-
-function toggleTshirt() {
+window.toggleTshirt = function() {
   tshirtOn = !tshirtOn;
   const btn = document.getElementById('tshirt-btn');
   btn.textContent = tshirtOn ? '🏆 T-SHIRT: ON' : '🏆 T-SHIRT: OFF';
   btn.className = 'ctrl-btn ' + (tshirtOn ? 'tshirt-on' : 'tshirt-off');
-}
+};
 
-function revealWinner() {
-  if (!tracks.approved.length) { alert('No approved tracks yet!'); return; }
-  const sorted = [...tracks.approved].sort((a,b) => b.uniqueVoters - a.uniqueVoters);
-  const w = sorted[0];
-  alert(`🏆 TONIGHT'S WINNER\n\n${w.title} — ${w.artist}\nRequested by: ${w.requester}\nUnique votes: ${w.uniqueVoters}\n\n(In production this triggers the winner overlay on the main display)`);
-}
+// ── WINNER REVEAL ──
+window.revealWinner = function() {
+  const approved = allTracks.filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
+  if (!approved.length) { alert('No approved tracks yet!'); return; }
+  const w = approved[0];
+  document.getElementById('w-track').textContent  = w.title;
+  document.getElementById('w-artist').textContent = w.artist;
+  document.getElementById('w-votes').textContent  = w.uniqueVoters + ' UNIQUE VOTES';
+  const quotes = [
+    `${w.requester} has the best taste in this bar. T-shirt at the bar!`,
+    `${w.requester} — we bow to your superior taste. T-shirt incoming.`,
+    `${w.requester} wins the night. Collect your t-shirt.`,
+    `${w.requester}, tonight you ARE the DJ. T-shirt at the bar.`,
+    `${w.requester} called it. The crowd agreed. T-shirt well earned.`,
+  ];
+  document.getElementById('w-quote').textContent = quotes[Math.floor(Math.random()*quotes.length)];
+  document.getElementById('winner-overlay').classList.add('show');
+};
 
-function clearNight() {
-  if (!confirm('Start a new night? This clears all tracks and votes.')) return;
-  tracks.pending = [];
-  tracks.approved = [];
-  renderAll();
-}
+// ── CLEAR NIGHT ──
+window.clearNight = async function() {
+  if (!confirm('Start a new night? This permanently deletes all tracks and votes.')) return;
+  try {
+    const snapshot = await getDocs(collection(db,'tracks'));
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  } catch(e) { console.error(e); alert('Error clearing — check console'); }
+};
 
-// ============================================================
-//  TABS
-// ============================================================
-function switchTab(tab) {
-  document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
-  document.getElementById('tab-approved').classList.toggle('active', tab === 'approved');
-  document.getElementById('section-pending').classList.toggle('show', tab === 'pending');
-  document.getElementById('section-approved').classList.toggle('show', tab === 'approved');
-}
+// ── TABS ──
+window.switchTab = function(tab) {
+  document.getElementById('tab-pending').classList.toggle('active', tab==='pending');
+  document.getElementById('tab-approved').classList.toggle('active', tab==='approved');
+  document.getElementById('section-pending').classList.toggle('show', tab==='pending');
+  document.getElementById('section-approved').classList.toggle('show', tab==='approved');
+};
 
-// ============================================================
-//  RENDER
-// ============================================================
-function renderAll() {
-  renderPending();
-  renderApproved();
-}
-
+// ── RENDER ──
 function renderPending() {
+  const pending = allTracks.filter(t => !t.approved);
+  document.getElementById('pending-count-num').textContent = pending.length;
+  document.getElementById('pending-badge').textContent = pending.length > 0 ? ` (${pending.length})` : '';
   const list = document.getElementById('pending-list');
-  const count = tracks.pending.length;
-  document.getElementById('pending-count-num').textContent = count;
-  document.getElementById('pending-badge').textContent = count > 0 ? ` (${count})` : '';
-
-  if (!count) {
-    list.innerHTML = `<div class="empty-state">NO PENDING REQUESTS<br>ALL QUIET FOR NOW...</div>`;
-    return;
-  }
-
-  list.innerHTML = tracks.pending.map(t => `
+  if (!pending.length) { list.innerHTML = '<div class="empty-state">NO PENDING REQUESTS<br>ALL QUIET FOR NOW...</div>'; return; }
+  list.innerHTML = pending.map(t => `
     <div class="request-card" id="rc-${t.id}">
       <div class="rc-top">
-        <div>
-          <div class="rc-track">${t.title}</div>
-          <div class="rc-artist">${t.artist}</div>
-        </div>
-        <div class="rc-meta">
-          <span class="votes">${t.uniqueVoters}</span>
-          VOTES
-        </div>
+        <div><div class="rc-track">${t.title}</div><div class="rc-artist">${t.artist}</div></div>
+        <div class="rc-meta"><span class="votes">${t.uniqueVoters||1}</span>VOTES</div>
       </div>
-      <div class="rc-requester">↳ REQUESTED BY ${t.requester.toUpperCase()}</div>
+      <div class="rc-requester">↳ REQUESTED BY ${(t.requester||'ANONYMOUS').toUpperCase()}</div>
       <div class="rc-actions">
         <button class="keep-btn" onclick="keepTrack('${t.id}')">🤘 KEEP IT</button>
         <button class="ditch-btn" onclick="ditchTrack('${t.id}')">✕ DITCH IT</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function renderApproved() {
+  const approved = [...allTracks.filter(t=>t.approved)].sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
+  document.getElementById('approved-count-num').textContent = approved.length;
   const list = document.getElementById('approved-list');
-  const sorted = [...tracks.approved].sort((a,b) => b.uniqueVoters - a.uniqueVoters);
-  document.getElementById('approved-count-num').textContent = sorted.length;
-
-  if (!sorted.length) {
-    list.innerHTML = `<div class="empty-state">NO APPROVED TRACKS YET<br>APPROVE SOME REQUESTS...</div>`;
-    return;
-  }
-
-  list.innerHTML = sorted.map((t, i) => `
+  if (!approved.length) { list.innerHTML = '<div class="empty-state">NO APPROVED TRACKS YET<br>APPROVE SOME REQUESTS...</div>'; return; }
+  list.innerHTML = approved.map((t,i) => `
     <div class="approved-card">
       <div class="ac-rank">${String(i+1).padStart(2,'0')}</div>
-      <div class="ac-details">
-        <div class="ac-title">${t.title}</div>
-        <div class="ac-artist">${t.artist} · ${t.requester}</div>
-      </div>
-      <div class="ac-meta">
-        ${t.uniqueVoters}
-        <small>VOTES</small>
-      </div>
+      <div class="ac-details"><div class="ac-title">${t.title}</div><div class="ac-artist">${t.artist} · ${t.requester||'?'}</div></div>
+      <div class="ac-meta">${t.uniqueVoters||1}<small>VOTES</small></div>
       <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 </script>
 </body>

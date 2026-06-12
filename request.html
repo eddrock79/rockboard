@@ -6,317 +6,80 @@
 <title>ROCKBOARD · Request a Track</title>
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
   :root {
-    --bg: #0a0a0a;
-    --accent: #8B0000;
-    --green: #39FF14;
-    --amber: #FFB347;
-    --white: #f0ede8;
-    --card: rgba(20,10,10,0.9);
-    --font-pixel: 'VT323', monospace;
-    --font-head: 'Bebas Neue', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --bg:#0a0a0a; --accent:#8B0000; --green:#39FF14; --amber:#FFB347;
+    --white:#f0ede8; --card:rgba(20,10,10,0.9);
+    --font-pixel:'VT323',monospace; --font-head:'Bebas Neue',sans-serif; --font-body:'Inter',sans-serif;
   }
+  html,body { min-height:100%; background:var(--bg); color:var(--white); font-family:var(--font-body); }
+  body { background-image:radial-gradient(ellipse at top,rgba(139,0,0,0.15) 0%,transparent 60%); min-height:100vh; padding:0 0 40px; }
 
-  html, body {
-    min-height: 100%;
-    background: var(--bg);
-    color: var(--white);
-    font-family: var(--font-body);
-  }
+  #top-bar { background:rgba(10,10,10,0.95); border-bottom:1px solid rgba(139,0,0,0.3); padding:16px 20px; position:sticky; top:0; z-index:50; display:flex; justify-content:space-between; align-items:center; }
+  #top-venue { font-family:var(--font-head); font-size:22px; letter-spacing:3px; }
+  #top-sub { font-family:var(--font-pixel); font-size:13px; color:var(--accent); letter-spacing:3px; }
+  #votes-left-badge { font-family:var(--font-pixel); font-size:15px; color:var(--amber); letter-spacing:2px; text-align:right; }
+  #votes-left-badge span { font-size:28px; display:block; line-height:1; color:var(--white); }
 
-  body {
-    background-image:
-      radial-gradient(ellipse at top, rgba(139,0,0,0.15) 0%, transparent 60%),
-      radial-gradient(ellipse at bottom, rgba(0,0,0,0.8) 0%, transparent 80%);
-    min-height: 100vh;
-    padding: 0 0 40px;
-  }
+  #now-playing-strip { background:rgba(139,0,0,0.12); border-bottom:1px solid rgba(139,0,0,0.2); padding:10px 20px; display:flex; align-items:center; gap:12px; }
+  #np-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.4s ease-in-out infinite; flex-shrink:0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  #np-label { font-family:var(--font-pixel); font-size:12px; color:rgba(240,237,232,0.4); letter-spacing:2px; flex-shrink:0; }
+  #np-text { font-family:var(--font-pixel); font-size:17px; color:var(--white); letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* Header */
-  #top-bar {
-    background: rgba(10,10,10,0.95);
-    border-bottom: 1px solid rgba(139,0,0,0.3);
-    padding: 16px 20px;
-    position: sticky; top: 0; z-index: 50;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  #top-venue {
-    font-family: var(--font-head);
-    font-size: 22px;
-    letter-spacing: 3px;
-    color: var(--white);
-  }
-  #top-sub {
-    font-family: var(--font-pixel);
-    font-size: 13px;
-    color: var(--accent);
-    letter-spacing: 3px;
-  }
-  #votes-left-badge {
-    font-family: var(--font-pixel);
-    font-size: 15px;
-    color: var(--amber);
-    letter-spacing: 2px;
-    text-align: right;
-  }
-  #votes-left-badge span {
-    font-size: 28px;
-    display: block;
-    line-height: 1;
-    color: var(--white);
-  }
+  .section { padding:20px 20px 0; }
+  .section-title { font-family:var(--font-pixel); font-size:13px; letter-spacing:4px; color:rgba(240,237,232,0.35); margin-bottom:12px; }
 
-  /* Now Playing strip */
-  #now-playing-strip {
-    background: rgba(139,0,0,0.12);
-    border-bottom: 1px solid rgba(139,0,0,0.2);
-    padding: 10px 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  #np-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 1.4s ease-in-out infinite;
-    flex-shrink: 0;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
-  }
-  #np-label { font-family: var(--font-pixel); font-size: 12px; color: rgba(240,237,232,0.4); letter-spacing: 2px; flex-shrink: 0; }
-  #np-text { font-family: var(--font-pixel); font-size: 17px; color: var(--white); letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #request-form { background:var(--card); border:1px solid rgba(139,0,0,0.3); border-radius:8px; padding:20px; }
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-family:var(--font-pixel); font-size:13px; letter-spacing:3px; color:rgba(240,237,232,0.4); margin-bottom:6px; }
+  .field input { width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 14px; color:var(--white); font-family:var(--font-body); font-size:16px; outline:none; transition:border-color 0.2s; -webkit-appearance:none; }
+  .field input:focus { border-color:var(--accent); }
+  .field input::placeholder { color:rgba(240,237,232,0.2); }
 
-  .section { padding: 20px 20px 0; }
-  .section-title {
-    font-family: var(--font-pixel);
-    font-size: 13px;
-    letter-spacing: 4px;
-    color: rgba(240,237,232,0.35);
-    margin-bottom: 12px;
-  }
+  #submit-btn { width:100%; background:var(--accent); border:none; border-radius:6px; padding:16px; color:var(--white); font-family:var(--font-head); font-size:24px; letter-spacing:3px; cursor:pointer; transition:all 0.2s; -webkit-appearance:none; }
+  #submit-btn:active { transform:scale(0.98); background:#6b0000; }
+  #submit-btn:disabled { background:rgba(139,0,0,0.3); color:rgba(240,237,232,0.3); cursor:default; }
 
-  /* Request Form */
-  #request-form {
-    background: var(--card);
-    border: 1px solid rgba(139,0,0,0.3);
-    border-radius: 8px;
-    padding: 20px;
-    backdrop-filter: blur(20px);
-  }
+  #form-msg { font-family:var(--font-pixel); font-size:16px; letter-spacing:2px; text-align:center; padding-top:12px; min-height:24px; }
+  #form-msg.ok { color:var(--green); } #form-msg.err { color:#ff4444; }
 
-  .field { margin-bottom: 16px; }
-  .field label {
-    display: block;
-    font-family: var(--font-pixel);
-    font-size: 13px;
-    letter-spacing: 3px;
-    color: rgba(240,237,232,0.4);
-    margin-bottom: 6px;
-  }
-  .field input, .field textarea {
-    width: 100%;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(139,0,0,0.3);
-    border-radius: 6px;
-    padding: 12px 14px;
-    color: var(--white);
-    font-family: var(--font-body);
-    font-size: 16px;
-    outline: none;
-    transition: border-color 0.2s;
-    -webkit-appearance: none;
-  }
-  .field input:focus, .field textarea:focus { border-color: var(--accent); }
-  .field input::placeholder, .field textarea::placeholder { color: rgba(240,237,232,0.2); }
-  .field textarea { resize: none; height: 70px; }
+  #rate-limit-screen { display:none; text-align:center; padding:40px 20px; background:var(--card); border:1px solid rgba(139,0,0,0.3); border-radius:8px; }
+  #rate-limit-screen.show { display:block; }
+  #rate-limit-screen .big-icon { font-size:52px; margin-bottom:16px; }
+  #rate-limit-screen h2 { font-family:var(--font-head); font-size:32px; letter-spacing:3px; color:var(--amber); margin-bottom:8px; }
+  #rate-limit-screen p { font-family:var(--font-pixel); font-size:18px; color:rgba(240,237,232,0.5); letter-spacing:2px; line-height:1.6; }
+  #countdown { font-family:var(--font-pixel); font-size:36px; color:var(--accent); margin-top:16px; letter-spacing:4px; }
 
-  #submit-btn {
-    width: 100%;
-    background: var(--accent);
-    border: none;
-    border-radius: 6px;
-    padding: 16px;
-    color: var(--white);
-    font-family: var(--font-head);
-    font-size: 24px;
-    letter-spacing: 3px;
-    cursor: pointer;
-    transition: all 0.2s;
-    -webkit-appearance: none;
-  }
-  #submit-btn:active { transform: scale(0.98); background: #6b0000; }
-  #submit-btn:disabled { background: rgba(139,0,0,0.3); color: rgba(240,237,232,0.3); cursor: default; }
+  .vote-card { background:var(--card); border:1px solid rgba(139,0,0,0.2); border-radius:8px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; gap:14px; }
+  .vote-card.voted { border-color:rgba(57,255,20,0.3); }
+  .vote-card.top { border-color:rgba(255,179,71,0.4); background:rgba(30,15,0,0.85); }
+  .vc-rank { font-family:var(--font-head); font-size:30px; color:rgba(240,237,232,0.15); min-width:36px; text-align:center; }
+  .vote-card.top .vc-rank { color:var(--amber); }
+  .vc-details { flex:1; min-width:0; }
+  .vc-title { font-family:var(--font-head); font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vc-artist { font-size:12px; color:rgba(240,237,232,0.4); margin-top:2px; }
+  .vc-requester { font-family:var(--font-pixel); font-size:11px; color:var(--accent); letter-spacing:1px; margin-top:2px; }
+  .vc-right { display:flex; flex-direction:column; align-items:center; gap:8px; min-width:60px; }
+  .vc-votes { font-family:var(--font-pixel); font-size:28px; color:var(--white); line-height:1; }
+  .vote-card.top .vc-votes { color:var(--amber); }
+  .vc-votes-label { font-family:var(--font-pixel); font-size:10px; color:rgba(240,237,232,0.3); letter-spacing:2px; }
+  .vote-btn { width:100%; background:rgba(139,0,0,0.2); border:1px solid rgba(139,0,0,0.4); border-radius:5px; padding:6px 10px; color:var(--white); font-family:var(--font-pixel); font-size:14px; letter-spacing:1px; cursor:pointer; transition:all 0.15s; -webkit-appearance:none; text-align:center; }
+  .vote-btn:active { background:var(--accent); transform:scale(0.95); }
+  .vote-btn.voted-state { background:rgba(57,255,20,0.1); border-color:rgba(57,255,20,0.3); color:var(--green); cursor:default; }
 
-  #form-msg {
-    font-family: var(--font-pixel);
-    font-size: 16px;
-    letter-spacing: 2px;
-    text-align: center;
-    padding-top: 12px;
-    min-height: 24px;
-  }
-  #form-msg.ok { color: var(--green); }
-  #form-msg.err { color: #ff4444; }
+  #pending-notice { background:rgba(255,179,71,0.08); border:1px solid rgba(255,179,71,0.2); border-radius:8px; padding:14px 16px; margin-bottom:10px; font-family:var(--font-pixel); font-size:15px; color:rgba(255,179,71,0.7); letter-spacing:2px; text-align:center; display:none; }
+  #pending-notice.show { display:block; }
 
-  /* Rate limit screen */
-  #rate-limit-screen {
-    display: none;
-    text-align: center;
-    padding: 40px 20px;
-    background: var(--card);
-    border: 1px solid rgba(139,0,0,0.3);
-    border-radius: 8px;
-  }
-  #rate-limit-screen.show { display: block; }
-  #rate-limit-screen .big-icon { font-size: 52px; margin-bottom: 16px; }
-  #rate-limit-screen h2 {
-    font-family: var(--font-head);
-    font-size: 32px;
-    letter-spacing: 3px;
-    color: var(--amber);
-    margin-bottom: 8px;
-  }
-  #rate-limit-screen p {
-    font-family: var(--font-pixel);
-    font-size: 18px;
-    color: rgba(240,237,232,0.5);
-    letter-spacing: 2px;
-    line-height: 1.6;
-  }
-  #rate-limit-screen #countdown {
-    font-family: var(--font-pixel);
-    font-size: 36px;
-    color: var(--accent);
-    margin-top: 16px;
-    letter-spacing: 4px;
-  }
-
-  /* Leaderboard */
-  .vote-card {
-    background: var(--card);
-    border: 1px solid rgba(139,0,0,0.2);
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    transition: border-color 0.2s;
-  }
-  .vote-card.voted { border-color: rgba(57,255,20,0.3); }
-  .vote-card.top { border-color: rgba(255,179,71,0.4); background: rgba(30,15,0,0.85); }
-
-  .vc-rank {
-    font-family: var(--font-head);
-    font-size: 30px;
-    color: rgba(240,237,232,0.15);
-    min-width: 36px;
-    text-align: center;
-    line-height: 1;
-  }
-  .vote-card.top .vc-rank { color: var(--amber); }
-
-  .vc-details { flex: 1; min-width: 0; }
-  .vc-title {
-    font-family: var(--font-head);
-    font-size: 18px;
-    letter-spacing: 0.5px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .vc-artist {
-    font-size: 12px;
-    color: rgba(240,237,232,0.4);
-    margin-top: 2px;
-  }
-  .vc-requester {
-    font-family: var(--font-pixel);
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 1px;
-    margin-top: 2px;
-  }
-
-  .vc-right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    min-width: 60px;
-  }
-  .vc-votes {
-    font-family: var(--font-pixel);
-    font-size: 28px;
-    color: var(--white);
-    line-height: 1;
-  }
-  .vote-card.top .vc-votes { color: var(--amber); }
-  .vc-votes-label {
-    font-family: var(--font-pixel);
-    font-size: 10px;
-    color: rgba(240,237,232,0.3);
-    letter-spacing: 2px;
-  }
-
-  .vote-btn {
-    width: 100%;
-    background: rgba(139,0,0,0.2);
-    border: 1px solid rgba(139,0,0,0.4);
-    border-radius: 5px;
-    padding: 6px 10px;
-    color: var(--white);
-    font-family: var(--font-pixel);
-    font-size: 14px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-appearance: none;
-    text-align: center;
-  }
-  .vote-btn:active { background: var(--accent); transform: scale(0.95); }
-  .vote-btn.voted-state {
-    background: rgba(57,255,20,0.1);
-    border-color: rgba(57,255,20,0.3);
-    color: var(--green);
-    cursor: default;
-  }
-
-  /* Toast */
-  #toast {
-    position: fixed;
-    bottom: 20px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: rgba(20,10,10,0.95);
-    border: 1px solid rgba(139,0,0,0.5);
-    border-radius: 8px;
-    padding: 14px 24px;
-    font-family: var(--font-pixel);
-    font-size: 18px;
-    letter-spacing: 2px;
-    color: var(--white);
-    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    z-index: 200;
-    white-space: nowrap;
-  }
-  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px); background:rgba(20,10,10,0.95); border:1px solid rgba(139,0,0,0.5); border-radius:8px; padding:14px 24px; font-family:var(--font-pixel); font-size:18px; letter-spacing:2px; color:var(--white); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index:200; white-space:nowrap; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
 <div id="top-bar">
-  <div>
-    <div id="top-venue">THE BLACK ROSE</div>
-    <div id="top-sub">▶ ROCKBOARD</div>
-  </div>
-  <div id="votes-left-badge">
-    VOTES LEFT<span id="votes-left-num">5</span>
-  </div>
+  <div><div id="top-venue">THE BLACK ROSE</div><div id="top-sub">▶ ROCKBOARD</div></div>
+  <div id="votes-left-badge">VOTES LEFT<span id="votes-left-num">5</span></div>
 </div>
 
 <div id="now-playing-strip">
@@ -325,22 +88,12 @@
   <div id="np-text">Loading now playing...</div>
 </div>
 
-<!-- REQUEST FORM -->
 <div class="section">
   <div class="section-title">▸ REQUEST A TRACK</div>
   <div id="request-form">
-    <div class="field">
-      <label>TRACK NAME</label>
-      <input type="text" id="inp-track" placeholder="e.g. Bohemian Rhapsody" maxlength="80" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>ARTIST</label>
-      <input type="text" id="inp-artist" placeholder="e.g. Queen" maxlength="80" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>YOUR NAME (OPTIONAL)</label>
-      <input type="text" id="inp-name" placeholder="e.g. Dave" maxlength="30" autocomplete="off">
-    </div>
+    <div class="field"><label>TRACK NAME</label><input type="text" id="inp-track" placeholder="e.g. Bohemian Rhapsody" maxlength="80" autocomplete="off"></div>
+    <div class="field"><label>ARTIST</label><input type="text" id="inp-artist" placeholder="e.g. Queen" maxlength="80" autocomplete="off"></div>
+    <div class="field"><label>YOUR NAME (OPTIONAL)</label><input type="text" id="inp-name" placeholder="e.g. Dave" maxlength="30" autocomplete="off"></div>
     <button id="submit-btn" onclick="submitRequest()">🎵 REQUEST THIS TRACK</button>
     <div id="form-msg"></div>
   </div>
@@ -353,55 +106,53 @@
   </div>
 </div>
 
-<!-- LEADERBOARD -->
 <div class="section" style="margin-top:24px;">
   <div class="section-title">▸ TONIGHT'S MOST WANTED · VOTE TO PUSH 'EM UP</div>
+  <div id="pending-notice">⏳ YOUR REQUEST IS AWAITING STAFF APPROVAL</div>
   <div id="vote-list"></div>
 </div>
 
 <div id="toast"></div>
 
 <script src="config.js"></script>
-<script>
-// ============================================================
-//  CONFIG — reads from config.js
-// ============================================================
+<script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, updateDoc, increment, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const CONFIG = {
-  venueName:         (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.venueName)         || "THE BLACK ROSE",
-  maxActionsPerHour: (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.maxActionsPerHour) || 5,
-  lastfm_user:       (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.lastfm_user)       || "",
-  lastfm_key:        (typeof VENUE_CONFIG !== 'undefined' && VENUE_CONFIG.lastfm_key)        || "",
-  requestUrl: window.location.href,
+  venueName:         (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)         || "THE BLACK ROSE",
+  maxActionsPerHour: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.maxActionsPerHour) || 5,
+  lastfm_user:       (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user)       || "",
+  lastfm_key:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)        || "",
+  firebase:          (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)          || {},
 };
 
-// ============================================================
-//  RATE LIMITING (localStorage per device, per hour)
-// ============================================================
-const STORAGE_KEY = 'rockboard_actions';
+const fbApp = initializeApp(CONFIG.firebase);
+const db    = getFirestore(fbApp);
 
+document.getElementById('top-venue').textContent = CONFIG.venueName;
+document.title = CONFIG.venueName + ' · Request a Track';
+
+// ── DEVICE ID ──
+function getDeviceId() {
+  let id = localStorage.getItem('rb_device_id');
+  if (!id) { id = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('rb_device_id', id); }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
+// ── RATE LIMITING ──
+const STORAGE_KEY = 'rb_actions';
 function getActions() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { count: 0, windowStart: Date.now(), voted: {} };
-    return JSON.parse(raw);
-  } catch(e) { return { count: 0, windowStart: Date.now(), voted: {} }; }
+  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : { count:0, windowStart:Date.now(), voted:{} }; }
+  catch(e) { return { count:0, windowStart:Date.now(), voted:{} }; }
 }
-
-function saveActions(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
-}
-
+function saveActions(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch(e) {} }
 function getActionsRemaining() {
-  let data = getActions();
-  const now = Date.now();
-  const hourMs = 60 * 60 * 1000;
-  if (now - data.windowStart > hourMs) {
-    data = { count: 0, windowStart: now, voted: {} };
-    saveActions(data);
-  }
-  return { remaining: Math.max(0, CONFIG.maxActionsPerHour - data.count), data };
+  let d = getActions();
+  if (Date.now() - d.windowStart > 3600000) { d = { count:0, windowStart:Date.now(), voted:{} }; saveActions(d); }
+  return { remaining: Math.max(0, CONFIG.maxActionsPerHour - d.count), data: d };
 }
-
 function useAction(trackId) {
   const { remaining, data } = getActionsRemaining();
   if (remaining <= 0) return false;
@@ -410,139 +161,77 @@ function useAction(trackId) {
   saveActions(data);
   return true;
 }
-
-function hasVotedFor(trackId) {
-  const { data } = getActionsRemaining();
-  return !!data.voted[trackId];
-}
+function hasVotedFor(id) { return !!getActionsRemaining().data.voted[id]; }
 
 function updateVoteBadge() {
   const { remaining, data } = getActionsRemaining();
   document.getElementById('votes-left-num').textContent = remaining;
-  const formSection = document.getElementById('request-form');
-  const limitScreen = document.getElementById('rate-limit-screen');
-  if (remaining <= 0) {
-    formSection.style.display = 'none';
-    limitScreen.classList.add('show');
-    startCountdown(data);
-  } else {
-    formSection.style.display = '';
-    limitScreen.classList.remove('show');
-  }
+  const form  = document.getElementById('request-form');
+  const limit = document.getElementById('rate-limit-screen');
+  if (remaining <= 0) { form.style.display='none'; limit.classList.add('show'); startCountdown(data); }
+  else { form.style.display=''; limit.classList.remove('show'); }
 }
 
 function startCountdown(data) {
   const el = document.getElementById('countdown');
   function tick() {
-    const now = Date.now();
-    const remaining = (data.windowStart + 3600000) - now;
-    if (remaining <= 0) { updateVoteBadge(); return; }
-    const m = Math.floor(remaining / 60000);
-    const s = Math.floor((remaining % 60000) / 1000);
+    const rem = (data.windowStart + 3600000) - Date.now();
+    if (rem <= 0) { updateVoteBadge(); return; }
+    const m = Math.floor(rem/60000), s = Math.floor((rem%60000)/1000);
     el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     setTimeout(tick, 1000);
   }
   tick();
 }
 
-// ============================================================
-//  DEMO DATA (replace with Firebase reads)
-// ============================================================
-let tracks = [
-  { id:"t1", title:"Bohemian Rhapsody", artist:"Queen", votes:12, uniqueVoters:9, requester:"Dave" },
-  { id:"t2", title:"Enter Sandman", artist:"Metallica", votes:9, uniqueVoters:7, requester:"Sarah" },
-  { id:"t3", title:"Back in Black", artist:"AC/DC", votes:7, uniqueVoters:6, requester:"Mike" },
-  { id:"t4", title:"Smells Like Teen Spirit", artist:"Nirvana", votes:6, uniqueVoters:5, requester:"Jen" },
-  { id:"t5", title:"Mr. Brightside", artist:"The Killers", votes:5, uniqueVoters:4, requester:"Tom" },
-  { id:"t6", title:"Seven Nation Army", artist:"White Stripes", votes:4, uniqueVoters:4, requester:"Amy" },
-  { id:"t7", title:"Wonderwall", artist:"Oasis", votes:3, uniqueVoters:3, requester:"Anonymous" },
-  { id:"t8", title:"Don't Stop Me Now", artist:"Queen", votes:2, uniqueVoters:2, requester:"Bob" },
-];
-
-// ============================================================
-//  SUBMIT REQUEST
-// ============================================================
-function submitRequest() {
-  const track = document.getElementById('inp-track').value.trim();
+// ── SUBMIT REQUEST ──
+window.submitRequest = async function() {
+  const title  = document.getElementById('inp-track').value.trim();
   const artist = document.getElementById('inp-artist').value.trim();
-  const name = document.getElementById('inp-name').value.trim() || 'Anonymous';
-  const msg = document.getElementById('form-msg');
+  const name   = document.getElementById('inp-name').value.trim() || 'Anonymous';
+  if (!title)  { showMsg('TRACK NAME IS REQUIRED','err'); return; }
+  if (!artist) { showMsg('ARTIST NAME IS REQUIRED','err'); return; }
+  if (!useAction(null)) { updateVoteBadge(); return; }
 
-  if (!track) { showMsg('TRACK NAME IS REQUIRED', 'err'); return; }
-  if (!artist) { showMsg('ARTIST NAME IS REQUIRED', 'err'); return; }
-
-  if (!useAction(null)) {
-    updateVoteBadge();
-    return;
-  }
-
-  // Check if already in list — add vote instead
-  const existing = tracks.find(t =>
-    t.title.toLowerCase() === track.toLowerCase() &&
-    t.artist.toLowerCase() === artist.toLowerCase()
-  );
-
-  if (existing) {
-    existing.votes++;
-    existing.uniqueVoters++;
-    showToast(`▲ VOTED FOR: ${existing.title}`);
-  } else {
-    const newTrack = {
-      id: 't' + Date.now(),
-      title: track,
-      artist: artist,
-      votes: 1,
-      uniqueVoters: 1,
-      requester: name,
-      pending: true // awaiting staff approval
-    };
-    tracks.push(newTrack);
-    showToast(`🎵 REQUEST SENT: ${track}`);
-  }
-
-  document.getElementById('inp-track').value = '';
-  document.getElementById('inp-artist').value = '';
-  document.getElementById('inp-name').value = '';
-  showMsg('REQUEST SUBMITTED · STAFF WILL REVIEW', 'ok');
+  try {
+    await addDoc(collection(db,'tracks'), {
+      title, artist, requester: name,
+      votes: 1, uniqueVoters: 1,
+      voters: [DEVICE_ID],
+      approved: false,
+      createdAt: Date.now(),
+    });
+    document.getElementById('inp-track').value  = '';
+    document.getElementById('inp-artist').value = '';
+    document.getElementById('inp-name').value   = '';
+    showMsg('REQUEST SENT · AWAITING STAFF APPROVAL','ok');
+    document.getElementById('pending-notice').classList.add('show');
+    setTimeout(() => document.getElementById('pending-notice').classList.remove('show'), 8000);
+  } catch(e) { showMsg('ERROR · TRY AGAIN','err'); console.error(e); }
 
   updateVoteBadge();
-  renderVoteList();
-}
+};
 
-// ============================================================
-//  VOTE ON EXISTING TRACK
-// ============================================================
-function voteFor(trackId) {
-  if (hasVotedFor(trackId)) {
-    showToast('ALREADY VOTED FOR THIS ONE');
-    return;
-  }
-  if (!useAction(trackId)) {
-    updateVoteBadge();
-    showToast("YOU'VE USED YOUR VOTES FOR THIS HOUR");
-    return;
-  }
-  const track = tracks.find(t => t.id === trackId);
-  if (track) {
-    track.votes++;
-    track.uniqueVoters++;
-    showToast(`🤘 VOTED: ${track.title}`);
-  }
+// ── VOTE ──
+window.voteFor = async function(trackId) {
+  if (hasVotedFor(trackId)) { showToast('ALREADY VOTED FOR THIS ONE'); return; }
+  if (!useAction(trackId))  { updateVoteBadge(); showToast("YOU'VE USED YOUR VOTES FOR THIS HOUR"); return; }
+  try {
+    const ref = doc(db,'tracks',trackId);
+    await updateDoc(ref, { votes: increment(1), uniqueVoters: increment(1), voters: arrayUnion(DEVICE_ID) });
+    showToast('🤘 VOTE CAST!');
+  } catch(e) { showToast('ERROR · TRY AGAIN'); console.error(e); }
   updateVoteBadge();
-  renderVoteList();
-}
+};
 
-// ============================================================
-//  RENDER VOTE LIST
-// ============================================================
-function renderVoteList() {
+// ── LIVE LEADERBOARD ──
+let liveTrackIds = [];
+const q = query(collection(db,'tracks'), orderBy('uniqueVoters','desc'));
+onSnapshot(q, (snapshot) => {
+  const tracks = snapshot.docs.map(d => ({ id:d.id, ...d.data() })).filter(t => t.approved);
+  liveTrackIds = tracks.map(t => t.id);
   const list = document.getElementById('vote-list');
-  const sorted = [...tracks]
-    .filter(t => !t.pending)
-    .sort((a, b) => b.uniqueVoters - a.uniqueVoters)
-    .slice(0, 10);
-
-  list.innerHTML = sorted.map((t, i) => {
+  list.innerHTML = tracks.slice(0,10).map((t,i) => {
     const voted = hasVotedFor(t.id);
     return `
       <div class="vote-card ${i===0?'top':''} ${voted?'voted':''}">
@@ -553,41 +242,16 @@ function renderVoteList() {
           <div class="vc-requester">↳ ${t.requester}</div>
         </div>
         <div class="vc-right">
-          <div>
-            <div class="vc-votes">${t.uniqueVoters}</div>
-            <div class="vc-votes-label">VOTES</div>
-          </div>
+          <div><div class="vc-votes">${t.uniqueVoters}</div><div class="vc-votes-label">VOTES</div></div>
           <button class="vote-btn ${voted?'voted-state':''}" onclick="voteFor('${t.id}')" ${voted?'disabled':''}>
             ${voted ? '✓ VOTED' : '▲ VOTE'}
           </button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
-}
+});
 
-// ============================================================
-//  UI HELPERS
-// ============================================================
-function showMsg(text, type) {
-  const el = document.getElementById('form-msg');
-  el.textContent = text;
-  el.className = type;
-  setTimeout(() => { el.textContent = ''; el.className = ''; }, 4000);
-}
-
-let toastTimer;
-function showToast(text) {
-  const el = document.getElementById('toast');
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-}
-
-// ============================================================
-//  NOW PLAYING (Last.fm)
-// ============================================================
+// ── NOW PLAYING ──
 async function fetchNowPlaying() {
   if (!CONFIG.lastfm_key || !CONFIG.lastfm_user) return;
   try {
@@ -595,33 +259,29 @@ async function fetchNowPlaying() {
     const res = await fetch(url);
     const data = await res.json();
     const track = data.recenttracks?.track?.[0];
-    if (track) {
-      const title = track.name;
-      const artist = track.artist['#text'];
-      const isNow = track['@attr']?.nowplaying === 'true';
-      document.getElementById('np-text').textContent = isNow
-        ? `${title} — ${artist}`
-        : `Last played: ${title} — ${artist}`;
-    }
-  } catch(e) { console.warn('Last.fm fetch failed', e); }
+    if (!track) return;
+    const isNow = track['@attr']?.nowplaying === 'true';
+    document.getElementById('np-text').textContent = (isNow ? '' : 'Last: ') + track.name + ' — ' + track.artist['#text'];
+  } catch(e) { console.warn('Last.fm error',e); }
 }
-
-// ============================================================
-//  INIT
-// ============================================================
-document.getElementById('top-venue').textContent = CONFIG.venueName;
-document.title = CONFIG.venueName + ' · Request a Track';
-
-updateVoteBadge();
-renderVoteList();
 fetchNowPlaying();
 setInterval(fetchNowPlaying, 15000);
 
-// Simulate live updates
-setInterval(() => {
-  const idx = Math.floor(Math.random() * tracks.filter(t=>!t.pending).length);
-  if (tracks[idx]) { tracks[idx].uniqueVoters++; renderVoteList(); }
-}, 8000);
+// ── HELPERS ──
+function showMsg(text, type) {
+  const el = document.getElementById('form-msg');
+  el.textContent = text; el.className = type;
+  setTimeout(() => { el.textContent=''; el.className=''; }, 4000);
+}
+let toastTimer;
+function showToast(text) {
+  const el = document.getElementById('toast');
+  el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+updateVoteBadge();
 </script>
 </body>
 </html>
