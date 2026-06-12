@@ -201,6 +201,27 @@
 </div>
 
 <script src="config.js"></script>
+
+<!-- Global bridge — onclick handlers need these in window scope -->
+<script>
+function pinKey(k)   { window._pinKey   && window._pinKey(k);   }
+function pinBack()   { window._pinBack   && window._pinBack();   }
+function pinClear()  { window._pinClear  && window._pinClear();  }
+function lock()      { window._lock      && window._lock();      }
+function toggleTshirt()      { window._toggleTshirt      && window._toggleTshirt();      }
+function toggleAutoApprove() { window._toggleAutoApprove && window._toggleAutoApprove(); }
+function toggleAutoQueue()   { window._toggleAutoQueue   && window._toggleAutoQueue();   }
+function queueTopTrack()     { window._queueTopTrack     && window._queueTopTrack();     }
+function updateInterval(v)   { window._updateInterval    && window._updateInterval(v);   }
+function approveAll()        { window._approveAll        && window._approveAll();        }
+function revealWinner()      { window._revealWinner      && window._revealWinner();      }
+function clearNight()        { window._clearNight        && window._clearNight();        }
+function switchTab(t)        { window._switchTab         && window._switchTab(t);        }
+function keepTrack(id)       { window._keepTrack         && window._keepTrack(id);       }
+function ditchTrack(id)      { window._ditchTrack        && window._ditchTrack(id);      }
+function markPlayed(id)      { window._markPlayed        && window._markPlayed(id);      }
+</script>
+
 <script type="module">
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -290,9 +311,9 @@ async function restoreAllStates() {
 
 // ── PIN ──
 let pinEntry = '';
-window.pinKey = k => { if (pinEntry.length >= 4) return; pinEntry += k; updatePinDots(); if (pinEntry.length === 4) checkPin(); };
-window.pinBack  = () => { pinEntry = pinEntry.slice(0,-1); updatePinDots(); };
-window.pinClear = () => { pinEntry = ''; updatePinDots(); };
+window._pinKey = k => { if (pinEntry.length >= 4) return; pinEntry += k; updatePinDots(); if (pinEntry.length === 4) checkPin(); };
+window._pinBack  = () => { pinEntry = pinEntry.slice(0,-1); updatePinDots(); };
+window._pinClear = () => { pinEntry = ''; updatePinDots(); };
 
 function updatePinDots() {
   for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('filled', i < pinEntry.length);
@@ -311,7 +332,7 @@ function checkPin() {
   }
 }
 
-window.lock = () => {
+window._lock = () => {
   isAuthed = false;
   localStorage.removeItem(SESSION_KEY);
   pinEntry = ''; updatePinDots();
@@ -335,14 +356,14 @@ function startListening() {
 }
 
 // ── KEEP / DITCH ──
-window.keepTrack = async function(id) {
+window._keepTrack = async function(id) {
   const card = document.getElementById('rc-'+id);
   if (card) card.classList.add('keeping');
   setTimeout(async () => {
     try { await updateDoc(doc(db,'tracks',id), { approved:true }); } catch(e) { console.error(e); }
   }, 300);
 };
-window.ditchTrack = async function(id) {
+window._ditchTrack = async function(id) {
   const card = document.getElementById('rc-'+id);
   if (card) card.classList.add('ditching');
   setTimeout(async () => {
@@ -371,7 +392,7 @@ function applyTshirtUI() {
   btn.className = 'ctrl-btn ' + (tshirtOn ? 'tshirt-on' : 'tshirt-off');
 }
 
-window.toggleTshirt = function() {
+window._toggleTshirt = function() {
   tshirtOn = !tshirtOn;
   applyTshirtUI();
   syncTshirtState();
@@ -388,7 +409,7 @@ function applyAutoApproveUI(on) {
   btn.classList.toggle('on', on);
 }
 
-window.toggleAutoApprove = function() {
+window._toggleAutoApprove = function() {
   const newState = !autoApprove;
   applyAutoApproveUI(newState);
   if (newState) approveAll();
@@ -402,7 +423,7 @@ window.toggleAutoApprove = function() {
 };
 
 // ── APPROVE ALL ──
-window.approveAll = async function() {
+window._approveAll = async function() {
   const pending = allTracks.filter(t => !t.approved);
   if (!pending.length) return;
   try {
@@ -413,7 +434,7 @@ window.approveAll = async function() {
 };
 
 // ── WINNER ──
-window.revealWinner = function() {
+window._revealWinner = function() {
   const approved = allTracks.filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
   if (!approved.length) { alert('No approved tracks yet!'); return; }
   const w = approved[0];
@@ -432,7 +453,7 @@ window.revealWinner = function() {
 };
 
 // ── CLEAR NIGHT ──
-window.clearNight = async function() {
+window._clearNight = async function() {
   if (!confirm('Start a new night? This permanently deletes ALL tracks and votes.')) return;
   try {
     const snapshot = await getDocs(collection(db,'tracks'));
@@ -443,7 +464,7 @@ window.clearNight = async function() {
 };
 
 // ── TABS ──
-window.switchTab = function(tab) {
+window._switchTab = function(tab) {
   ['pending','approved','played'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('active', tab===t);
     document.getElementById('section-'+t).classList.toggle('show', tab===t);
@@ -531,7 +552,7 @@ async function spotifyCall(endpoint, method='GET', body=null) {
   } catch(e) { console.warn('Spotify error', e); return { error: e.message }; }
 }
 
-window.queueTopTrack = async function() {
+window._queueTopTrack = async function() {
   const recentlyPlayed = await getRecentlyPlayed();
   const approved = [...allTracks.filter(t=>t.approved && !t.spotifyQueued)].sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
   if (!approved.length) { showStaffToast('NO TRACKS TO QUEUE'); return; }
@@ -610,7 +631,7 @@ function applyAutoQueueState(on) {
 }
 
 // ── UPDATE INTERVAL ──
-window.updateInterval = function(mins) {
+window._updateInterval = function(mins) {
   const m = Math.max(1, Math.min(60, parseInt(mins) || 2));
   document.getElementById('interval-input').value = m;
   CONFIG.autoQueueMins = m;
@@ -631,7 +652,7 @@ window.updateInterval = function(mins) {
   }
 };
 
-window.toggleAutoQueue = function() {
+window._toggleAutoQueue = function() {
   const newState = !autoQueueOn;
   applyAutoQueueState(newState);
   // Persist to Firebase
@@ -731,7 +752,7 @@ async function runAutoQueue() {
   }
 }
 
-window.markPlayed = async function(id) {
+window._markPlayed = async function(id) {
   // Find the track before deleting it
   const track = allTracks.find(t => t.id === id);
   // Delete from active board
