@@ -535,8 +535,19 @@ window.queueTopTrack = async function() {
   const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
   console.log('Queue result:', JSON.stringify(result));
   if (result?.ok) {
-    await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri });
-    showStaffToast('✅ QUEUED: ' + found.name);
+    await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri, queuedAt: Date.now() });
+    showStaffToast('✅ QUEUED: ' + found.name + ' — REMOVING IN 30s');
+    setTimeout(async () => {
+      try {
+        const { setDoc: sd2 } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        await sd2(doc(db,'played',top.id), {
+          title: top.title, artist: top.artist,
+          playedAt: Date.now(), spotifyUri: found.uri,
+        });
+        await deleteDoc(doc(db,'tracks',top.id));
+        showStaffToast('✅ REMOVED: ' + found.name);
+      } catch(e) { console.warn('Auto-remove failed', e); }
+    }, 30000);
   } else {
     // Dig into nested Spotify error structure
     let err = 'UNKNOWN ERROR';
@@ -551,7 +562,7 @@ window.queueTopTrack = async function() {
 // ── AUTO-QUEUE TOGGLE ──
 let autoQueueOn = false;
 let autoQueueTimer = null;
-const AUTO_QUEUE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const AUTO_QUEUE_INTERVAL = 2 * 60 * 1000; // 2 minutes (change to 4 * 60 * 1000 for venue use)
 
 function applyAutoQueueState(on) {
   autoQueueOn = on;
@@ -651,7 +662,22 @@ async function runAutoQueue() {
   const result = await spotifyCall('/queue', 'POST', { uri: found.uri });
   if (result?.ok) {
     await updateDoc(doc(db,'tracks',top.id), { spotifyQueued: true, spotifyUri: found.uri, queuedAt: Date.now() });
-    showStaffToast('⏱ AUTO-QUEUED: ' + found.name);
+    showStaffToast('⏱ QUEUED: ' + found.name + ' — REMOVING IN 30s');
+    // Auto-remove from board after 30 seconds (track is in Spotify queue)
+    setTimeout(async () => {
+      try {
+        // Record as played before removing
+        const { setDoc: sd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        await sd(doc(db,'played',top.id), {
+          title: top.title, artist: top.artist,
+          playedAt: Date.now(), spotifyUri: found.uri,
+        });
+        await deleteDoc(doc(db,'tracks',top.id));
+        showStaffToast('✅ REMOVED: ' + found.name + ' — QUEUING NEXT...');
+        // Queue the next track
+        setTimeout(() => runAutoQueue(), 2000);
+      } catch(e) { console.warn('Auto-remove failed', e); }
+    }, 30000);
   }
 }
 
