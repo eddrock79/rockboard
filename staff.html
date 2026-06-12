@@ -199,12 +199,18 @@ import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/fir
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const CONFIG = {
-  venueName:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)           || "THE BLACK ROSE",
-  staffPin:            (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.staffPin)            || "1234",
-  tshirtMode:          (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode            : true,
-  firebase:            (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)            || {},
-  spotify_worker_url:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url)  || "",
-  spotify_playlist_id: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_playlist_id) || "",
+  venueName:          "THE BLACK ROSE",
+  staffPin:           "1234",
+  tshirtMode:         true,
+  spotify_worker_url: "https://rockboard.eddrock79.workers.dev",
+  firebase: {
+    apiKey:            "AIzaSyCBV3mususv2A_ss0vEiUDxA6PBGCOLCgc",
+    authDomain:        "rockboard-2b240.firebaseapp.com",
+    projectId:         "rockboard-2b240",
+    storageBucket:     "rockboard-2b240.firebasestorage.app",
+    messagingSenderId: "875047215481",
+    appId:             "1:875047215481:web:89616e2e219aa6396d0fa8",
+  },
 };
 
 const fbApp = initializeApp(CONFIG.firebase);
