@@ -1,6 +1,5 @@
 // ============================================================
-//  ROCKBOARD CONFIG
-//  Swap this file (or just these values) per venue
+//  ROCKBOARD CONFIG — swap this file per venue
 // ============================================================
 
 const VENUE_CONFIG = {
@@ -15,16 +14,17 @@ const VENUE_CONFIG = {
   lastfm_user:  "eddrock79",
   lastfm_key:   "78658e952901ff5d096dc83873d22049",
 
-  // ── VOTING RULES ─────────────────────────────────────────
-  maxActionsPerHour: 5,
-  maxLeaderboard:   10,
+  // ── VOTING RULES (set low for live, high for testing) ────
+  maxRequestsPerHour: 40,    // track requests per device per hour
+  maxVotesPerHour:   100,    // votes per device per hour
+  maxLeaderboard:     10,    // how many tracks show on the board
 
   // ── T-SHIRT COMPETITION ──────────────────────────────────
-  tshirtMode:   true,
+  tshirtMode:   true,        // true = show prize badge, false = hide it
   tshirtText:   "MOST UNIQUE VOTES WINS A T-SHIRT",
 
   // ── STAFF ────────────────────────────────────────────────
-  staffPin:     "1234",  // Change this to something only staff know!
+  staffPin:     "1234",      // change this!
 
   // ── FIREBASE ─────────────────────────────────────────────
   firebase: {
@@ -43,13 +43,6 @@ const VENUE_CONFIG = {
 
 // ── PER-VENUE PRESETS ─────────────────────────────────────
 /*
-const BLACK_ROSE = {
-  venueName:   "THE BLACK ROSE",
-  accent:      "#8B0000",
-  lastfm_user: "blackrose_tidal",
-  lastfm_key:  "78658e952901ff5d096dc83873d22049",
-};
-
 const BANSHEE = {
   venueName:   "THE BANSHEE LABYRINTH",
   accent:      "#2d0047",

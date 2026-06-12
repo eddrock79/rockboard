@@ -21,12 +21,15 @@
   .pin-key:active{background:rgba(139,0,0,0.4);transform:scale(0.96)}
   .pin-key.clear{font-size:18px;color:rgba(240,237,232,0.4)}
   #pin-error{font-family:var(--font-pixel);font-size:16px;color:#ff4444;letter-spacing:3px;min-height:24px;text-align:center}
+  #stay-logged-in{display:flex;align-items:center;gap:10px;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;color:rgba(240,237,232,0.4);cursor:pointer}
+  #stay-logged-in input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
 
   #staff-app{display:none}
   #staff-app.show{display:block}
   #staff-header{background:rgba(10,10,10,0.95);border-bottom:1px solid rgba(139,0,0,0.3);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
   #staff-header h1{font-family:var(--font-head);font-size:24px;letter-spacing:4px}
   #staff-header .sub{font-family:var(--font-pixel);font-size:12px;color:var(--accent);letter-spacing:3px}
+  #header-right{display:flex;gap:10px;align-items:center}
 
   #controls-bar{padding:16px 20px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid rgba(139,0,0,0.15)}
   .ctrl-btn{padding:10px 18px;border-radius:6px;border:1px solid;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
@@ -40,6 +43,7 @@
   #tabs{display:flex;border-bottom:1px solid rgba(139,0,0,0.2)}
   .tab{flex:1;padding:12px;font-family:var(--font-pixel);font-size:14px;letter-spacing:3px;text-align:center;color:rgba(240,237,232,0.35);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
   .tab.active{color:var(--white);border-bottom-color:var(--accent)}
+  .tab .badge{display:inline-block;background:var(--accent);color:var(--white);border-radius:10px;font-size:11px;padding:1px 7px;margin-left:4px;vertical-align:middle}
 
   .list-section{padding:16px 20px;display:none}
   .list-section.show{display:block}
@@ -56,7 +60,7 @@
   .rc-meta .votes{font-size:22px;color:var(--white);display:block;line-height:1}
   .rc-requester{font-family:var(--font-pixel);font-size:12px;color:var(--accent);letter-spacing:2px;margin-bottom:12px}
   .rc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .keep-btn,.ditch-btn{padding:14px;border-radius:6px;border:none;font-family:var(--font-head);font-size:20px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
+  .keep-btn,.ditch-btn{padding:14px;border-radius:6px;font-family:var(--font-head);font-size:20px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
   .keep-btn:active,.ditch-btn:active{transform:scale(0.97)}
   .keep-btn{background:rgba(57,255,20,0.15);border:1px solid rgba(57,255,20,0.4);color:var(--green)}
   .ditch-btn{background:rgba(139,0,0,0.25);border:1px solid rgba(139,0,0,0.5);color:#ff6666}
@@ -70,17 +74,15 @@
   .ac-meta small{font-size:10px;color:rgba(240,237,232,0.3);display:block;letter-spacing:2px}
   .ac-ditch{background:transparent;border:1px solid rgba(139,0,0,0.3);border-radius:5px;padding:6px 10px;color:rgba(255,68,68,0.5);font-family:var(--font-pixel);font-size:13px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
   .ac-ditch:active{background:rgba(139,0,0,0.3);color:#ff4444}
-
   .empty-state{text-align:center;padding:40px 20px;font-family:var(--font-pixel);font-size:18px;color:rgba(240,237,232,0.25);letter-spacing:3px;line-height:1.8}
 
-  /* Winner overlay */
   #winner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:40px}
   #winner-overlay.show{display:flex}
   #winner-overlay h1{font-family:var(--font-head);font-size:56px;letter-spacing:6px;color:var(--amber)}
-  #winner-overlay .w-track{font-family:var(--font-head);font-size:38px;color:var(--white)}
-  #winner-overlay .w-artist{font-size:18px;color:rgba(240,237,232,0.6)}
-  #winner-overlay .w-quote{font-family:var(--font-pixel);font-size:24px;color:var(--green);max-width:600px;line-height:1.5}
-  #winner-overlay .w-votes{font-family:var(--font-pixel);font-size:16px;color:rgba(240,237,232,0.4);letter-spacing:3px}
+  .w-track{font-family:var(--font-head);font-size:38px;color:var(--white)}
+  .w-artist{font-size:18px;color:rgba(240,237,232,0.6)}
+  .w-quote{font-family:var(--font-pixel);font-size:24px;color:var(--green);max-width:600px;line-height:1.5}
+  .w-votes{font-family:var(--font-pixel);font-size:16px;color:rgba(240,237,232,0.4);letter-spacing:3px}
   #winner-close{margin-top:16px;font-family:var(--font-pixel);font-size:16px;letter-spacing:3px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:10px 24px;border-radius:4px;background:transparent;color:rgba(240,237,232,0.4);transition:all 0.2s}
   #winner-close:hover{border-color:var(--amber);color:var(--amber)}
 </style>
@@ -108,6 +110,7 @@
     <button class="pin-key" onclick="pinKey('0')">0</button>
     <button class="pin-key clear" onclick="pinBack()">⌫</button>
   </div>
+  <label id="stay-logged-in"><input type="checkbox" id="remember-me"> STAY LOGGED IN ON THIS DEVICE</label>
   <div id="pin-error"></div>
 </div>
 
@@ -115,7 +118,9 @@
 <div id="staff-app">
   <div id="staff-header">
     <div><h1 id="s-venue">STAFF · ROCKBOARD</h1><div class="sub" id="s-sub">THE BLACK ROSE</div></div>
-    <button class="ctrl-btn lock-btn" onclick="lock()">LOCK</button>
+    <div id="header-right">
+      <button class="ctrl-btn lock-btn" onclick="lock()">LOCK</button>
+    </div>
   </div>
   <div id="controls-bar">
     <button class="ctrl-btn tshirt-on" id="tshirt-btn" onclick="toggleTshirt()">🏆 T-SHIRT: ON</button>
@@ -123,7 +128,7 @@
     <button class="ctrl-btn clear-btn" onclick="clearNight()">↺ NEW NIGHT</button>
   </div>
   <div id="tabs">
-    <div class="tab active" id="tab-pending" onclick="switchTab('pending')">PENDING <span id="pending-badge"></span></div>
+    <div class="tab active" id="tab-pending" onclick="switchTab('pending')">PENDING <span class="badge" id="pending-badge" style="display:none">0</span></div>
     <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
   </div>
   <div class="list-section show" id="section-pending">
@@ -136,14 +141,13 @@
   </div>
 </div>
 
-<!-- Winner overlay -->
 <div id="winner-overlay">
-  <div>🏆</div>
+  <div style="font-size:60px">🏆</div>
   <h1>TONIGHT'S CHAMPION</h1>
   <div class="w-track" id="w-track">—</div>
   <div class="w-artist" id="w-artist">—</div>
   <div class="w-quote" id="w-quote">—</div>
-  <div class="w-votes" id="w-votes">— UNIQUE VOTES</div>
+  <div class="w-votes" id="w-votes">—</div>
   <button id="winner-close" onclick="document.getElementById('winner-overlay').classList.remove('show')">[ CLOSE ]</button>
 </div>
 
@@ -153,37 +157,67 @@ import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/fir
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const CONFIG = {
-  venueName: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName) || "THE BLACK ROSE",
-  staffPin:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.staffPin)  || "1234",
-  tshirtMode:(typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode  : true,
-  firebase:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)  || {},
+  venueName:  (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)  || "THE BLACK ROSE",
+  staffPin:   (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.staffPin)   || "1234",
+  tshirtMode: (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode   : true,
+  firebase:   (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)   || {},
 };
 
 const fbApp = initializeApp(CONFIG.firebase);
 const db    = getFirestore(fbApp);
 
 document.getElementById('s-sub').textContent = CONFIG.venueName;
+document.getElementById('s-venue').textContent = 'STAFF · ' + CONFIG.venueName;
 document.title = 'Staff · ' + CONFIG.venueName;
-if (!CONFIG.tshirtMode) { document.getElementById('tshirt-btn').className = 'ctrl-btn tshirt-off'; document.getElementById('tshirt-btn').textContent = '🏆 T-SHIRT: OFF'; }
+
+// ── PERSISTENT LOGIN ──
+const SESSION_KEY = 'rb_staff_authed';
+let isAuthed = false;
+
+function checkPersistedLogin() {
+  if (localStorage.getItem(SESSION_KEY) === 'yes') {
+    showApp();
+  }
+}
+
+function showApp() {
+  isAuthed = true;
+  document.getElementById('pin-screen').style.display = 'none';
+  document.getElementById('staff-app').classList.add('show');
+  startListening();
+}
 
 // ── PIN ──
 let pinEntry = '';
 window.pinKey = k => { if (pinEntry.length >= 4) return; pinEntry += k; updatePinDots(); if (pinEntry.length === 4) checkPin(); };
 window.pinBack  = () => { pinEntry = pinEntry.slice(0,-1); updatePinDots(); };
 window.pinClear = () => { pinEntry = ''; updatePinDots(); };
-function updatePinDots() { for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('filled', i < pinEntry.length); }
+
+function updatePinDots() {
+  for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('filled', i < pinEntry.length);
+}
+
 function checkPin() {
   if (pinEntry === CONFIG.staffPin) {
-    document.getElementById('pin-screen').style.display = 'none';
-    document.getElementById('staff-app').classList.add('show');
-    startListening();
+    if (document.getElementById('remember-me').checked) {
+      localStorage.setItem(SESSION_KEY, 'yes');
+    }
+    showApp();
   } else {
     document.getElementById('pin-error').textContent = 'WRONG PIN · TRY AGAIN';
     pinEntry = ''; updatePinDots();
     setTimeout(() => { document.getElementById('pin-error').textContent = ''; }, 2000);
   }
 }
-window.lock = () => { pinEntry = ''; updatePinDots(); document.getElementById('pin-screen').style.display=''; document.getElementById('staff-app').classList.remove('show'); };
+
+window.lock = () => {
+  isAuthed = false;
+  localStorage.removeItem(SESSION_KEY);
+  pinEntry = ''; updatePinDots();
+  document.getElementById('pin-screen').style.display = '';
+  document.getElementById('staff-app').classList.remove('show');
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+};
 
 // ── LIVE DATA ──
 let allTracks = [];
@@ -204,21 +238,18 @@ window.keepTrack = async function(id) {
   const card = document.getElementById('rc-'+id);
   if (card) card.classList.add('keeping');
   setTimeout(async () => {
-    try { await updateDoc(doc(db,'tracks',id), { approved: true }); }
-    catch(e) { console.error(e); }
+    try { await updateDoc(doc(db,'tracks',id), { approved:true }); } catch(e) { console.error(e); }
   }, 300);
 };
-
 window.ditchTrack = async function(id) {
   const card = document.getElementById('rc-'+id);
   if (card) card.classList.add('ditching');
   setTimeout(async () => {
-    try { await deleteDoc(doc(db,'tracks',id)); }
-    catch(e) { console.error(e); }
+    try { await deleteDoc(doc(db,'tracks',id)); } catch(e) { console.error(e); }
   }, 300);
 };
 
-// ── TSHIRT TOGGLE ──
+// ── T-SHIRT ──
 let tshirtOn = CONFIG.tshirtMode;
 window.toggleTshirt = function() {
   tshirtOn = !tshirtOn;
@@ -227,18 +258,18 @@ window.toggleTshirt = function() {
   btn.className = 'ctrl-btn ' + (tshirtOn ? 'tshirt-on' : 'tshirt-off');
 };
 
-// ── WINNER REVEAL ──
+// ── WINNER ──
 window.revealWinner = function() {
   const approved = allTracks.filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters);
   if (!approved.length) { alert('No approved tracks yet!'); return; }
   const w = approved[0];
   document.getElementById('w-track').textContent  = w.title;
   document.getElementById('w-artist').textContent = w.artist;
-  document.getElementById('w-votes').textContent  = w.uniqueVoters + ' UNIQUE VOTES';
+  document.getElementById('w-votes').textContent  = (w.uniqueVoters||1) + ' UNIQUE VOTES';
   const quotes = [
     `${w.requester} has the best taste in this bar. T-shirt at the bar!`,
     `${w.requester} — we bow to your superior taste. T-shirt incoming.`,
-    `${w.requester} wins the night. Collect your t-shirt.`,
+    `${w.requester} wins the night. Come collect your t-shirt.`,
     `${w.requester}, tonight you ARE the DJ. T-shirt at the bar.`,
     `${w.requester} called it. The crowd agreed. T-shirt well earned.`,
   ];
@@ -248,13 +279,13 @@ window.revealWinner = function() {
 
 // ── CLEAR NIGHT ──
 window.clearNight = async function() {
-  if (!confirm('Start a new night? This permanently deletes all tracks and votes.')) return;
+  if (!confirm('Start a new night? This permanently deletes ALL tracks and votes.')) return;
   try {
     const snapshot = await getDocs(collection(db,'tracks'));
     const batch = writeBatch(db);
     snapshot.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
-  } catch(e) { console.error(e); alert('Error clearing — check console'); }
+  } catch(e) { alert('Error clearing — check console'); console.error(e); }
 };
 
 // ── TABS ──
@@ -269,7 +300,9 @@ window.switchTab = function(tab) {
 function renderPending() {
   const pending = allTracks.filter(t => !t.approved);
   document.getElementById('pending-count-num').textContent = pending.length;
-  document.getElementById('pending-badge').textContent = pending.length > 0 ? ` (${pending.length})` : '';
+  const badge = document.getElementById('pending-badge');
+  if (pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
   const list = document.getElementById('pending-list');
   if (!pending.length) { list.innerHTML = '<div class="empty-state">NO PENDING REQUESTS<br>ALL QUIET FOR NOW...</div>'; return; }
   list.innerHTML = pending.map(t => `
@@ -299,6 +332,9 @@ function renderApproved() {
       <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
     </div>`).join('');
 }
+
+// ── INIT ──
+checkPersistedLogin();
 </script>
 </body>
 </html>

@@ -73,13 +73,13 @@
   .rank-change { font-family:var(--font-pixel); font-size:13px; min-width:22px; text-align:center; }
   .rank-change.up { color:var(--green); } .rank-change.down { color:#ff4444; } .rank-change.same { color:rgba(240,237,232,0.2); }
 
-  #equalizer { grid-area:equalizer; display:flex; align-items:flex-end; gap:3px; height:48px; padding-right:28px; padding-top:12px; }
-  .eq-bar { flex:1; background:linear-gradient(to top,var(--accent),var(--amber)); border-radius:2px 2px 0 0; min-height:4px; opacity:0.7; }
+  #equalizer { grid-area:equalizer; display:flex; align-items:flex-end; gap:2px; height:80px; padding-right:28px; padding-top:8px; }
+  .eq-bar { flex:1; background:linear-gradient(to top,var(--accent) 0%,#cc2200 40%,var(--amber) 100%); border-radius:3px 3px 0 0; min-height:4px; opacity:0.85; box-shadow:0 0 4px rgba(139,0,0,0.4); }
 
   #callout { grid-area:callout; display:flex; align-items:center; gap:16px; padding-top:12px; border-top:1px solid rgba(139,0,0,0.2); overflow:hidden; }
   #callout-tag { font-family:var(--font-pixel); font-size:13px; letter-spacing:3px; color:var(--accent); white-space:nowrap; flex-shrink:0; }
-  #callout-text { font-family:var(--font-pixel); font-size:20px; color:var(--amber); white-space:nowrap; letter-spacing:1px; }
-  @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-100%)} }
+  #callout-text { font-family:var(--font-pixel); font-size:32px; color:var(--amber); white-space:nowrap; letter-spacing:2px; text-shadow:0 0 20px rgba(255,179,71,0.4); }
+  @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-200%)} }
 
   #qr-hint { position:fixed; bottom:80px; right:28px; background:var(--card-bg); border:1px solid rgba(139,0,0,0.3); border-radius:4px; padding:14px 18px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
   #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
@@ -266,7 +266,7 @@ for (let i = 0; i < NUM_BARS; i++) {
 }
 function animateEQ() {
   eqBars.forEach((b,i) => {
-    if (Math.random() < 0.15) { b.target = 8 + Math.sin(i/NUM_BARS*Math.PI)*28 + Math.random()*20; }
+    if (Math.random() < 0.15) { b.target = 10 + Math.sin(i/NUM_BARS*Math.PI)*50 + Math.random()*25; }
     b.current += (b.target - b.current) * 0.18;
     b.el.style.height = Math.max(4, b.current) + 'px';
   });
