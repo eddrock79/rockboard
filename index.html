@@ -52,67 +52,113 @@
   }
   #yt-label.show { display:block; }
 
-  #app { position:relative; z-index:1; width:100vw; height:100vh; display:grid; grid-template-columns:420px 1fr; grid-template-rows:auto 1fr auto; grid-template-areas:"nowplaying header" "nowplaying leaderboard" "equalizer callout"; padding:28px; }
+  /* ── LAYOUT ── */
+  #app {
+    position:relative; z-index:1; width:100vw; height:100vh;
+    display:grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "nowplaying header"
+      "nowplaying leaderboard"
+      "equalizer  callout";
+    padding:20px 24px;
+    gap:0;
+  }
 
-  #now-playing { grid-area:nowplaying; display:flex; flex-direction:column; gap:16px; padding-right:28px; }
-  #album-art { width:100%; aspect-ratio:1; border-radius:4px; background:#1a0a0a; overflow:hidden; position:relative; box-shadow:0 0 60px rgba(139,0,0,0.4),0 8px 32px rgba(0,0,0,0.8); }
+  /* ── NOW PLAYING ── */
+  #now-playing { grid-area:nowplaying; display:flex; flex-direction:column; gap:12px; padding-right:24px; }
+  #album-art { width:100%; aspect-ratio:1; border-radius:6px; background:#1a0a0a; overflow:hidden; position:relative; box-shadow:0 0 60px rgba(139,0,0,0.5),0 8px 32px rgba(0,0,0,0.9); }
   #album-art img { width:100%; height:100%; object-fit:cover; transition:opacity 1.5s ease; }
   #album-art-overlay { position:absolute; inset:0; background:linear-gradient(135deg,rgba(139,0,0,0.15),transparent); pointer-events:none; }
 
-  #track-info { background:var(--card-bg); border:1px solid rgba(139,0,0,0.3); border-radius:4px; padding:16px; backdrop-filter:blur(20px); }
-  #track-status { font-family:var(--font-pixel); font-size:13px; color:var(--green); letter-spacing:3px; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
-  #status-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 1.4s ease-in-out infinite; }
+  #track-info { background:rgba(10,5,5,0.85); border:1px solid rgba(139,0,0,0.35); border-radius:6px; padding:14px 16px; backdrop-filter:blur(30px); }
+  #track-status { font-family:var(--font-pixel); font-size:13px; color:var(--green); letter-spacing:3px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  #status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.4s ease-in-out infinite; box-shadow:0 0 8px var(--green); }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
-  #track-name { font-family:var(--font-head); font-size:28px; line-height:1.1; color:var(--white); margin-bottom:4px; letter-spacing:1px; }
-  #track-artist { font-size:14px; color:rgba(240,237,232,0.65); font-weight:300; letter-spacing:0.5px; margin-bottom:12px; }
+  #track-name { font-family:var(--font-head); font-size:32px; line-height:1.05; color:var(--white); margin-bottom:3px; letter-spacing:1px; }
+  #track-artist { font-size:15px; color:rgba(240,237,232,0.7); font-weight:400; letter-spacing:0.5px; margin-bottom:10px; }
   #progress-bar { height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; }
   #progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--amber)); border-radius:2px; width:0%; transition:width 1s linear; }
 
-  #winamp-counter { display:flex; gap:12px; align-items:center; font-family:var(--font-pixel); font-size:22px; color:var(--amber); padding:10px 16px; background:rgba(0,0,0,0.5); border:1px solid rgba(139,0,0,0.2); border-radius:4px; letter-spacing:2px; }
-  .wc-label { color:rgba(240,237,232,0.3); font-size:11px; letter-spacing:3px; align-self:flex-end; padding-bottom:4px; }
+  #winamp-counter { display:flex; gap:10px; align-items:center; font-family:var(--font-pixel); font-size:20px; color:var(--amber); padding:8px 14px; background:rgba(0,0,0,0.6); border:1px solid rgba(139,0,0,0.2); border-radius:6px; letter-spacing:2px; }
+  .wc-label { color:rgba(240,237,232,0.3); font-size:11px; letter-spacing:3px; align-self:flex-end; padding-bottom:3px; }
 
-  #header { grid-area:header; display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:20px; border-bottom:1px solid rgba(139,0,0,0.25); margin-bottom:20px; }
-  #venue-name { font-family:var(--font-head); font-size:48px; letter-spacing:4px; color:var(--white); line-height:1; }
-  #venue-sub { font-family:var(--font-pixel); font-size:16px; color:var(--accent); letter-spacing:4px; margin-top:4px; }
+  /* ── HEADER ── */
+  #header { grid-area:header; display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:16px; border-bottom:1px solid rgba(139,0,0,0.3); margin-bottom:16px; }
+  #venue-name { font-family:var(--font-head); font-size:52px; letter-spacing:5px; color:var(--white); line-height:1; }
+  #venue-sub { font-family:var(--font-pixel); font-size:15px; color:var(--accent); letter-spacing:4px; margin-top:4px; }
   #tshirt-badge { display:none; flex-direction:column; align-items:flex-end; gap:4px; }
   #tshirt-badge.active { display:flex; }
   #tshirt-badge .badge-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:3px; color:var(--amber); }
-  #tshirt-badge .badge-prize { font-family:var(--font-head); font-size:28px; color:var(--white); letter-spacing:2px; }
-  #tshirt-badge .badge-sub { font-family:var(--font-pixel); font-size:12px; color:rgba(240,237,232,0.4); letter-spacing:2px; }
+  #tshirt-badge .badge-prize { font-family:var(--font-head); font-size:30px; color:var(--white); letter-spacing:2px; }
+  #tshirt-badge .badge-sub { font-family:var(--font-pixel); font-size:11px; color:rgba(240,237,232,0.4); letter-spacing:2px; }
 
+  /* ── LEADERBOARD ── */
   #leaderboard { grid-area:leaderboard; overflow:hidden; position:relative; }
-  #leaderboard-title { font-family:var(--font-pixel); font-size:14px; letter-spacing:5px; color:rgba(240,237,232,0.35); margin-bottom:12px; }
-  #tracks-list { position:relative; height:calc(100% - 30px); }
+  #leaderboard-title { font-family:var(--font-pixel); font-size:13px; letter-spacing:5px; color:rgba(240,237,232,0.3); margin-bottom:10px; }
+  #tracks-list { position:relative; height:calc(100% - 28px); }
 
-  .track-card { position:absolute; left:0; right:0; height:72px; background:var(--card-bg); border:1px solid rgba(139,0,0,0.2); border-radius:4px; backdrop-filter:blur(20px); display:flex; align-items:center; gap:14px; padding:0 16px; transition:top 0.6s cubic-bezier(0.34,1.56,0.64,1),opacity 0.4s ease,border-color 0.3s ease; }
-  .track-card.top-card { border-color:rgba(255,179,71,0.5); background:rgba(30,15,0,0.85); box-shadow:0 0 20px rgba(255,179,71,0.1); }
-  .track-card.rising { border-color:rgba(57,255,20,0.4); }
+  .track-card {
+    position:absolute; left:0; right:0; height:82px;
+    background:rgba(12,5,5,0.88);
+    border:1px solid rgba(139,0,0,0.2);
+    border-left:3px solid rgba(139,0,0,0.3);
+    border-radius:0 6px 6px 0;
+    backdrop-filter:blur(20px);
+    display:flex; align-items:center; gap:16px; padding:0 18px 0 14px;
+    transition:top 0.65s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease, border-color 0.3s ease;
+  }
+  .track-card.top-card {
+    border-color:rgba(255,179,71,0.6);
+    border-left-color:var(--amber);
+    background:rgba(35,18,0,0.92);
+    box-shadow:0 0 30px rgba(255,179,71,0.12), inset 0 0 40px rgba(255,179,71,0.03);
+  }
+  .track-card.rising { border-left-color:var(--green); border-color:rgba(57,255,20,0.35); }
   .track-card.new-entry { animation:slideIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
   @keyframes slideIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
 
-  .track-rank { font-family:var(--font-head); font-size:38px; color:rgba(240,237,232,0.15); min-width:44px; text-align:center; line-height:1; }
+  .track-rank { font-family:var(--font-head); font-size:44px; color:rgba(240,237,232,0.12); min-width:52px; text-align:center; line-height:1; flex-shrink:0; }
   .track-card.top-card .track-rank { color:var(--amber); }
-  .track-thumb { width:46px; height:46px; border-radius:3px; background:#1a0808; object-fit:cover; flex-shrink:0; }
+
+  .track-thumb { width:52px; height:52px; border-radius:4px; background:#1a0808; object-fit:cover; flex-shrink:0; }
+
   .track-details { flex:1; min-width:0; }
-  .track-title { font-family:var(--font-head); font-size:19px; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
-  .track-artist-name { font-size:12px; color:rgba(240,237,232,0.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-  .track-requester { font-family:var(--font-pixel); font-size:12px; color:var(--accent); letter-spacing:1px; margin-top:2px; }
-  .track-votes { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:52px; }
-  .vote-count { font-family:var(--font-pixel); font-size:32px; color:var(--white); line-height:1; }
-  .track-card.top-card .vote-count { color:var(--amber); }
-  .vote-label { font-family:var(--font-pixel); font-size:10px; color:rgba(240,237,232,0.3); letter-spacing:2px; }
-  .rank-change { font-family:var(--font-pixel); font-size:13px; min-width:22px; text-align:center; }
-  .rank-change.up { color:var(--green); } .rank-change.down { color:#ff4444; } .rank-change.same { color:rgba(240,237,232,0.2); }
+  .track-title { font-family:var(--font-head); font-size:26px; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.1; }
+  .track-card.top-card .track-title { font-size:28px; color:var(--amber); }
+  .track-artist-name { font-size:14px; color:rgba(240,237,232,0.55); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; font-weight:400; }
+  .track-requester { font-family:var(--font-pixel); font-size:14px; color:rgba(139,0,0,0.9); letter-spacing:1px; margin-top:2px; }
+  .track-card.top-card .track-requester { color:rgba(255,179,71,0.7); }
 
-  #equalizer { grid-area:equalizer; display:flex; align-items:flex-end; gap:2px; height:80px; padding-right:28px; padding-top:8px; }
-  .eq-bar { flex:1; background:linear-gradient(to top,var(--accent) 0%,#cc2200 40%,var(--amber) 100%); border-radius:3px 3px 0 0; min-height:4px; opacity:0.85; box-shadow:0 0 4px rgba(139,0,0,0.4); }
+  .track-votes { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:60px; }
+  .vote-count { font-family:var(--font-pixel); font-size:40px; color:var(--white); line-height:1; }
+  .track-card.top-card .vote-count { color:var(--amber); font-size:44px; }
+  .vote-label { font-family:var(--font-pixel); font-size:11px; color:rgba(240,237,232,0.3); letter-spacing:2px; }
+  .rank-change { font-family:var(--font-pixel); font-size:16px; min-width:24px; text-align:center; flex-shrink:0; }
+  .rank-change.up { color:var(--green); text-shadow:0 0 8px var(--green); }
+  .rank-change.down { color:#ff4444; }
+  .rank-change.same { color:rgba(240,237,232,0.15); }
 
-  #callout { grid-area:callout; display:flex; align-items:center; gap:16px; padding-top:12px; border-top:1px solid rgba(139,0,0,0.2); overflow:hidden; }
-  #callout-tag { font-family:var(--font-pixel); font-size:13px; letter-spacing:3px; color:var(--accent); white-space:nowrap; flex-shrink:0; }
-  #callout-text { font-family:var(--font-pixel); font-size:32px; color:var(--amber); white-space:nowrap; letter-spacing:2px; text-shadow:0 0 20px rgba(255,179,71,0.4); }
+  /* ── EQUALIZER — spruced up ── */
+  #equalizer { grid-area:equalizer; display:flex; align-items:flex-end; gap:2px; height:100px; padding-right:24px; padding-top:8px; }
+  .eq-bar {
+    flex:1; border-radius:2px 2px 0 0; min-height:3px;
+    transition:height 0.05s ease-out;
+  }
+  .eq-bar.peak { border-radius:2px; }
+  /* Alternating colours for visual interest */
+  .eq-bar:nth-child(3n+1) { background:linear-gradient(to top,#6b0000,#cc2200,var(--amber)); box-shadow:0 0 6px rgba(139,0,0,0.5); }
+  .eq-bar:nth-child(3n+2) { background:linear-gradient(to top,#8B0000,#ff3300,#FFB347); box-shadow:0 0 4px rgba(255,80,0,0.3); }
+  .eq-bar:nth-child(3n)   { background:linear-gradient(to top,#550000,#aa1100,#ff8800); box-shadow:0 0 4px rgba(200,50,0,0.3); }
+
+  /* ── TICKER ── */
+  #callout { grid-area:callout; display:flex; align-items:center; gap:16px; padding-top:10px; border-top:1px solid rgba(139,0,0,0.25); overflow:hidden; }
+  #callout-tag { font-family:var(--font-pixel); font-size:14px; letter-spacing:3px; color:var(--accent); white-space:nowrap; flex-shrink:0; padding:4px 10px; border:1px solid rgba(139,0,0,0.3); border-radius:3px; }
+  #callout-text { font-family:var(--font-pixel); font-size:36px; color:var(--amber); white-space:nowrap; letter-spacing:2px; text-shadow:0 0 20px rgba(255,179,71,0.35); }
   @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-200%)} }
 
-  #qr-hint { position:fixed; bottom:80px; right:28px; background:var(--card-bg); border:1px solid rgba(139,0,0,0.3); border-radius:4px; padding:14px 18px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
+  #qr-hint { position:fixed; bottom:88px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
   #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
 
   #winner-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:500; flex-direction:column; align-items:center; justify-content:center; gap:24px; text-align:center; }
@@ -319,6 +365,47 @@ const QUOTES = [
   "We're not saying it was you. But it was definitely you.",
   "An upset! The people have SPOKEN.",
   "Iconic voting from the back table. Truly iconic.",
+
+  // Rock / Metal / Goth bar jokes
+  "Why do metal guitarists make bad baristas? They always drop the bass.",
+  "What do you call a guitarist without a girlfriend? Homeless.",
+  "A goth walks into a bar. The bar becomes a void of eternal suffering.",
+  "How many metal fans does it take to change a lightbulb? None. They prefer the dark.",
+  "The lead singer just asked for a light beer. We have asked them to leave.",
+  "Why did the drummer get kicked out of the band? He kept beating around the bush.",
+  "A punk walks into a bar. The bar says 'We don't serve punks here.' The punk says 'That's okay, I wasn't going to pay anyway.'",
+  "What do you call a goth with a job? A disappointment to the scene.",
+  "How do you get a guitarist to turn down? Put sheet music in front of them.",
+  "Why don't metal bands play hide and seek? Because good luck hiding when you're wearing a battle jacket with 200 patches.",
+  "A vampire walks into a bar and orders a pint of blood. The barman says 'Sorry, we only serve spirits here.'",
+  "What's the difference between a drummer and a pizza? A pizza can feed a family of four.",
+  "Why did the goth cross the road? To get to the other side... of despair.",
+  "How many guitarists does it take to change a lightbulb? Eleven. One to do it and ten to say they could've done it better.",
+  "A skeleton walks into a bar and orders a beer and a mop.",
+  "Why don't punks use sunscreen? They refuse to follow any instructions.",
+  "What do you call a metal band with no bass player? In tune.",
+  "A goth, a punk and a metalhead walk into a bar. The barman says 'Is this some kind of joke?' They say 'Life is.'",
+  "Why did the metal fan fail their driving test? They kept going 666 mph.",
+  "What's a vampire's favourite pub snack? Blood orange crisps.",
+  "The support band just cancelled. Our night is officially better.",
+  "Why do goths always know what time it is? They have a watch... it just stopped.",
+  "What did the drummer say before bed? 'I'll beat that tomorrow.'",
+  "A witch walks into a bar. Barman says 'What'll it be?' She says 'Something wicked.'",
+  "Why can't metal fans play card games? They always raise the devil.",
+  "What's a zombie's favourite bar snack? Finger food.",
+  "Why did the punk get thrown out of the library? For disturbing the peace... and everything else.",
+  "How do you confuse a metal fan? Put them in a room with no darkness.",
+  "A ghost walks into a bar. The barman says 'Sorry, we don't serve spirits.' The ghost says 'Good. Neither do I.'",
+  "Why do goths hate autocorrect? It keeps changing 'doom' to 'boom'.",
+  "What's the difference between a rock guitarist and a jazz guitarist? The rock guitarist plays 3 chords for 3000 people. The jazz guitarist plays 3000 chords for 3 people.",
+  "Why did the metal band go to school? To improve their death notes.",
+  "A bat walks into a bar at 3am. The barman says 'Sorry, last orders were an hour ago.' The bat says 'I'll just hang around then.'",
+  "Why do metal fans make great employees? They're used to working in hellish conditions.",
+  "What do you call a goth who loves gardening? Someone who prefers their flowers dead.",
+  "How many goths does it take to screw in a lightbulb? None. They'd rather sit in the dark and write poetry about it.",
+  "A werewolf walks into a bar. Barman says 'We close at midnight.' Werewolf says 'Sounds about right.'",
+  "Why did the rock band break up? Creative differences — half wanted to play loud, the other half wanted to play louder.",
+  "What do you call an honest guitarist? A fictional character.",
 ];
 
 // ── INIT FIREBASE ──
@@ -519,11 +606,32 @@ for (let i = 0; i < NUM_BARS; i++) {
   eqEl.appendChild(b);
   eqBars.push({ el:b, current:4, target:4 });
 }
+// Peak dot tracking for each bar
+let eqPeaks = eqBars.map(() => 0);
+let eqPeakDecay = eqBars.map(() => 0);
+
 function animateEQ() {
-  eqBars.forEach((b,i) => {
-    if (Math.random() < 0.15) { b.target = 10 + Math.sin(i/NUM_BARS*Math.PI)*50 + Math.random()*25; }
-    b.current += (b.target - b.current) * 0.18;
-    b.el.style.height = Math.max(4, b.current) + 'px';
+  const time = Date.now() / 1000;
+  eqBars.forEach((b, i) => {
+    // More organic movement — sine waves + random spikes
+    const wave1 = Math.sin(time * 2.1 + i * 0.3) * 0.5 + 0.5;
+    const wave2 = Math.sin(time * 3.7 + i * 0.7) * 0.3 + 0.5;
+    const base  = 8 + Math.sin(i / NUM_BARS * Math.PI) * 55;
+    if (Math.random() < 0.12) {
+      b.target = base * (wave1 * 0.6 + wave2 * 0.4) + Math.random() * 20;
+    }
+    b.current += (b.target - b.current) * 0.22;
+    const h = Math.max(3, b.current);
+    b.el.style.height = h + 'px';
+
+    // Peak tracking — bar briefly holds at its max
+    if (h > eqPeaks[i]) {
+      eqPeaks[i] = h;
+      eqPeakDecay[i] = 0;
+    } else {
+      eqPeakDecay[i]++;
+      if (eqPeakDecay[i] > 15) eqPeaks[i] = Math.max(3, eqPeaks[i] - 0.8);
+    }
   });
   requestAnimationFrame(animateEQ);
 }
@@ -783,7 +891,7 @@ setInterval(fetchNowPlaying, 15000);
 // ── LEADERBOARD (Firebase live) ──
 let tracks = [];
 let prevRanks = {};
-const CARD_H = 76;
+const CARD_H = 86; // 82px card + 4px gap
 
 function renderLeaderboard() {
   const list = document.getElementById('tracks-list');
