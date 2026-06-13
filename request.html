@@ -425,7 +425,8 @@ const CONFIG = {
 
 const fbApp = initializeApp(CONFIG.firebase);
 const db    = getFirestore(fbApp);
-document.getElementById('top-venue').textContent = CONFIG.venueName;
+const topVenue = document.getElementById('top-venue');
+if (topVenue) topVenue.textContent = CONFIG.venueName;
 document.title = CONFIG.venueName + ' · Request a Track';
 
 // ── DEVICE ID ──
