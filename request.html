@@ -387,6 +387,21 @@
 <div id="toast"></div>
 
 <script src="config.js"></script>
+
+<!-- Global bridge — onclick handlers need global scope, ES modules are isolated -->
+<script>
+function setMode(m)        { window.setMode        && window.setMode(m);        }
+function onArtistType()    { window.onArtistType   && window.onArtistType();    }
+function resetArtist()     { window.resetArtist    && window.resetArtist();     }
+function onTrackType()     { window.onTrackType    && window.onTrackType();     }
+function resetTrack()      { window.resetTrack     && window.resetTrack();      }
+function onSongType()      { window.onSongType     && window.onSongType();      }
+function resetSong()       { window.resetSong      && window.resetSong();       }
+function submitRequest()   { window.submitRequest  && window.submitRequest();   }
+function voteFor(id)       { window.voteFor        && window.voteFor(id);       }
+function outsideTap(e)     { window.outsideTap     && window.outsideTap(e);     }
+</script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
