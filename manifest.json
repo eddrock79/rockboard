@@ -1,0 +1,15 @@
+{
+  "name": "Rockboard Display",
+  "short_name": "Rockboard",
+  "start_url": "/rockboard/",
+  "display": "fullscreen",
+  "background_color": "#0a0a0a",
+  "theme_color": "#8B0000",
+  "icons": [
+    {
+      "src": "assets/Black-Rose-Logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
