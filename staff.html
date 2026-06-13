@@ -68,20 +68,36 @@
   .list-label{font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.35);margin-bottom:12px}
   .list-label span{color:var(--amber)}
 
-  .request-card{background:var(--card);border:1px solid rgba(139,0,0,0.25);border-radius:8px;padding:14px 16px;margin-bottom:12px;transition:opacity 0.3s,transform 0.3s}
+  .request-card{
+    background:var(--card);border:1px solid rgba(139,0,0,0.25);
+    border-left:3px solid rgba(139,0,0,0.4);
+    border-radius:0 6px 6px 0;padding:10px 12px;margin-bottom:6px;
+    display:flex;align-items:center;gap:12px;
+    transition:opacity 0.25s,transform 0.25s;
+  }
   .request-card.ditching{opacity:0;transform:translateX(60px)}
   .request-card.keeping{opacity:0;transform:translateX(-60px)}
-  .rc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-  .rc-track{font-family:var(--font-head);font-size:22px;letter-spacing:1px}
-  .rc-artist{font-size:13px;color:rgba(240,237,232,0.5);margin-top:2px}
-  .rc-meta{font-family:var(--font-pixel);font-size:12px;color:rgba(240,237,232,0.35);letter-spacing:2px;text-align:right}
-  .rc-meta .votes{font-size:22px;color:var(--white);display:block;line-height:1}
-  .rc-requester{font-family:var(--font-pixel);font-size:12px;color:var(--accent);letter-spacing:2px;margin-bottom:12px}
-  .rc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .keep-btn,.ditch-btn{padding:14px;border-radius:6px;font-family:var(--font-head);font-size:20px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
-  .keep-btn:active,.ditch-btn:active{transform:scale(0.97)}
+  .request-card.genre-mismatch{border-left-color:var(--amber)}
+
+  /* LEFT — track info */
+  .rc-info{flex:1;min-width:0}
+  .rc-track{font-family:var(--font-head);font-size:19px;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+  .rc-artist{font-size:12px;color:rgba(240,237,232,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .rc-requester{font-family:var(--font-pixel);font-size:12px;color:var(--accent);letter-spacing:1px;margin-top:2px}
+  .rc-badge{font-family:var(--font-pixel);font-size:11px;color:var(--amber);letter-spacing:1px;margin-top:2px}
+
+  /* MIDDLE — votes */
+  .rc-votes{font-family:var(--font-pixel);font-size:26px;color:var(--white);min-width:36px;text-align:center;line-height:1;flex-shrink:0}
+  .rc-votes-label{font-family:var(--font-pixel);font-size:10px;color:rgba(240,237,232,0.25);letter-spacing:2px;text-align:center}
+
+  /* RIGHT — actions */
+  .rc-actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
+  .rc-spotify-btn{background:rgba(30,215,96,0.1);border:1px solid rgba(30,215,96,0.3);color:rgba(30,215,96,0.8);border-radius:4px;padding:6px 10px;font-family:var(--font-pixel);font-size:12px;letter-spacing:1px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;white-space:nowrap;-webkit-appearance:none}
+  .keep-btn,.ditch-btn,.ban-btn{padding:8px 14px;border-radius:5px;font-family:var(--font-head);font-size:17px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none;white-space:nowrap}
+  .keep-btn:active,.ditch-btn:active,.ban-btn:active{transform:scale(0.95)}
   .keep-btn{background:rgba(57,255,20,0.15);border:1px solid rgba(57,255,20,0.4);color:var(--green)}
-  .ditch-btn{background:rgba(139,0,0,0.25);border:1px solid rgba(139,0,0,0.5);color:#ff6666}
+  .ditch-btn{background:rgba(139,0,0,0.2);border:1px solid rgba(139,0,0,0.45);color:#ff6666}
+  .ban-btn{background:rgba(80,0,0,0.3);border:1px solid rgba(139,0,0,0.6);color:rgba(255,100,100,0.7);font-size:14px;padding:8px 10px}
 
   .approved-card{background:var(--card);border:1px solid rgba(57,255,20,0.15);border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px}
   .ac-rank{font-family:var(--font-head);font-size:28px;color:rgba(240,237,232,0.15);min-width:36px;text-align:center}
@@ -106,11 +122,7 @@
   .spotify-preview-btn{display:block;text-align:center;padding:10px;background:rgba(30,215,96,0.08);border:1px solid rgba(30,215,96,0.25);border-radius:6px;color:#1ED760;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;text-decoration:none;transition:all 0.15s}
   .spotify-preview-btn:active{background:rgba(30,215,96,0.2)}
 
-  .ban-btn{padding:8px 12px;background:rgba(139,0,0,0.2);border:1px solid rgba(139,0,0,0.5);border-radius:5px;color:#ff6666;font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:all 0.15s;-webkit-appearance:none}
-  .ban-btn:active{background:rgba(139,0,0,0.5);transform:scale(0.95)}
-  .unban-btn{padding:8px 14px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.3);border-radius:5px;color:var(--green);font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:all 0.15s;-webkit-appearance:none}
-  .unban-btn:active{background:rgba(57,255,20,0.2);transform:scale(0.95)}
-  .banned-card{background:var(--card);border:1px solid rgba(139,0,0,0.35);border-left:3px solid #ff4444;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;opacity:0.85}
+  #winner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:40px}
   #winner-overlay.show{display:flex}
   #winner-overlay h1{font-family:var(--font-head);font-size:56px;letter-spacing:6px;color:var(--amber)}
   .w-track{font-family:var(--font-head);font-size:38px;color:var(--white)}
@@ -182,7 +194,7 @@
     <div class="tab active" id="tab-pending" onclick="switchTab('pending')">PENDING <span class="badge" id="pending-badge" style="display:none">0</span></div>
     <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
     <div class="tab" id="tab-played" onclick="switchTab('played')">PLAYED</div>
-    <div class="tab" id="tab-banned" onclick="switchTab('banned')">🚫 BANNED</div>
+    <div class="tab" id="tab-banned" onclick="switchTab('banned')" style="color:rgba(255,80,80,0.6)">🚫 BANNED <span id="banned-count-num" style="color:rgba(255,80,80,0.8)">0</span></div>
   </div>
   <div class="list-section show" id="section-pending">
     <div class="list-label" style="display:flex;justify-content:space-between;align-items:center">
@@ -197,17 +209,14 @@
   </div>
 </div>
 
+  <div class="list-section" id="section-banned">
+    <div class="list-label" style="color:rgba(255,80,80,0.6)">PERMANENTLY BANNED TRACKS · <span id="banned-count-num2">0</span> TOTAL</div>
+    <div id="banned-list"></div>
+  </div>
+
   <div class="list-section" id="section-played">
     <div class="list-label">PLAYED TONIGHT · NO REPEATS FOR 1HR · <span id="played-count-num">0</span></div>
     <div id="played-list"></div>
-  </div>
-
-  <div class="list-section" id="section-banned">
-    <div class="list-label" style="display:flex;justify-content:space-between;align-items:center">
-      <span>🚫 PERMANENTLY BANNED TRACKS · <span id="banned-count-num">0</span></span>
-    </div>
-    <div style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.25);margin-bottom:14px;line-height:1.7">BANNED TRACKS ARE BLOCKED FROM BEING REQUESTED.<br>NO MORE WONDERWALL.</div>
-    <div id="banned-list"></div>
   </div>
 
 <div id="winner-overlay">
@@ -233,6 +242,8 @@ function toggleAutoApprove() { window._toggleAutoApprove && window._toggleAutoAp
 function toggleAutoQueue()   { window._toggleAutoQueue   && window._toggleAutoQueue();   }
 function queueTopTrack()     { window._queueTopTrack     && window._queueTopTrack();     }
 function updateInterval(v)   { window._updateInterval    && window._updateInterval(v);   }
+function banTrack(id,t,a)    { window._banTrack          && window._banTrack(id,t,a);      }
+function unbanTrack(key)     { window._unbanTrack        && window._unbanTrack(key);        }
 function updateVideoOffset(v){ window._updateVideoOffset && window._updateVideoOffset(v); }
 function approveAll()        { window._approveAll        && window._approveAll();        }
 function revealWinner()      { window._revealWinner      && window._revealWinner();      }
@@ -240,9 +251,7 @@ function clearNight()        { window._clearNight        && window._clearNight()
 function switchTab(t)        { window._switchTab         && window._switchTab(t);        }
 function keepTrack(id)       { window._keepTrack         && window._keepTrack(id);       }
 function ditchTrack(id)      { window._ditchTrack        && window._ditchTrack(id);      }
-function banTrack(id)    { window._banTrack    && window._banTrack(id);    }
-function unbanTrack(id)  { window._unbanTrack  && window._unbanTrack(id);  }
-function markPlayed(id)  { window._markPlayed  && window._markPlayed(id);  }
+function markPlayed(id)      { window._markPlayed        && window._markPlayed(id);      }
 </script>
 
 <script type="module">
@@ -494,11 +503,13 @@ window._clearNight = async function() {
 // ── TABS ──
 window._switchTab = function(tab) {
   ['pending','approved','played','banned'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('active', tab===t);
-    document.getElementById('section-'+t).classList.toggle('show', tab===t);
+    const tabEl = document.getElementById('tab-'+t);
+    const secEl = document.getElementById('section-'+t);
+    if (tabEl) tabEl.classList.toggle('active', tab===t);
+    if (secEl) secEl.classList.toggle('show', tab===t);
   });
   if (tab === 'played') renderPlayedHistory();
-  if (tab === 'banned') renderBannedList();
+  if (tab === 'banned') renderBanned();
 };
 
 async function renderPlayedHistory() {
@@ -548,29 +559,27 @@ function renderPending() {
   }
   const list = document.getElementById('pending-list');
   if (!pending.length) { list.innerHTML = '<div class="empty-state">NO PENDING REQUESTS<br>ALL QUIET FOR NOW...</div>'; return; }
-  list.innerHTML = pending.map(t => `
-    <div class="request-card" id="rc-${t.id}">
-      <div class="rc-top">
-        <div><div class="rc-track">${t.title}</div><div class="rc-artist">${t.artist}</div></div>
-        <div class="rc-meta"><span class="votes">${t.uniqueVoters||1}</span>VOTES</div>
+  list.innerHTML = pending.map(t => {
+    const spotifyQ = encodeURIComponent(t.title + ' ' + t.artist);
+    const badge = t.genreMismatch ? `<div class="rc-badge">⚠ GENRE CHECK</div>` : '';
+    return `<div class="request-card ${t.genreMismatch?'genre-mismatch':''}" id="rc-${t.id}">
+      <div class="rc-info">
+        <div class="rc-track">${t.title}</div>
+        <div class="rc-artist">${t.artist} <span style="color:rgba(139,0,0,0.6)">·</span> <span style="color:rgba(200,60,60,0.9)">${(t.requester||'ANON').toUpperCase()}</span></div>
+        ${badge}
       </div>
-      <div class="rc-requester">↳ REQUESTED BY ${(t.requester||'ANONYMOUS').toUpperCase()}</div>
-      <div class="rc-spotify">
-        <a class="spotify-preview-btn"
-           href="spotify:search:${encodeURIComponent(t.title + ' ' + t.artist)}"
-           onclick="var q=encodeURIComponent('${t.title} ${t.artist}');this.href='spotify:search:'+q;setTimeout(()=>{this.href='https://open.spotify.com/search/'+q},500);return true;"
-           target="_blank">
-          🎵 PREVIEW ON SPOTIFY BEFORE DECIDING
-        </a>
+      <div style="text-align:center;flex-shrink:0">
+        <div class="rc-votes">${t.uniqueVoters||1}</div>
+        <div class="rc-votes-label">VOTES</div>
       </div>
       <div class="rc-actions">
-        <button class="keep-btn" onclick="keepTrack('${t.id}')">🤘 KEEP IT</button>
-        <button class="ditch-btn" onclick="ditchTrack('${t.id}')">✕ DITCH IT</button>
+        <a class="rc-spotify-btn" href="spotify:search:${spotifyQ}" onclick="var q='${spotifyQ}';this.href='spotify:search:'+q;setTimeout(()=>{this.href='https://open.spotify.com/search/'+q},500);return true;" target="_blank">🎵</a>
+        <button class="keep-btn" onclick="keepTrack('${t.id}')">🤘 KEEP</button>
+        <button class="ditch-btn" onclick="ditchTrack('${t.id}')">✕ DITCH</button>
+        <button class="ban-btn" onclick="banTrack('${t.id}','${t.title.replace(/'/g,"\'")}','${t.artist.replace(/'/g,"\'")}')">🚫</button>
       </div>
-      <div style="margin-top:8px">
-        <button class="ban-btn" style="width:100%" onclick="banTrack('${t.id}')">🚫 BAN THIS TRACK PERMANENTLY</button>
-      </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── SPOTIFY via Worker ──
@@ -772,6 +781,49 @@ async function runAutoQueue() {
   }
 }
 
+// ── BAN SYSTEM ──
+window._banTrack = async function(id, title, artist) {
+  try {
+    const { setDoc: sd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const key = (title + '|||' + artist).toLowerCase().replace(/[^a-z0-9|||]/g,'_');
+    await sd(doc(db,'banned', key), { title, artist, bannedAt: Date.now() });
+    // Also ditch the track from pending/approved
+    await deleteDoc(doc(db,'tracks',id));
+    showStaffToast('🚫 BANNED: ' + title);
+    renderBanned();
+  } catch(e) { showStaffToast('❌ BAN FAILED'); }
+};
+
+window._unbanTrack = async function(key) {
+  try {
+    await deleteDoc(doc(db,'banned', key));
+    showStaffToast('✅ UNBANNED');
+    renderBanned();
+  } catch(e) {}
+};
+
+async function renderBanned() {
+  const list = document.getElementById('banned-list');
+  if (!list) return;
+  try {
+    const { getDocs, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(col(db,'banned'));
+    const banned = snap.docs.map(d => ({ key:d.id, ...d.data() })).sort((a,b)=>b.bannedAt-a.bannedAt);
+    document.getElementById('banned-count-num').textContent = banned.length;
+    if (!banned.length) { list.innerHTML = '<div class="empty-state">NO BANNED TRACKS YET</div>'; return; }
+    list.innerHTML = banned.map(b => `
+      <div class="request-card" style="border-left-color:#ff4444">
+        <div class="rc-info">
+          <div class="rc-track">${b.title}</div>
+          <div class="rc-artist">${b.artist}</div>
+        </div>
+        <div class="rc-actions">
+          <button class="keep-btn" style="font-size:13px;padding:6px 12px" onclick="unbanTrack('${b.key}')">✓ UNBAN</button>
+        </div>
+      </div>`).join('');
+  } catch(e) { list.innerHTML = '<div class="empty-state">ERROR</div>'; }
+}
+
 window._markPlayed = async function(id) {
   // Find the track before deleting it
   const track = allTracks.find(t => t.id === id);
@@ -856,63 +908,9 @@ function renderApproved() {
       ${workerReady && i===0 && !isQueued ? `<button class="queue-btn" onclick="queueTopTrack()">▶ QUEUE</button>` : ''}
       ${workerReady && isQueued ? `<button class="played-btn" onclick="markPlayed('${t.id}')">✓ PLAYED</button>` : ''}
       ${!workerReady ? `<a class="spotify-btn" href="${spotifyApp}" onclick="this.href='${spotifyApp}';setTimeout(()=>this.href='${spotifyUrl}',500)" target="_blank">▶</a>` : ''}
-      <button class="ban-btn" onclick="banTrack('${t.id}')">🚫</button>
       <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
     </div>`;
   }).join('');
-}
-
-// ── BAN LIST ──
-window._banTrack = async function(id) {
-  const track = allTracks.find(t => t.id === id);
-  if (!track) return;
-  if (!confirm(`Ban "${track.title}" by ${track.artist}?\n\nThis will permanently block it from being requested.`)) return;
-  try {
-    const { setDoc: sd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    // Write to banned collection — key is sanitised title+artist so duplicates merge
-    const banId = (track.title + '|||' + track.artist).toLowerCase().replace(/[^a-z0-9|]/g,'_').substring(0,100);
-    await sd(doc(db,'banned', banId), {
-      title:    track.title,
-      artist:   track.artist,
-      bannedAt: Date.now(),
-    });
-    // Remove from active board
-    await deleteDoc(doc(db,'tracks', id));
-    showStaffToast('🚫 BANNED: ' + track.title);
-  } catch(e) { console.error('Ban failed', e); showStaffToast('❌ BAN FAILED'); }
-};
-
-window._unbanTrack = async function(banId) {
-  if (!confirm('Unban this track? Customers will be able to request it again.')) return;
-  try {
-    await deleteDoc(doc(db,'banned', banId));
-    showStaffToast('✅ UNBANNED');
-    renderBannedList();
-  } catch(e) { showStaffToast('❌ UNBAN FAILED'); }
-};
-
-async function renderBannedList() {
-  const list = document.getElementById('banned-list');
-  list.innerHTML = '<div class="empty-state">LOADING...</div>';
-  try {
-    const { getDocs: getD, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const snap = await getD(col(db,'banned'));
-    const banned = snap.docs.map(d => ({ banId: d.id, ...d.data() })).sort((a,b) => b.bannedAt - a.bannedAt);
-    document.getElementById('banned-count-num').textContent = banned.length;
-    if (!banned.length) {
-      list.innerHTML = '<div class="empty-state">NO BANNED TRACKS<br>BAN A TRACK FROM PENDING OR APPROVED</div>';
-      return;
-    }
-    list.innerHTML = banned.map(t => `
-      <div class="banned-card">
-        <div class="ac-rank" style="font-size:20px">🚫</div>
-        <div class="ac-details">
-          <div class="ac-title">${t.title}</div>
-          <div class="ac-artist">${t.artist}</div>
-        </div>
-        <button class="unban-btn" onclick="unbanTrack('${t.banId}')">✓ UNBAN</button>
-      </div>`).join('');
-  } catch(e) { list.innerHTML = '<div class="empty-state">ERROR LOADING</div>'; }
 }
 
 // ── INIT ──
