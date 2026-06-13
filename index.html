@@ -413,7 +413,7 @@
 </div>
 
 <div id="qr-hint">
-  <div style="width:80px;height:80px;background:#1a0808;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:var(--font-pixel);font-size:11px;color:rgba(240,237,232,0.3);letter-spacing:1px;text-align:center;">QR<br>CODE</div>
+  <canvas id="qr-canvas" style="width:80px;height:80px;border-radius:4px;display:block;margin:0 auto 8px;image-rendering:pixelated;"></canvas>
   <div id="qr-hint-label">SCAN TO VOTE</div>
 </div>
 
@@ -1497,6 +1497,33 @@ function launchConfetti() {
     }, i*30);
   }
 }
+</script>
+
+<!-- QR Code generator — points to request.html at whatever domain this is served from -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function() {
+  // Build the request URL dynamically — works on any domain, any path
+  const base = window.location.href.replace(/\/[^/]*$/, ''); // strip filename if any
+  const requestUrl = base.endsWith('/') ? base + 'request.html' : base + '/request.html';
+
+  // Replace the canvas with a div QRCode can render into
+  const hint = document.getElementById('qr-hint');
+  const canvas = document.getElementById('qr-canvas');
+  const wrapper = document.createElement('div');
+  wrapper.id = 'qr-wrapper';
+  wrapper.style.cssText = 'width:80px;height:80px;margin:0 auto 8px;border-radius:4px;overflow:hidden;';
+  canvas.replaceWith(wrapper);
+
+  new QRCode(wrapper, {
+    text:           requestUrl,
+    width:          80,
+    height:         80,
+    colorDark:      '#f0ede8',   // cream — matches the board's white
+    colorLight:     '#120505',   // near-black dark red — matches board background
+    correctLevel:   QRCode.CorrectLevel.M
+  });
+})();
 </script>
 </body>
 </html>
