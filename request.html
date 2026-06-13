@@ -668,71 +668,9 @@ window.submitRequest = async function() {
   if (!canRequest()) { updateBadge(); return; }
   useRequest();
   try {
-    // ── GENRE FILTER ──
-    // Check if track fits the venue genre before submitting
-    const ALLOWED_GENRES = new Set([
-      // Core
-      'rock','hard rock','classic rock','alternative rock','indie rock','progressive rock',
-      'psychedelic rock','southern rock','garage rock','blues rock','folk rock','grunge',
-      'punk rock','punk','hardcore punk','post-punk','pop punk','anarcho-punk','skate punk','horror punk',
-      'metal','heavy metal','thrash metal','death metal','black metal','doom metal','gothic metal',
-      'power metal','progressive metal','nu-metal','metalcore','deathcore','post-metal','sludge metal',
-      'stoner rock','stoner metal','folk metal','viking metal',
-      // Goth/dark
-      'goth','gothic rock','darkwave','industrial','deathrock','witch house','dark ambient',
-      'new wave','post-rock','shoegaze','noise rock','emo','screamo',
-      // Crossover
-      'blues','psychedelic','americana','country rock','outlaw country','rockabilly','surf rock',
-      'funk rock','rap metal','rap rock','alternative metal','glam rock','glam metal',
-      'symphonic metal','industrial metal','groove metal','speed metal','drone metal',
-      'trip-hop','darksynth','synthwave','ebm','dark electro',
-      // Broad catches
-      'alternative','hard','heavy','dark','underground',
-    ]);
-
-    const PRE_BANNED_ARTISTS = new Set([
-      'bob marley','ed sheeran','taylor swift','justin bieber','drake','ariana grande',
-      'dua lipa','harry styles','billie eilish','post malone','the weeknd','olivia rodrigo',
-      'shawn mendes','sam smith','lizzo','cardi b','nicki minaj','dababy','lil nas x',
-      'jason derulo','pitbull','flo rida','one direction','5 seconds of summer',
-    ]);
-
-    // Check pre-banned artists first
-    if (PRE_BANNED_ARTISTS.has(artist.toLowerCase())) {
-      showMsg('🎸 Tonight - rock and metal only! Try something heavier!', 'err');
-      document.getElementById('submit-btn').disabled = false;
-      return;
-    }
-
-    // Check Firebase banned list
-    try {
-      const { getDocs: getBanned, collection: bannedCol } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      const bannedSnap = await getBanned(bannedCol(db,'banned'));
-      const bannedKeys = bannedSnap.docs.map(d => d.id);
-      const thisKey = (title + '|||' + artist).toLowerCase().replace(/[^a-z0-9|||]/g,'_');
-      if (bannedKeys.some(k => k === thisKey || k.includes(artist.toLowerCase().replace(/[^a-z0-9]/g,'_')))) {
-        showMsg('🚫 That track is banned tonight - try another!', 'err');
-        document.getElementById('submit-btn').disabled = false;
-        return;
-      }
-    } catch(e) {}
-
-    // Genre check via Last.fm tags
-    let genreMismatch = false;
-    if (CONFIG.lastfm_key) {
-      try {
-        const tagRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getTopTags&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(title)}&api_key=${CONFIG.lastfm_key}&format=json`);
-        const tagData = await tagRes.json();
-        const tags = (tagData.toptags?.tag || []).slice(0,8).map(t => t.name.toLowerCase());
-        const hasMatch = tags.some(tag => ALLOWED_GENRES.has(tag) || [...ALLOWED_GENRES].some(g => tag.includes(g) || g.includes(tag)));
-        if (tags.length > 0 && !hasMatch) {
-          genreMismatch = true;
-          showMsg('🎸 Hmm, that might not fit tonight's vibe - staff will review it!', 'ok');
-        }
-      } catch(e) {}
-    }
-
     // Fetch album art from Last.fm before saving
+    let genreMismatch = false;
+
     let spotifyImage = '';
     try {
       const artRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(title)}&api_key=${CONFIG.lastfm_key}&format=json`);
