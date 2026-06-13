@@ -221,10 +221,31 @@
   .eq-bar:nth-child(3n)   { background:linear-gradient(to top,#550000,#aa1100,#ff8800); box-shadow:0 0 4px rgba(200,50,0,0.3); }
 
   /* ── TICKER ── */
-  #callout { grid-area:callout; display:flex; align-items:center; gap:0; padding-top:10px; border-top:2px solid rgba(139,0,0,0.4); overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px; border-radius:0 0 0 0; }
-  #callout-tag { font-family:var(--font-pixel); font-size:16px; letter-spacing:3px; color:var(--white); white-space:nowrap; flex-shrink:0; padding:6px 16px; background:var(--accent); height:100%; display:flex; align-items:center; }
-  #callout-text { font-family:var(--font-pixel); font-size:38px; color:#ffe8a0; white-space:nowrap; letter-spacing:2px; text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8); padding-left:24px; font-weight:normal; }
-  @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-180%)} }
+  #callout {
+    grid-area:callout; display:flex; align-items:center; gap:0;
+    padding-top:10px; border-top:2px solid rgba(139,0,0,0.4);
+    overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px;
+    position:relative; z-index:5;
+  }
+  #callout-tag {
+    font-family:var(--font-pixel); font-size:16px; letter-spacing:3px;
+    color:var(--white); white-space:nowrap; flex-shrink:0;
+    padding:6px 16px; background:var(--accent); height:100%;
+    display:flex; align-items:center;
+    position:relative; z-index:6; /* always in front of scrolling text */
+  }
+  #callout-text {
+    font-family:var(--font-pixel); font-size:38px; color:#ffe8a0;
+    white-space:nowrap; letter-spacing:2px;
+    text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8);
+    padding-left:24px; font-weight:normal;
+    position:relative; z-index:5;
+  }
+  /* Start fully off-screen right, end fully off-screen left — no overlap with tag */
+  @keyframes ticker {
+    0%   { transform:translateX(100vw); }
+    100% { transform:translateX(calc(-100% - 100vw)); }
+  }
 
   #qr-hint { position:fixed; bottom:88px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
   #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
@@ -268,7 +289,7 @@
 
   /* Countdown timer */
   #queue-countdown {
-    position:fixed; bottom:68px; left:50%; transform:translateX(-50%);
+    position:fixed; bottom:130px; left:50%; transform:translateX(-50%);
     display:none; flex-direction:column; align-items:center; gap:6px;
     z-index:10; text-align:center;
   }
@@ -967,8 +988,9 @@ function nextQuote() {
   const quote = getNextQuote();
   el.textContent = quote;
   void el.offsetWidth;
-  // Adjust speed based on quote length — longer quotes scroll slower
-  const duration = Math.max(14, Math.min(26, quote.length * 0.45));
+  // Duration scales with length — must travel 100vw in + full text width + 100vw out
+  // Multiplier 0.55 gives ~18s for average quote, 28s for long ones
+  const duration = Math.max(16, Math.min(30, quote.length * 0.55));
   el.style.animation = `ticker ${duration}s linear`;
   el.addEventListener('animationend', nextQuote, { once:true });
 }
