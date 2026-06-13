@@ -8,150 +8,252 @@
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#0d0010;
-    --pink:#c4285e;
-    --purple:#7a28cc;
-    --green:#2ecc71;
-    --amber:#FFB347;
-    --cyan:#5bc8d4;
-    --white:#f0ede8;
-    --card:rgba(18,6,28,0.97);
-    --card2:rgba(22,8,34,0.95);
-    --font-pixel:'VT323',monospace;
-    --font-head:'Bebas Neue',sans-serif;
-    --font-body:'Inter',sans-serif;
+    --bg:#080305;--accent:#8B0000;--accent2:#aa0000;--green:#39FF14;--amber:#FFB347;
+    --white:#f0ede8;--card:rgba(20,8,10,0.97);--card2:rgba(28,10,13,0.95);
+    --font-pixel:'VT323',monospace;--font-head:'Bebas Neue',sans-serif;--font-body:'Inter',sans-serif;
   }
   html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--font-body)}
-  body{background-image:radial-gradient(ellipse at 0% 0%,rgba(100,30,180,0.18) 0%,transparent 55%),radial-gradient(ellipse at 100% 0%,rgba(180,30,80,0.15) 0%,transparent 50%),radial-gradient(ellipse at 50% 100%,rgba(30,160,80,0.08) 0%,transparent 50%);min-height:100vh;padding:0 0 80px}
+  body{
+    background-image:
+      radial-gradient(ellipse at 50% -10%,rgba(139,0,0,0.35) 0%,transparent 55%),
+      radial-gradient(ellipse at 0% 60%,rgba(80,0,0,0.2) 0%,transparent 40%),
+      radial-gradient(ellipse at 100% 80%,rgba(100,0,0,0.15) 0%,transparent 40%);
+    min-height:100vh;padding:0 0 80px;
+  }
 
-  /* TOP BAR */
-  #top-bar{background:linear-gradient(135deg,rgba(100,30,180,0.35) 0%,rgba(160,30,80,0.25) 100%);border-bottom:1px solid rgba(196,40,94,0.6);box-shadow:0 0 16px rgba(160,30,80,0.2);padding:12px 20px;position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;backdrop-filter:blur(20px)}
-  #top-sub{font-family:var(--font-pixel);font-size:13px;color:var(--green);letter-spacing:3px;margin-top:2px}
-  /* Spinning logo */
-  #logo-wrap{perspective:700px;display:flex;align-items:center;justify-content:center}
-  #top-logo{height:68px;width:auto;display:block;filter:drop-shadow(0 0 8px rgba(196,40,94,0.45));animation:mtvFlip 4s ease-in-out infinite,logoPulse 4s ease-in-out infinite}
-  @keyframes mtvFlip{0%{transform:rotateY(0deg)}35%{transform:rotateY(0deg)}50%{transform:rotateY(180deg)}65%{transform:rotateY(360deg)}100%{transform:rotateY(360deg)}}
-  @keyframes logoPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(196,40,94,0.45)) brightness(0.9)}50%{filter:drop-shadow(0 0 18px rgba(196,40,94,0.8)) brightness(1.05)}}
+  /* ── TOP BAR ── */
+  #top-bar{
+    background:rgba(8,3,5,0.97);
+    border-bottom:2px solid rgba(139,0,0,0.5);
+    padding:14px 20px;position:sticky;top:0;z-index:50;
+    display:flex;justify-content:space-between;align-items:center;
+    backdrop-filter:blur(20px);
+    box-shadow:0 4px 30px rgba(0,0,0,0.8);
+  }
+  #top-logo{height:52px;width:auto;filter:drop-shadow(0 0 8px rgba(139,0,0,0.6))}
   #votes-left-badge{text-align:right}
-  .vl-label{font-family:var(--font-pixel);font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:2px}
-  .vl-num{font-family:var(--font-pixel);font-size:38px;color:var(--green);line-height:1;display:block;text-shadow:0 0 8px rgba(46,204,113,0.4)}
+  .vl-label{font-family:var(--font-pixel);font-size:13px;color:rgba(240,237,232,0.4);letter-spacing:2px}
+  .vl-num{font-family:var(--font-pixel);font-size:42px;color:var(--amber);line-height:1;display:block;text-shadow:0 0 15px rgba(255,179,71,0.4)}
 
-  /* NOW PLAYING */
-  #now-playing-strip{background:linear-gradient(90deg,rgba(30,160,80,0.08),rgba(30,160,80,0.02));border-bottom:1px solid rgba(46,204,113,0.2);padding:10px 20px;display:flex;align-items:center;gap:10px}
-  #np-dot{width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 1.4s ease-in-out infinite;box-shadow:0 0 6px rgba(46,204,113,0.6)}
-  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px rgba(46,204,113,0.6)}50%{opacity:0.3;box-shadow:none}}
-  #np-label{font-family:var(--font-pixel);font-size:13px;color:var(--green);letter-spacing:3px;flex-shrink:0;text-shadow:none}
-  #np-text{font-family:var(--font-pixel);font-size:18px;color:var(--white);letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* ── NOW PLAYING ── */
+  #now-playing-strip{
+    background:linear-gradient(90deg,rgba(139,0,0,0.2),rgba(139,0,0,0.05),transparent);
+    border-bottom:1px solid rgba(139,0,0,0.25);
+    padding:10px 20px;display:flex;align-items:center;gap:10px;
+  }
+  #np-dot{width:9px;height:9px;border-radius:50%;background:var(--green);animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;box-shadow:0 0 8px var(--green)}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--green)}50%{opacity:0.3;box-shadow:none}}
+  #np-label{font-family:var(--font-pixel);font-size:14px;color:rgba(240,237,232,0.35);letter-spacing:2px;flex-shrink:0}
+  #np-text{font-family:var(--font-pixel);font-size:20px;color:var(--white);letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  .section{padding:20px 16px 0}
-  .section-title{font-family:var(--font-pixel);font-size:15px;letter-spacing:4px;color:var(--pink);margin-bottom:14px;display:flex;align-items:center;gap:10px;text-shadow:none}
-  .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(196,40,94,0.3),transparent)}
+  /* ── COUNTDOWN STRIP ── */
+  #vote-countdown-strip{
+    background:linear-gradient(90deg,rgba(57,255,20,0.1),rgba(57,255,20,0.04));
+    border-bottom:1px solid rgba(57,255,20,0.2);
+    padding:10px 20px;align-items:center;gap:12px;justify-content:space-between;
+  }
 
-  /* MODE TOGGLE */
-  #search-mode{display:flex;margin-bottom:16px;border-radius:10px;overflow:hidden;border:1px solid rgba(122,40,204,0.5);box-shadow:none}
-  .mode-btn{flex:1;padding:14px 8px;background:rgba(155,48,255,0.08);border:none;color:rgba(255,255,255,0.45);font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none;line-height:1.3;text-align:center}
-  .mode-btn.active{background:linear-gradient(135deg,rgba(122,40,204,0.45),rgba(196,40,94,0.35));color:var(--white);text-shadow:none}
-  .mode-btn:first-child{border-right:1px solid rgba(122,40,204,0.5)}
+  /* ── SECTION ── */
+  .section{padding:18px 16px 0}
+  .section-title{
+    font-family:var(--font-pixel);font-size:15px;letter-spacing:4px;
+    color:rgba(240,237,232,0.25);margin-bottom:14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .section-title::after{content:'';flex:1;height:1px;background:rgba(139,0,0,0.25)}
 
-  /* FORM CARD */
-  #request-form{background:var(--card);border:1px solid rgba(122,40,204,0.25);border-radius:14px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,0.5)}
+  /* ── MODE TOGGLE ── */
+  #search-mode{
+    display:flex;margin-bottom:16px;border-radius:10px;overflow:hidden;
+    border:1px solid rgba(139,0,0,0.4);
+    box-shadow:0 2px 12px rgba(0,0,0,0.4);
+  }
+  .mode-btn{
+    flex:1;padding:16px 8px;background:transparent;border:none;
+    color:rgba(240,237,232,0.3);font-family:var(--font-pixel);font-size:16px;
+    letter-spacing:2px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none;
+    line-height:1.3;text-align:center;
+  }
+  .mode-btn.active{
+    background:linear-gradient(135deg,rgba(139,0,0,0.6),rgba(100,0,0,0.4));
+    color:var(--white);text-shadow:0 0 10px rgba(255,100,100,0.3);
+  }
+  .mode-btn:first-child{border-right:1px solid rgba(139,0,0,0.35)}
 
+  /* ── FORM CARD ── */
+  #request-form{
+    background:var(--card);
+    border:1px solid rgba(139,0,0,0.3);
+    border-top:2px solid rgba(139,0,0,0.5);
+    border-radius:12px;padding:20px;
+    box-shadow:0 8px 40px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+
+  /* ── STEP LABELS ── */
   .step{margin-bottom:20px}
-  .step-label{font-family:var(--font-pixel);font-size:14px;letter-spacing:3px;color:var(--cyan);margin-bottom:8px;text-shadow:none}
+  .step-label{
+    font-family:var(--font-pixel);font-size:15px;letter-spacing:3px;
+    color:rgba(240,237,232,0.4);margin-bottom:10px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .step-label::before{content:'▸';color:var(--accent)}
 
-  /* INPUTS */
+  /* ── INPUTS ── */
   .inp-wrap{position:relative}
-  .inp-wrap input{width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(155,48,255,0.4);border-radius:8px;padding:14px 44px 14px 16px;color:var(--white);font-family:var(--font-body);font-size:16px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none}
-  .inp-wrap input:focus{border-color:var(--pink);box-shadow:0 0 0 2px rgba(196,40,94,0.15)}
-  .inp-wrap input::placeholder{color:rgba(255,255,255,0.3)}
-  .inp-wrap input:disabled{opacity:0.4}
-  .inp-spinner{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;border:2px solid rgba(155,48,255,0.3);border-top-color:var(--purple);border-radius:50%;animation:spin 0.7s linear infinite;display:none}
+  .inp-wrap input{
+    width:100%;background:rgba(0,0,0,0.5);
+    border:1px solid rgba(139,0,0,0.35);
+    border-radius:10px;padding:16px 44px 16px 18px;
+    color:var(--white);font-family:var(--font-body);font-size:17px;
+    outline:none;transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none;
+  }
+  .inp-wrap input:focus{
+    border-color:var(--accent2);
+    box-shadow:0 0 0 3px rgba(139,0,0,0.15),0 0 20px rgba(139,0,0,0.1);
+  }
+  .inp-wrap input::placeholder{color:rgba(240,237,232,0.18)}
+  .inp-wrap input:disabled{opacity:0.3}
+  .inp-spinner{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;border:2px solid rgba(139,0,0,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;display:none}
   .inp-spinner.on{display:block}
   @keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
-  .inp-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;padding:2px 4px;line-height:1;display:none}
+  .inp-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(240,237,232,0.3);font-size:22px;cursor:pointer;padding:2px 4px;line-height:1;display:none}
   .inp-clear.on{display:block}
 
-  /* DROPDOWN */
-  .dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;background:rgba(15,3,25,0.99);border:1.5px solid var(--purple);border-radius:10px;max-height:280px;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.9),0 0 30px rgba(155,48,255,0.2);display:none}
+  /* ── DROPDOWN ── */
+  .dropdown{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;
+    background:rgba(10,3,5,0.99);
+    border:1px solid rgba(139,0,0,0.6);
+    border-radius:10px;max-height:300px;overflow-y:auto;
+    box-shadow:0 15px 40px rgba(0,0,0,0.9);display:none;
+  }
   .dropdown.open{display:block}
-  .dd-item{padding:13px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(155,48,255,0.12);transition:background 0.1s}
+  .dd-item{
+    padding:14px 16px;cursor:pointer;display:flex;align-items:center;
+    gap:12px;border-bottom:1px solid rgba(139,0,0,0.1);transition:background 0.1s;
+  }
   .dd-item:last-child{border-bottom:none}
-  .dd-item:active,.dd-item:hover{background:linear-gradient(90deg,rgba(255,45,120,0.2),rgba(155,48,255,0.15))}
-  .dd-icon{font-size:18px;flex-shrink:0;width:26px;text-align:center}
-  .dd-main{font-family:var(--font-head);font-size:19px;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--white)}
-  .dd-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .dd-header{padding:7px 16px;background:linear-gradient(90deg,rgba(155,48,255,0.2),rgba(255,45,120,0.1));font-family:var(--font-pixel);font-size:12px;letter-spacing:3px;color:var(--pink);cursor:default;border-bottom:1px solid rgba(155,48,255,0.2);text-shadow:0 0 8px rgba(255,45,120,0.5)}
+  .dd-item:active,.dd-item:hover{background:rgba(139,0,0,0.3)}
+  .dd-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+  .dd-main{font-family:var(--font-head);font-size:20px;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dd-sub{font-size:13px;color:rgba(240,237,232,0.4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dd-header{padding:8px 16px;background:rgba(139,0,0,0.15);font-family:var(--font-pixel);font-size:12px;letter-spacing:3px;color:rgba(240,237,232,0.3);cursor:default;border-bottom:1px solid rgba(139,0,0,0.15)}
 
-  /* CHOSEN PILL */
-  .chosen-pill{display:none;align-items:center;gap:10px;background:rgba(122,40,204,0.12);border:1px solid rgba(122,40,204,0.4);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  /* ── CHOSEN PILL ── */
+  .chosen-pill{
+    display:none;align-items:center;gap:12px;
+    background:linear-gradient(135deg,rgba(139,0,0,0.2),rgba(100,0,0,0.1));
+    border:1px solid rgba(139,0,0,0.5);border-left:3px solid var(--accent);
+    border-radius:10px;padding:14px 16px;margin-bottom:8px;
+  }
   .chosen-pill.on{display:flex}
-  .pill-icon{font-size:20px}
-  .pill-text{flex:1}
-  .pill-name{font-family:var(--font-head);font-size:22px;color:var(--green);line-height:1.1;text-shadow:none}
-  .pill-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px}
-  .pill-clear{background:none;border:none;color:rgba(255,255,255,0.35);font-size:22px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0}
+  .pill-icon{font-size:22px}
+  .pill-text{flex:1;min-width:0}
+  .pill-name{font-family:var(--font-head);font-size:22px;color:var(--amber);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pill-sub{font-size:13px;color:rgba(240,237,232,0.45);margin-top:3px}
+  .pill-clear{background:none;border:none;color:rgba(240,237,232,0.25);font-size:24px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0}
 
-  /* NAME FIELD */
+  /* ── NAME FIELD ── */
   .name-field{margin-bottom:20px}
-  .name-field label{display:block;font-family:var(--font-pixel);font-size:14px;letter-spacing:3px;color:var(--cyan);margin-bottom:8px;text-shadow:none}
-  .name-field input{width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(155,48,255,0.35);border-radius:8px;padding:14px 16px;color:var(--white);font-family:var(--font-body);font-size:16px;outline:none;-webkit-appearance:none;transition:border-color 0.2s,box-shadow 0.2s}
-  .name-field input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(91,200,212,0.12)}
-  .name-field input::placeholder{color:rgba(255,255,255,0.25)}
+  .name-field label{
+    display:block;font-family:var(--font-pixel);font-size:15px;
+    letter-spacing:3px;color:rgba(240,237,232,0.35);margin-bottom:10px;
+  }
+  .name-field input{
+    width:100%;background:rgba(0,0,0,0.4);
+    border:1px solid rgba(139,0,0,0.2);border-radius:10px;
+    padding:16px 18px;color:var(--white);font-family:var(--font-body);
+    font-size:17px;outline:none;-webkit-appearance:none;transition:border-color 0.2s;
+  }
+  .name-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,0,0,0.12)}
+  .name-field input::placeholder{color:rgba(240,237,232,0.15)}
 
-  /* SUBMIT */
-  #submit-btn{width:100%;background:linear-gradient(135deg,var(--pink) 0%,var(--purple) 100%);border:none;border-radius:10px;padding:20px;color:var(--white);font-family:var(--font-head);font-size:28px;letter-spacing:3px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none;box-shadow:0 4px 20px rgba(196,40,94,0.35);text-shadow:none}
-  #submit-btn:active{transform:scale(0.97);box-shadow:0 0 10px rgba(255,45,120,0.3)}
-  #submit-btn:disabled{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);cursor:default;box-shadow:none}
-  #form-msg{font-family:var(--font-pixel);font-size:16px;letter-spacing:2px;text-align:center;padding-top:10px;min-height:22px}
-  #form-msg.ok{color:var(--green);text-shadow:none}
-  #form-msg.err{color:var(--pink);text-shadow:none}
+  /* ── SUBMIT BUTTON ── */
+  #submit-btn{
+    width:100%;
+    background:linear-gradient(135deg,#a00000,#6b0000,#8B0000);
+    border:none;border-radius:12px;padding:20px;
+    color:var(--white);font-family:var(--font-head);font-size:30px;
+    letter-spacing:4px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none;
+    box-shadow:0 4px 20px rgba(139,0,0,0.4),0 0 40px rgba(139,0,0,0.1);
+    text-shadow:0 2px 4px rgba(0,0,0,0.4);
+    position:relative;overflow:hidden;
+  }
+  #submit-btn::before{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(255,255,255,0.06) 0%,transparent 50%);
+    pointer-events:none;
+  }
+  #submit-btn:active{transform:scale(0.97);box-shadow:0 2px 8px rgba(139,0,0,0.3)}
+  #submit-btn:disabled{background:rgba(139,0,0,0.1);color:rgba(240,237,232,0.1);cursor:default;box-shadow:none}
+  #form-msg{font-family:var(--font-pixel);font-size:17px;letter-spacing:2px;text-align:center;padding-top:12px;min-height:24px}
+  #form-msg.ok{color:var(--green)}#form-msg.err{color:#ff4444}
 
-  /* GODS NOTICE */
-  #gods-notice{display:none;margin-top:14px;background:rgba(30,160,80,0.07);border:1px solid rgba(46,204,113,0.35);border-radius:10px;padding:20px;text-align:center}
+  /* ── SUCCESS ── */
+  #gods-notice{
+    display:none;margin-top:14px;
+    background:linear-gradient(135deg,rgba(57,255,20,0.08),rgba(57,255,20,0.02));
+    border:1px solid rgba(57,255,20,0.25);border-radius:12px;
+    padding:24px;text-align:center;
+    box-shadow:0 0 30px rgba(57,255,20,0.05);
+  }
   #gods-notice.on{display:block}
-  .gods-icon{font-size:38px;margin-bottom:8px}
-  .gods-title{font-family:var(--font-head);font-size:26px;letter-spacing:3px;color:var(--green);margin-bottom:6px;text-shadow:none}
-  .gods-sub{font-family:var(--font-pixel);font-size:15px;color:rgba(255,255,255,0.5);letter-spacing:2px;line-height:1.7}
+  .gods-icon{font-size:40px;margin-bottom:10px}
+  .gods-title{font-family:var(--font-head);font-size:28px;letter-spacing:3px;color:var(--green);margin-bottom:6px}
+  .gods-sub{font-family:var(--font-pixel);font-size:16px;color:rgba(240,237,232,0.4);letter-spacing:2px;line-height:1.7}
 
-  /* RATE LIMIT */
-  #rate-limit-screen{display:none;text-align:center;padding:40px 20px;background:var(--card);border:1.5px solid var(--pink);border-radius:14px;box-shadow:0 0 30px rgba(255,45,120,0.2)}
+  /* ── RATE LIMIT ── */
+  #rate-limit-screen{display:none;text-align:center;padding:40px 20px;background:var(--card);border:1px solid rgba(139,0,0,0.3);border-radius:12px}
   #rate-limit-screen.on{display:block}
   .rl-icon{font-size:52px;margin-bottom:16px}
-  .rl-title{font-family:var(--font-head);font-size:34px;letter-spacing:3px;color:var(--amber);margin-bottom:10px;text-shadow:none}
-  .rl-text{font-family:var(--font-pixel);font-size:17px;color:rgba(255,255,255,0.5);letter-spacing:2px;line-height:1.6}
-  #countdown{font-family:var(--font-pixel);font-size:48px;color:var(--pink);margin:16px 0;letter-spacing:4px}
+  .rl-title{font-family:var(--font-head);font-size:32px;letter-spacing:3px;color:var(--amber);margin-bottom:8px}
+  .rl-text{font-family:var(--font-pixel);font-size:17px;color:rgba(240,237,232,0.45);letter-spacing:2px;line-height:1.6}
+  #countdown{font-family:var(--font-pixel);font-size:42px;color:var(--accent);margin:14px 0;letter-spacing:4px}
 
-  /* LEADERBOARD */
-  .vote-card{background:var(--card2);border:1px solid rgba(122,40,204,0.2);border-left:3px solid rgba(122,40,204,0.4);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;transition:all 0.2s}
-  .vote-card.top{border-color:rgba(255,179,71,0.4);border-left-color:var(--amber);background:rgba(30,18,0,0.95)}
-  .vote-card.voted{border-color:rgba(46,204,113,0.3);border-left-color:var(--green);background:rgba(8,24,12,0.9)}
-  .vc-rank{font-family:var(--font-head);font-size:34px;color:rgba(255,255,255,0.15);min-width:40px;text-align:center;line-height:1}
-  .vote-card.top .vc-rank{color:var(--amber);text-shadow:none}
+  /* ── LEADERBOARD CARDS ── */
+  .vote-card{
+    background:var(--card2);border:1px solid rgba(139,0,0,0.2);
+    border-left:3px solid rgba(139,0,0,0.3);
+    border-radius:10px;padding:14px 16px;margin-bottom:10px;
+    display:flex;align-items:center;gap:12px;transition:border-color 0.2s;
+  }
+  .vote-card.top{
+    border-color:rgba(255,179,71,0.4);border-left-color:var(--amber);
+    background:rgba(35,20,0,0.95);box-shadow:0 0 20px rgba(255,179,71,0.08);
+  }
+  .vote-card.voted{border-left-color:var(--green);border-color:rgba(57,255,20,0.25);background:rgba(15,30,10,0.9)}
+  .vc-rank{font-family:var(--font-head);font-size:34px;color:rgba(240,237,232,0.1);min-width:42px;text-align:center;line-height:1}
+  .vote-card.top .vc-rank{color:var(--amber)}
+  .vc-art{width:50px;height:50px;border-radius:6px;background:#1a0808;object-fit:cover;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center}
   .vc-details{flex:1;min-width:0}
-  .vc-title{font-family:var(--font-head);font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;color:var(--white)}
-  .vc-artist{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px}
-  .vc-requester{font-family:var(--font-pixel);font-size:12px;color:var(--pink);letter-spacing:1px;margin-top:3px;text-shadow:none}
-  .vc-right{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:64px}
-  .vc-votes{font-family:var(--font-pixel);font-size:32px;color:var(--white);line-height:1}
-  .vote-card.top .vc-votes{color:var(--amber);text-shadow:none}
-  .vc-vl{font-family:var(--font-pixel);font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px}
-  .vote-btn{width:100%;background:linear-gradient(135deg,rgba(155,48,255,0.25),rgba(255,45,120,0.2));border:1.5px solid var(--purple);border-radius:6px;padding:9px 10px;color:var(--white);font-family:var(--font-pixel);font-size:15px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none;text-align:center}
-  .vote-btn:active{background:linear-gradient(135deg,var(--pink),var(--purple));transform:scale(0.95)}
-  .vote-btn.done{background:rgba(57,255,20,0.1);border-color:var(--green);color:var(--green);cursor:default;text-shadow:none}
+  .vc-title{font-family:var(--font-head);font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+  .vc-artist{font-size:13px;color:rgba(240,237,232,0.45);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vc-requester{font-family:var(--font-pixel);font-size:14px;color:rgba(200,60,60,0.9);letter-spacing:1px;margin-top:3px}
+  .vote-card.top .vc-requester{color:var(--amber)}
+  .vc-right{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:64px}
+  .vc-votes{font-family:var(--font-pixel);font-size:34px;color:var(--white);line-height:1}
+  .vote-card.top .vc-votes{color:var(--amber);font-size:38px}
+  .vc-vl{font-family:var(--font-pixel);font-size:11px;color:rgba(240,237,232,0.25);letter-spacing:2px}
+  .vote-btn{
+    width:100%;background:rgba(139,0,0,0.2);
+    border:1px solid rgba(139,0,0,0.4);border-radius:8px;
+    padding:10px 10px;color:var(--white);font-family:var(--font-pixel);
+    font-size:17px;letter-spacing:1px;cursor:pointer;
+    transition:all 0.15s;-webkit-appearance:none;text-align:center;
+  }
+  .vote-btn:active{background:var(--accent);transform:scale(0.95)}
+  .vote-btn.done{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.3);color:var(--green);cursor:default}
+  #empty-board{text-align:center;padding:50px 20px;font-family:var(--font-pixel);font-size:20px;color:rgba(240,237,232,0.15);letter-spacing:3px;line-height:2.5}
 
-  #empty-board{text-align:center;padding:40px 20px;font-family:var(--font-pixel);font-size:18px;color:rgba(255,255,255,0.25);letter-spacing:3px;line-height:2.2}
-
-  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:linear-gradient(135deg,rgba(90,25,160,0.97),rgba(160,30,80,0.97));border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 28px;font-family:var(--font-pixel);font-size:18px;letter-spacing:2px;color:var(--white);transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);z-index:300;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(10,3,5,0.97);border:1px solid rgba(139,0,0,0.5);border-radius:12px;padding:16px 30px;font-family:var(--font-pixel);font-size:20px;letter-spacing:2px;color:var(--white);transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);z-index:300;white-space:nowrap;box-shadow:0 4px 30px rgba(0,0,0,0.8)}
   #toast.on{transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
 <div id="top-bar">
-  <div id="logo-wrap">
-    <img id="top-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose">
-  </div>
-  <div id="top-sub">▶ ROCKBOARD · VOTE FOR YOUR TRACK</div>
+  <img id="top-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose" onerror="this.style.display='none';document.getElementById('top-venue-text').style.display='block'">
+  <div id="top-venue-text" style="display:none"><div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:4px">THE BLACK ROSE</div><div style="font-family:'VT323',monospace;font-size:14px;color:#8B0000;letter-spacing:3px">▶ ROCKBOARD</div></div>
   <div id="votes-left-badge"><div class="vl-label">VOTES LEFT</div><span class="vl-num" id="votes-left-num">100</span></div>
 </div>
 
@@ -161,10 +263,10 @@
   <div id="np-text">Loading now playing...</div>
 </div>
 
-<div id="vote-countdown-strip" style="display:none;background:linear-gradient(90deg,rgba(46,204,113,0.07),rgba(46,204,113,0.02));border-bottom:1px solid rgba(46,204,113,0.15);padding:8px 20px;align-items:center;gap:12px;justify-content:space-between">
-  <div style="font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.5)">▸ NEXT TRACK QUEUES IN</div>
+<div id="vote-countdown-strip" style="display:none;background:linear-gradient(90deg,rgba(57,255,20,0.08),rgba(57,255,20,0.03));border-bottom:1px solid rgba(57,255,20,0.15);padding:8px 20px;display:none;align-items:center;gap:12px;justify-content:space-between">
+  <div style="font-family:var(--font-pixel);font-size:13px;letter-spacing:3px;color:rgba(240,237,232,0.35)">▸ NEXT TRACK QUEUES IN</div>
   <div id="req-countdown" style="font-family:var(--font-pixel);font-size:28px;color:var(--amber);letter-spacing:4px">--:--</div>
-  <div style="font-family:var(--font-pixel);font-size:12px;letter-spacing:2px;color:rgba(46,204,113,0.6)">VOTE NOW 🤘</div>
+  <div style="font-family:var(--font-pixel);font-size:12px;letter-spacing:2px;color:rgba(57,255,20,0.5)">VOTE NOW 🤘</div>
 </div>
 
 <div class="section">
@@ -200,23 +302,14 @@
         <button class="pill-clear" onclick="resetArtist()">✕</button>
       </div>
 
-      <!-- Step 2: pick track — scroll list, no keyboard by default -->
+      <!-- Step 2: pick track -->
       <div class="step" id="step-track" style="display:none">
         <div class="step-label" id="step-track-label">STEP 2 — PICK A TRACK</div>
-        <!-- Scroll list (shown by default — no keyboard) -->
-        <div id="track-scroll-list" style="border:1.5px solid rgba(122,40,204,0.4);border-radius:10px;overflow:hidden;background:rgba(15,3,25,0.98)">
-          <div id="track-scroll-inner" style="max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
-          <button onclick="showTrackSearch()" style="width:100%;padding:11px;background:rgba(122,40,204,0.15);border:none;border-top:1px solid rgba(122,40,204,0.2);color:rgba(255,255,255,0.45);font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;cursor:pointer">🔍 SEARCH FOR A DIFFERENT TRACK</button>
-        </div>
-        <!-- Search input (hidden until user taps search) -->
-        <div id="track-search-wrap" style="display:none">
-          <div class="inp-wrap">
-            <input id="inp-track" type="text" placeholder="Type to search..." autocomplete="off" oninput="onTrackType()">
-            <div class="inp-spinner" id="sp-track"></div>
-            <button class="inp-clear" id="cl-track" onclick="resetTrackSearch()">✕</button>
-            <div class="dropdown" id="dd-track"></div>
-          </div>
-          <button onclick="hideTrackSearch()" style="margin-top:6px;width:100%;padding:9px;background:transparent;border:1px solid rgba(122,40,204,0.25);border-radius:6px;color:rgba(255,255,255,0.35);font-family:var(--font-pixel);font-size:12px;letter-spacing:2px;cursor:pointer">↑ BACK TO LIST</button>
+        <div class="inp-wrap">
+          <input id="inp-track" type="text" placeholder="Choose from the list or type to search..." autocomplete="off" oninput="onTrackType()">
+          <div class="inp-spinner" id="sp-track"></div>
+          <button class="inp-clear" id="cl-track" onclick="resetTrack()">✕</button>
+          <div class="dropdown" id="dd-track"></div>
         </div>
       </div>
 
@@ -317,6 +410,7 @@ const CONFIG = {
 
 const fbApp = initializeApp(CONFIG.firebase);
 const db    = getFirestore(fbApp);
+document.getElementById('top-venue').textContent = CONFIG.venueName;
 document.title = CONFIG.venueName + ' · Request a Track';
 
 // ── DEVICE ID ──
@@ -419,120 +513,41 @@ window.resetArtist = function() {
   document.getElementById('pill-artist').classList.remove('on');
   document.getElementById('step-track').style.display = 'none';
   document.getElementById('pill-track').classList.remove('on');
-  hideTrackSearch();
-  closeDD('dd-artist');
+  document.getElementById('inp-track').value = '';
+  closeDD('dd-artist'); closeDD('dd-track');
   document.getElementById('inp-artist').focus();
 };
 
-// ── ARTIST MODE — Step 2: render as scrollable list, no keyboard ──
+// ── ARTIST MODE — Step 2: load top tracks, then type to filter ──
 async function loadTopTracks(artist) {
-  const inner = document.getElementById('track-scroll-inner');
-  inner.innerHTML = '<div style="padding:16px;text-align:center;font-family:var(--font-pixel);font-size:14px;letter-spacing:2px;color:rgba(255,255,255,0.3)">LOADING...</div>';
+  spin('sp-track', true);
   try {
-    const data = await lfFetch(`artist.gettoptracks&artist=${encodeURIComponent(artist)}&limit=15`);
+    const data = await lfFetch(`artist.gettoptracks&artist=${encodeURIComponent(artist)}&limit=12`);
+    spin('sp-track', false);
     const tracks = data.toptracks?.track || [];
-    if (!tracks.length) {
-      inner.innerHTML = '<div style="padding:16px;text-align:center;font-family:var(--font-pixel);font-size:13px;color:rgba(255,255,255,0.3)">NO TRACKS FOUND</div>';
-      return;
-    }
-    // Build HTML without inline onclick — use data-name + event delegation instead
-    inner.innerHTML = tracks.map((t, i) =>
-      `<div class="scroll-track-item" data-name="${t.name.replace(/"/g,'&quot;')}" style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(122,40,204,0.12);cursor:pointer;transition:background 0.1s;${i===0?'background:rgba(122,40,204,0.08)':''}">
-        <div style="font-size:16px;flex-shrink:0;width:26px;text-align:center">🎵</div>
-        <div style="font-family:var(--font-head);font-size:18px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
-      </div>`
-    ).join('');
-
-    // Single event delegation on the container — tracks touch distance to distinguish scroll from tap
-    let touchStartY = 0;
-    let touchStartX = 0;
-    let touchMoved = false;
-
-    inner.addEventListener('touchstart', e => {
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
-      touchMoved = false;
-      // Highlight the item being pressed
-      const item = e.target.closest('.scroll-track-item');
-      if (item) item.style.background = 'rgba(196,40,94,0.15)';
-    }, { passive: true });
-
-    inner.addEventListener('touchmove', e => {
-      const dy = Math.abs(e.touches[0].clientY - touchStartY);
-      const dx = Math.abs(e.touches[0].clientX - touchStartX);
-      if (dy > 8 || dx > 8) {
-        touchMoved = true;
-        // Remove highlight if they started scrolling
-        inner.querySelectorAll('.scroll-track-item').forEach(el => el.style.background = '');
-      }
-    }, { passive: true });
-
-    inner.addEventListener('touchend', e => {
-      const item = e.target.closest('.scroll-track-item');
-      if (item) item.style.background = '';
-      // Only pick if finger barely moved — genuine tap not a scroll
-      if (!touchMoved && item) {
-        e.preventDefault();
-        const name = item.dataset.name;
-        if (name) pickTrack(name);
-      }
-    }, { passive: false });
-
-    // Mouse click fallback for non-touch devices
-    inner.addEventListener('click', e => {
-      const item = e.target.closest('.scroll-track-item');
-      if (item) {
-        const name = item.dataset.name;
-        if (name) pickTrack(name);
-      }
-    });
-  } catch(e) {
-    inner.innerHTML = '<div style="padding:16px;text-align:center;font-family:var(--font-pixel);font-size:13px;color:rgba(255,255,255,0.3)">ERROR LOADING TRACKS</div>';
-  }
+    if (!tracks.length) return;
+    renderDD('dd-track', tracks.map(t => ({
+      icon: '🎵', main: t.name, sub: '',
+      onclick: () => pickTrack(t.name)
+    })), 'TOP TRACKS');
+  } catch(e) { spin('sp-track', false); }
 }
-
-// Show/hide the search input for Step 2
-window.showTrackSearch = function() {
-  document.getElementById('track-scroll-list').style.display = 'none';
-  document.getElementById('track-search-wrap').style.display = '';
-  setTimeout(() => document.getElementById('inp-track').focus(), 100);
-};
-
-window.hideTrackSearch = function() {
-  document.getElementById('track-search-wrap').style.display = 'none';
-  document.getElementById('track-scroll-list').style.display = '';
-  const el = document.getElementById('inp-track');
-  if (el) { el.value = ''; }
-  // iOS keyboard dismiss — blur the active element via a temp hidden input trick
-  const tmp = document.createElement('input');
-  tmp.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0;height:1px;font-size:16px';
-  document.body.appendChild(tmp);
-  tmp.focus();
-  tmp.blur();
-  document.body.removeChild(tmp);
-  // Also blur whatever was focused
-  if (document.activeElement) document.activeElement.blur();
-  closeDD('dd-track');
-};
-
-window.resetTrackSearch = function() {
-  document.getElementById('inp-track').value = '';
-  document.getElementById('cl-track').classList.remove('on');
-  closeDD('dd-track');
-};
 
 let timerT;
 window.onTrackType = function() {
   const v = document.getElementById('inp-track').value.trim();
   document.getElementById('cl-track').classList.toggle('on', v.length>0);
   clearTimeout(timerT);
+  if (!v) { loadTopTracks(chosenArtist); return; }
   closeDD('dd-track');
   if (v.length < 2) return;
   spin('sp-track', true);
   timerT = setTimeout(async () => {
     try {
+      // Search tracks filtered to this artist
       const data = await lfFetch(`track.search&track=${encodeURIComponent(v)}&artist=${encodeURIComponent(chosenArtist)}&limit=8`);
       let list = data.results?.trackmatches?.track || [];
+      // If sparse, broaden search
       if (list.length < 3) {
         const data2 = await lfFetch(`track.search&track=${encodeURIComponent(v)}&limit=10`);
         const all = data2.results?.trackmatches?.track || [];
@@ -552,7 +567,8 @@ window.onTrackType = function() {
 function pickTrack(name) {
   chosenTrack = name;
   closeDD('dd-track');
-  hideTrackSearch();
+  document.getElementById('inp-track').value = '';
+  document.getElementById('cl-track').classList.remove('on');
   document.getElementById('step-track').style.display = 'none';
   document.getElementById('pill-track-name').textContent = name;
   document.getElementById('pill-track').classList.add('on');
@@ -561,9 +577,11 @@ function pickTrack(name) {
 window.resetTrack = function() {
   chosenTrack = '';
   document.getElementById('pill-track').classList.remove('on');
-  hideTrackSearch();
+  document.getElementById('inp-track').value = '';
+  document.getElementById('cl-track').classList.remove('on');
   document.getElementById('step-track').style.display = '';
   loadTopTracks(chosenArtist);
+  document.getElementById('inp-track').focus();
 };
 
 // ── SONG MODE — type song, pick from results (with artist shown) ──
@@ -632,24 +650,72 @@ window.submitRequest = async function() {
   }
   const name = document.getElementById('inp-name').value.trim() || 'Anonymous';
   if (!canRequest()) { updateBadge(); return; }
-
-  // ── CHECK BANNED LIST ──
-  try {
-    const { getDocs: getD, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const banSnap = await getD(col(db,'banned'));
-    const isBanned = banSnap.docs.some(d => {
-      const b = d.data();
-      return b.title.toLowerCase() === title.toLowerCase() &&
-             b.artist.toLowerCase() === artist.toLowerCase();
-    });
-    if (isBanned) {
-      showMsg("🚫 THAT TRACK ISN'T AVAILABLE TONIGHT", 'err');
-      return;
-    }
-  } catch(e) { /* if banned check fails, allow through */ }
-
   useRequest();
   try {
+    // ── GENRE FILTER ──
+    // Check if track fits the venue genre before submitting
+    const ALLOWED_GENRES = new Set([
+      // Core
+      'rock','hard rock','classic rock','alternative rock','indie rock','progressive rock',
+      'psychedelic rock','southern rock','garage rock','blues rock','folk rock','grunge',
+      'punk rock','punk','hardcore punk','post-punk','pop punk','anarcho-punk','skate punk','horror punk',
+      'metal','heavy metal','thrash metal','death metal','black metal','doom metal','gothic metal',
+      'power metal','progressive metal','nu-metal','metalcore','deathcore','post-metal','sludge metal',
+      'stoner rock','stoner metal','folk metal','viking metal',
+      // Goth/dark
+      'goth','gothic rock','darkwave','industrial','deathrock','witch house','dark ambient',
+      'new wave','post-rock','shoegaze','noise rock','emo','screamo',
+      // Crossover
+      'blues','psychedelic','americana','country rock','outlaw country','rockabilly','surf rock',
+      'funk rock','rap metal','rap rock','alternative metal','glam rock','glam metal',
+      'symphonic metal','industrial metal','groove metal','speed metal','drone metal',
+      'trip-hop','darksynth','synthwave','ebm','dark electro',
+      // Broad catches
+      'alternative','hard','heavy','dark','underground',
+    ]);
+
+    const PRE_BANNED_ARTISTS = new Set([
+      'bob marley','ed sheeran','taylor swift','justin bieber','drake','ariana grande',
+      'dua lipa','harry styles','billie eilish','post malone','the weeknd','olivia rodrigo',
+      'shawn mendes','sam smith','lizzo','cardi b','nicki minaj','dababy','lil nas x',
+      'jason derulo','pitbull','flo rida','one direction','5 seconds of summer',
+    ]);
+
+    // Check pre-banned artists first
+    if (PRE_BANNED_ARTISTS.has(artist.toLowerCase())) {
+      showMsg('🎸 Tonight we're keeping it rock — try something heavier!', 'err');
+      submitBtn.disabled = false;
+      return;
+    }
+
+    // Check Firebase banned list
+    try {
+      const { getDocs: getBanned, collection: bannedCol } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const bannedSnap = await getBanned(bannedCol(db,'banned'));
+      const bannedKeys = bannedSnap.docs.map(d => d.id);
+      const thisKey = (title + '|||' + artist).toLowerCase().replace(/[^a-z0-9|||]/g,'_');
+      if (bannedKeys.some(k => k === thisKey || k.includes(artist.toLowerCase().replace(/[^a-z0-9]/g,'_')))) {
+        showMsg('🚫 That one's not on the list tonight — try another track!', 'err');
+        submitBtn.disabled = false;
+        return;
+      }
+    } catch(e) {}
+
+    // Genre check via Last.fm tags
+    let genreMismatch = false;
+    if (CONFIG.lastfm_key) {
+      try {
+        const tagRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getTopTags&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(title)}&api_key=${CONFIG.lastfm_key}&format=json`);
+        const tagData = await tagRes.json();
+        const tags = (tagData.toptags?.tag || []).slice(0,8).map(t => t.name.toLowerCase());
+        const hasMatch = tags.some(tag => ALLOWED_GENRES.has(tag) || [...ALLOWED_GENRES].some(g => tag.includes(g) || g.includes(tag)));
+        if (tags.length > 0 && !hasMatch) {
+          genreMismatch = true;
+          showMsg('🎸 Hmm, that might not fit tonight's vibe — staff will review it!', 'ok');
+        }
+      } catch(e) {}
+    }
+
     // Fetch album art from Last.fm before saving
     let spotifyImage = '';
     try {
@@ -662,7 +728,9 @@ window.submitRequest = async function() {
     await addDoc(collection(db,'tracks'), {
       title, artist, requester:name,
       votes:1, uniqueVoters:1, voters:[DEVICE_ID],
-      approved:false, createdAt:Date.now(),
+      approved: genreMismatch ? false : false, // always pending, genre mismatch flagged
+      genreMismatch,
+      createdAt:Date.now(),
       spotifyImage,
     });
     // Reset form
@@ -695,8 +763,10 @@ onSnapshot(lq, snap => {
   if (!tracks.length) { el.innerHTML='<div id="empty-board">NO TRACKS ON THE BOARD YET<br>BE THE FIRST TO REQUEST ONE<br>🎸</div>'; return; }
   el.innerHTML = tracks.slice(0,10).map((t,i) => {
     const v = hasVoted(t.id);
+    const art = t.spotifyImage ? `<img class="vc-art" src="${t.spotifyImage}" onerror="this.outerHTML='<div class=\'vc-art\'>🎵</div>'">` : `<div class="vc-art">🎵</div>`;
     return `<div class="vote-card ${i===0?'top':''} ${v?'voted':''}">
       <div class="vc-rank">${String(i+1).padStart(2,'0')}</div>
+      ${art}
       <div class="vc-details">
         <div class="vc-title">${t.title}</div>
         <div class="vc-artist">${t.artist}</div>
