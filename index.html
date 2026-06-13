@@ -512,11 +512,12 @@ async function fetchAIQuotes() {
   if (aiQuoteFetching) return;
   aiQuoteFetching = true;
   try {
-    const topTrack    = [...tracks].filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters)[0];
-    const totalVotes  = tracks.filter(t=>t.approved).reduce((s,t)=>s+t.uniqueVoters,0);
+    const safeTracks  = (typeof tracks !== 'undefined' && Array.isArray(tracks)) ? tracks : [];
+    const topTrack    = [...safeTracks].filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters)[0];
+    const totalVotes  = safeTracks.filter(t=>t.approved).reduce((s,t)=>s+t.uniqueVoters,0);
     const nowPlaying  = document.getElementById('track-name').textContent;
     const nowArtist   = document.getElementById('track-artist').textContent;
-    const trackCount  = tracks.filter(t=>t.approved).length;
+    const trackCount  = safeTracks.filter(t=>t.approved).length;
 
     const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
     if (context === lastAiContext && aiQuoteQueue.length > 4) { aiQuoteFetching = false; return; }
@@ -1029,6 +1030,22 @@ let currentVideoId = '';
 
 async function searchYouTube(title, artist) {
   try {
+    // Check localStorage cache first — avoid burning quota on repeat tracks
+    const cacheKey = 'yt_' + (artist + '|' + title).toLowerCase().replace(/[^a-z0-9|]/g,'_').slice(0,80);
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { videoId: cachedId, ts } = JSON.parse(cached);
+      // Use cache if less than 7 days old
+      if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000 && cachedId) {
+        console.log(`YT: cache hit for "${artist} - ${title}" → ${cachedId}`);
+        if (cachedId === 'NONE') { hideYouTube(); return; } // cached miss
+        if (cachedId === currentVideoId) return;
+        currentVideoId = cachedId;
+        loadYouTubeVideo(cachedId);
+        return;
+      }
+    }
+
     // Try multiple search strategies in order — most specific to broadest
     const searches = [
       `${artist} ${title} official music video`,
@@ -1083,6 +1100,11 @@ async function searchYouTube(title, artist) {
 
       } catch(e) { console.warn('YT search error:', e); continue; }
     }
+
+    // Cache the result (or the miss) to save quota
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ videoId: videoId || 'NONE', ts: Date.now() }));
+    } catch(e) {}
 
     if (!videoId) { hideYouTube(); return; }
     if (videoId === currentVideoId) return;
