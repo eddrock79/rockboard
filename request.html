@@ -443,27 +443,52 @@ async function loadTopTracks(artist) {
       </div>`
     ).join('');
 
-    // Single event delegation on the container — works for both touch and click
-    inner.addEventListener('click', handleScrollTrackTap);
-    inner.addEventListener('touchend', handleScrollTrackTap, { passive: false });
+    // Single event delegation on the container — tracks touch distance to distinguish scroll from tap
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let touchMoved = false;
 
-    // Touch highlight
-    inner.querySelectorAll('.scroll-track-item').forEach(el => {
-      el.addEventListener('touchstart', () => el.style.background = 'rgba(196,40,94,0.15)', {passive:true});
-      el.addEventListener('touchcancel', () => el.style.background = '', {passive:true});
+    inner.addEventListener('touchstart', e => {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      touchMoved = false;
+      // Highlight the item being pressed
+      const item = e.target.closest('.scroll-track-item');
+      if (item) item.style.background = 'rgba(196,40,94,0.15)';
+    }, { passive: true });
+
+    inner.addEventListener('touchmove', e => {
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      if (dy > 8 || dx > 8) {
+        touchMoved = true;
+        // Remove highlight if they started scrolling
+        inner.querySelectorAll('.scroll-track-item').forEach(el => el.style.background = '');
+      }
+    }, { passive: true });
+
+    inner.addEventListener('touchend', e => {
+      const item = e.target.closest('.scroll-track-item');
+      if (item) item.style.background = '';
+      // Only pick if finger barely moved — genuine tap not a scroll
+      if (!touchMoved && item) {
+        e.preventDefault();
+        const name = item.dataset.name;
+        if (name) pickTrack(name);
+      }
+    }, { passive: false });
+
+    // Mouse click fallback for non-touch devices
+    inner.addEventListener('click', e => {
+      const item = e.target.closest('.scroll-track-item');
+      if (item) {
+        const name = item.dataset.name;
+        if (name) pickTrack(name);
+      }
     });
   } catch(e) {
     inner.innerHTML = '<div style="padding:16px;text-align:center;font-family:var(--font-pixel);font-size:13px;color:rgba(255,255,255,0.3)">ERROR LOADING TRACKS</div>';
   }
-}
-
-function handleScrollTrackTap(e) {
-  // Prevent touch events also firing click
-  if (e.type === 'touchend') e.preventDefault();
-  const item = e.target.closest('.scroll-track-item');
-  if (!item) return;
-  const name = item.dataset.name;
-  if (name) pickTrack(name);
 }
 
 // Show/hide the search input for Step 2
