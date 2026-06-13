@@ -505,10 +505,19 @@ async function enrichTrackData(artist, track) {
 // ── AI QUOTE ENGINE ──
 let aiQuoteQueue = [];
 let aiQuoteFetching = false;
-let lastAiContext = '';
+let lastAiTrackKey = '';   // tracks which song quotes were generated for
 let currentTrackFacts = null;
 
-async function fetchAIQuotes() {
+// Shuffled fallback pool — never repeat until exhausted
+let fallbackPool = [];
+function getNextFallback() {
+  if (!fallbackPool.length) {
+    fallbackPool = [...FALLBACK_QUOTES].sort(() => Math.random() - 0.5);
+  }
+  return fallbackPool.shift();
+}
+
+async function fetchAIQuotes(forceTrackKey) {
   if (aiQuoteFetching) return;
   aiQuoteFetching = true;
   try {
@@ -518,9 +527,12 @@ async function fetchAIQuotes() {
     const nowArtist   = document.getElementById('track-artist').textContent;
     const trackCount  = tracks.filter(t=>t.approved).length;
 
-    const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
-    if (context === lastAiContext && aiQuoteQueue.length > 4) { aiQuoteFetching = false; return; }
-    lastAiContext = context;
+    // Skip if same track and queue still has plenty
+    const trackKey = `${nowPlaying}|||${nowArtist}`;
+    if (trackKey === lastAiTrackKey && aiQuoteQueue.length > 4 && !forceTrackKey) {
+      aiQuoteFetching = false; return;
+    }
+    lastAiTrackKey = trackKey;
 
     // Enrich current track in background
     let facts = null;
@@ -609,9 +621,10 @@ Example format: ["quote one here", "quote two here"]`;
 }
 
 function getNextQuote() {
-  if (aiQuoteQueue.length > 2) return aiQuoteQueue.shift();
+  if (aiQuoteQueue.length > 0) return aiQuoteQueue.shift();
+  // Queue ran dry — trigger background refresh
   fetchAIQuotes();
-  return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+  return getNextFallback();
 }
 
 // ── INIT FIREBASE ──
@@ -886,9 +899,9 @@ function nextQuote() {
   el.addEventListener('animationend', nextQuote, { once:true });
 }
 
-// Fetch first batch of AI quotes immediately, then every 3 minutes
+// Kick off immediately — AI in background, fallbacks fill the gap
 fetchAIQuotes();
-setInterval(fetchAIQuotes, 3 * 60 * 1000);
+setInterval(() => fetchAIQuotes(), 3 * 60 * 1000);
 nextQuote();
 
 // ── STATS PANEL ──
@@ -981,6 +994,11 @@ async function fetchNowPlaying() {
     if (trackKey !== nowPlayingTrack) {
       nowPlayingTrack = trackKey;
       trackNumber++;
+
+      // 🎯 NEW TRACK — clear old quotes and fetch fresh ones for this song
+      aiQuoteQueue = [];
+      lastAiTrackKey = ''; // force a new fetch even if same title somehow
+      fetchAIQuotes(trackKey); // pass key to bypass dedup check
 
       // Update album art background
       if (thumb && thumb !== nowPlayingThumb) {
