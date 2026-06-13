@@ -52,6 +52,32 @@
   }
   #yt-label.show { display:block; }
 
+  /* ── SPINNING LOGO FALLBACK (shown when no video / restricted) ── */
+  #logo-fallback {
+    position:fixed; inset:0; z-index:0;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity 2s ease;
+    pointer-events:none;
+  }
+  #logo-fallback.show { opacity:1; }
+  #logo-fallback img {
+    width:min(38vw, 38vh);
+    filter:
+      drop-shadow(0 0 40px rgba(139,0,0,0.7))
+      drop-shadow(0 0 80px rgba(139,0,0,0.3))
+      brightness(0.85);
+    animation:logoSpin 18s linear infinite, logoPulse 4s ease-in-out infinite;
+    transform-origin:center center;
+  }
+  @keyframes logoSpin {
+    from { transform:rotate(0deg); }
+    to   { transform:rotate(360deg); }
+  }
+  @keyframes logoPulse {
+    0%,100% { filter:drop-shadow(0 0 40px rgba(139,0,0,0.7)) drop-shadow(0 0 80px rgba(139,0,0,0.3)) brightness(0.85); }
+    50%      { filter:drop-shadow(0 0 60px rgba(139,0,0,1))   drop-shadow(0 0 120px rgba(139,0,0,0.6)) brightness(1.05); }
+  }
+
   /* ── LAYOUT ── */
   #app {
     position:relative; z-index:1; width:100vw; height:100vh;
@@ -258,6 +284,9 @@
 <div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
 <div id="yt-overlay"></div>
 <div id="yt-label">▶ MUSIC VIDEO</div>
+<div id="logo-fallback">
+  <img src="assets/Black-Rose-Logo.png" alt="The Black Rose">
+</div>
 <div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
   <div style="text-align:center">
     <img src="assets/Black-Rose-Logo.png" style="max-width:420px;width:80%;filter:drop-shadow(0 0 20px rgba(139,0,0,0.7));margin-bottom:8px">
@@ -1033,10 +1062,13 @@ window.activateVideo = function activateVideo() {
   overlay.style.opacity = '0';
   overlay.style.transition = 'opacity 0.8s ease';
   setTimeout(() => { overlay.style.display = 'none'; }, 900);
+  // Show spinning logo immediately — hides once video plays, stays if no video found
+  showLogoFallback();
   // Trigger video search for current track
   if (nowPlayingTrack) {
     const parts = nowPlayingTrack.split('|||');
     if (CONFIG.youtube_key) searchYouTube(parts[0], parts[1]);
+    else showLogoFallback(); // no YouTube key — keep spinning logo
   }
 }
 
@@ -1114,7 +1146,18 @@ window.onYouTubeIframeAPIReady = function() {
           if (q !== 'hd1080' && q !== 'hd720' && q !== 'highres') {
             ytPlayer.setPlaybackQuality('hd1080');
           }
+          // Video is actually playing — hide the fallback logo
+          hideLogoFallback();
         }
+      },
+      onError: (e) => {
+        // Error codes 100, 101, 150 = video unavailable / restricted / not embeddable
+        // Try the next YouTube search result, or fall back to spinning logo
+        console.warn('YouTube player error:', e.data);
+        showLogoFallback();
+        document.getElementById('yt-bg-wrap').classList.remove('show');
+        document.getElementById('yt-label').classList.remove('show');
+        document.getElementById('bg-art').style.opacity = '1';
       }
     }
   });
@@ -1149,6 +1192,8 @@ function loadYouTubeVideo(videoId) {
 
   wrap.classList.remove('show');
   clearInterval(syncInterval);
+  // Hide spinning logo — video is loading
+  hideLogoFallback();
 
   setTimeout(async () => {
     // Get current Spotify progress to sync video + apply offset
@@ -1183,6 +1228,14 @@ function loadYouTubeVideo(videoId) {
   }, 600);
 }
 
+function showLogoFallback() {
+  document.getElementById('logo-fallback').classList.add('show');
+}
+
+function hideLogoFallback() {
+  document.getElementById('logo-fallback').classList.remove('show');
+}
+
 function hideYouTube() {
   document.getElementById('yt-bg-wrap').classList.remove('show');
   document.getElementById('yt-label').classList.remove('show');
@@ -1190,6 +1243,7 @@ function hideYouTube() {
   clearInterval(syncInterval);
   currentVideoId = '';
   if (ytPlayer?.stopVideo) ytPlayer.stopVideo();
+  showLogoFallback();
 }
 
 function updateAlbumArt(url) {
