@@ -302,9 +302,14 @@
   }
 
   /* Black Rose logo in now-playing */
+  #venue-logo-wrap {
+    width:100%; perspective:900px; margin-bottom:4px;
+  }
   #venue-logo {
     width:100%; max-height:120px; object-fit:contain;
-    margin-bottom:4px; filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
+    filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
+    display:block;
+    animation:mtvFlip 4s ease-in-out infinite, logoPulse 4s ease-in-out infinite;
   }
 </style>
 </head>
@@ -336,7 +341,9 @@
 
 <div id="app">
   <div id="now-playing">
-    <img id="venue-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose">
+    <div id="venue-logo-wrap">
+      <img id="venue-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose">
+    </div>
     <div id="album-art">
       <img id="album-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80" alt="Album Art">
       <div id="album-art-overlay"></div>
@@ -1190,12 +1197,17 @@ window.onYouTubeIframeAPIReady = function() {
       },
       onError: (e) => {
         // Error codes 100, 101, 150 = video unavailable / restricted / not embeddable
-        // Try the next YouTube search result, or fall back to spinning logo
         console.warn('YouTube player error:', e.data);
-        showLogoFallback();
-        document.getElementById('yt-bg-wrap').classList.remove('show');
+        // Fully hide the wrap so the YouTube error message can't show through
+        const wrap = document.getElementById('yt-bg-wrap');
+        wrap.classList.remove('show');
+        wrap.style.display = 'none';
         document.getElementById('yt-label').classList.remove('show');
         document.getElementById('bg-art').style.opacity = '1';
+        currentVideoId = '';
+        // Load a blank page into the player to kill the error message
+        if (ytPlayer?.loadVideoById) ytPlayer.loadVideoById({ videoId: '' });
+        showLogoFallback();
       }
     }
   });
@@ -1228,6 +1240,7 @@ function loadYouTubeVideo(videoId) {
   const label = document.getElementById('yt-label');
   const bgArt = document.getElementById('bg-art');
 
+  wrap.style.display = 'block'; // restore in case it was hidden by a previous error
   wrap.classList.remove('show');
   clearInterval(syncInterval);
   // Hide spinning logo — video is loading
@@ -1275,7 +1288,9 @@ function hideLogoFallback() {
 }
 
 function hideYouTube() {
-  document.getElementById('yt-bg-wrap').classList.remove('show');
+  const wrap = document.getElementById('yt-bg-wrap');
+  wrap.classList.remove('show');
+  wrap.style.display = 'none';
   document.getElementById('yt-label').classList.remove('show');
   document.getElementById('bg-art').style.opacity = '1';
   clearInterval(syncInterval);
