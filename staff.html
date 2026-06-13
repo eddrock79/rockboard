@@ -106,7 +106,11 @@
   .spotify-preview-btn{display:block;text-align:center;padding:10px;background:rgba(30,215,96,0.08);border:1px solid rgba(30,215,96,0.25);border-radius:6px;color:#1ED760;font-family:var(--font-pixel);font-size:15px;letter-spacing:2px;text-decoration:none;transition:all 0.15s}
   .spotify-preview-btn:active{background:rgba(30,215,96,0.2)}
 
-  #winner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:40px}
+  .ban-btn{padding:8px 12px;background:rgba(139,0,0,0.2);border:1px solid rgba(139,0,0,0.5);border-radius:5px;color:#ff6666;font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:all 0.15s;-webkit-appearance:none}
+  .ban-btn:active{background:rgba(139,0,0,0.5);transform:scale(0.95)}
+  .unban-btn{padding:8px 14px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.3);border-radius:5px;color:var(--green);font-family:var(--font-pixel);font-size:13px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:all 0.15s;-webkit-appearance:none}
+  .unban-btn:active{background:rgba(57,255,20,0.2);transform:scale(0.95)}
+  .banned-card{background:var(--card);border:1px solid rgba(139,0,0,0.35);border-left:3px solid #ff4444;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;opacity:0.85}
   #winner-overlay.show{display:flex}
   #winner-overlay h1{font-family:var(--font-head);font-size:56px;letter-spacing:6px;color:var(--amber)}
   .w-track{font-family:var(--font-head);font-size:38px;color:var(--white)}
@@ -178,6 +182,7 @@
     <div class="tab active" id="tab-pending" onclick="switchTab('pending')">PENDING <span class="badge" id="pending-badge" style="display:none">0</span></div>
     <div class="tab" id="tab-approved" onclick="switchTab('approved')">APPROVED</div>
     <div class="tab" id="tab-played" onclick="switchTab('played')">PLAYED</div>
+    <div class="tab" id="tab-banned" onclick="switchTab('banned')">🚫 BANNED</div>
   </div>
   <div class="list-section show" id="section-pending">
     <div class="list-label" style="display:flex;justify-content:space-between;align-items:center">
@@ -195,6 +200,14 @@
   <div class="list-section" id="section-played">
     <div class="list-label">PLAYED TONIGHT · NO REPEATS FOR 1HR · <span id="played-count-num">0</span></div>
     <div id="played-list"></div>
+  </div>
+
+  <div class="list-section" id="section-banned">
+    <div class="list-label" style="display:flex;justify-content:space-between;align-items:center">
+      <span>🚫 PERMANENTLY BANNED TRACKS · <span id="banned-count-num">0</span></span>
+    </div>
+    <div style="font-family:var(--font-pixel);font-size:13px;letter-spacing:2px;color:rgba(240,237,232,0.25);margin-bottom:14px;line-height:1.7">BANNED TRACKS ARE BLOCKED FROM BEING REQUESTED.<br>NO MORE WONDERWALL.</div>
+    <div id="banned-list"></div>
   </div>
 
 <div id="winner-overlay">
@@ -227,7 +240,9 @@ function clearNight()        { window._clearNight        && window._clearNight()
 function switchTab(t)        { window._switchTab         && window._switchTab(t);        }
 function keepTrack(id)       { window._keepTrack         && window._keepTrack(id);       }
 function ditchTrack(id)      { window._ditchTrack        && window._ditchTrack(id);      }
-function markPlayed(id)      { window._markPlayed        && window._markPlayed(id);      }
+function banTrack(id)    { window._banTrack    && window._banTrack(id);    }
+function unbanTrack(id)  { window._unbanTrack  && window._unbanTrack(id);  }
+function markPlayed(id)  { window._markPlayed  && window._markPlayed(id);  }
 </script>
 
 <script type="module">
@@ -478,11 +493,12 @@ window._clearNight = async function() {
 
 // ── TABS ──
 window._switchTab = function(tab) {
-  ['pending','approved','played'].forEach(t => {
+  ['pending','approved','played','banned'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('active', tab===t);
     document.getElementById('section-'+t).classList.toggle('show', tab===t);
   });
   if (tab === 'played') renderPlayedHistory();
+  if (tab === 'banned') renderBannedList();
 };
 
 async function renderPlayedHistory() {
@@ -550,6 +566,9 @@ function renderPending() {
       <div class="rc-actions">
         <button class="keep-btn" onclick="keepTrack('${t.id}')">🤘 KEEP IT</button>
         <button class="ditch-btn" onclick="ditchTrack('${t.id}')">✕ DITCH IT</button>
+      </div>
+      <div style="margin-top:8px">
+        <button class="ban-btn" style="width:100%" onclick="banTrack('${t.id}')">🚫 BAN THIS TRACK PERMANENTLY</button>
       </div>
     </div>`).join('');
 }
@@ -837,9 +856,63 @@ function renderApproved() {
       ${workerReady && i===0 && !isQueued ? `<button class="queue-btn" onclick="queueTopTrack()">▶ QUEUE</button>` : ''}
       ${workerReady && isQueued ? `<button class="played-btn" onclick="markPlayed('${t.id}')">✓ PLAYED</button>` : ''}
       ${!workerReady ? `<a class="spotify-btn" href="${spotifyApp}" onclick="this.href='${spotifyApp}';setTimeout(()=>this.href='${spotifyUrl}',500)" target="_blank">▶</a>` : ''}
+      <button class="ban-btn" onclick="banTrack('${t.id}')">🚫</button>
       <button class="ac-ditch" onclick="ditchTrack('${t.id}')">✕</button>
     </div>`;
   }).join('');
+}
+
+// ── BAN LIST ──
+window._banTrack = async function(id) {
+  const track = allTracks.find(t => t.id === id);
+  if (!track) return;
+  if (!confirm(`Ban "${track.title}" by ${track.artist}?\n\nThis will permanently block it from being requested.`)) return;
+  try {
+    const { setDoc: sd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    // Write to banned collection — key is sanitised title+artist so duplicates merge
+    const banId = (track.title + '|||' + track.artist).toLowerCase().replace(/[^a-z0-9|]/g,'_').substring(0,100);
+    await sd(doc(db,'banned', banId), {
+      title:    track.title,
+      artist:   track.artist,
+      bannedAt: Date.now(),
+    });
+    // Remove from active board
+    await deleteDoc(doc(db,'tracks', id));
+    showStaffToast('🚫 BANNED: ' + track.title);
+  } catch(e) { console.error('Ban failed', e); showStaffToast('❌ BAN FAILED'); }
+};
+
+window._unbanTrack = async function(banId) {
+  if (!confirm('Unban this track? Customers will be able to request it again.')) return;
+  try {
+    await deleteDoc(doc(db,'banned', banId));
+    showStaffToast('✅ UNBANNED');
+    renderBannedList();
+  } catch(e) { showStaffToast('❌ UNBAN FAILED'); }
+};
+
+async function renderBannedList() {
+  const list = document.getElementById('banned-list');
+  list.innerHTML = '<div class="empty-state">LOADING...</div>';
+  try {
+    const { getDocs: getD, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getD(col(db,'banned'));
+    const banned = snap.docs.map(d => ({ banId: d.id, ...d.data() })).sort((a,b) => b.bannedAt - a.bannedAt);
+    document.getElementById('banned-count-num').textContent = banned.length;
+    if (!banned.length) {
+      list.innerHTML = '<div class="empty-state">NO BANNED TRACKS<br>BAN A TRACK FROM PENDING OR APPROVED</div>';
+      return;
+    }
+    list.innerHTML = banned.map(t => `
+      <div class="banned-card">
+        <div class="ac-rank" style="font-size:20px">🚫</div>
+        <div class="ac-details">
+          <div class="ac-title">${t.title}</div>
+          <div class="ac-artist">${t.artist}</div>
+        </div>
+        <button class="unban-btn" onclick="unbanTrack('${t.banId}')">✓ UNBAN</button>
+      </div>`).join('');
+  } catch(e) { list.innerHTML = '<div class="empty-state">ERROR LOADING</div>'; }
 }
 
 // ── INIT ──

@@ -632,6 +632,22 @@ window.submitRequest = async function() {
   }
   const name = document.getElementById('inp-name').value.trim() || 'Anonymous';
   if (!canRequest()) { updateBadge(); return; }
+
+  // ── CHECK BANNED LIST ──
+  try {
+    const { getDocs: getD, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const banSnap = await getD(col(db,'banned'));
+    const isBanned = banSnap.docs.some(d => {
+      const b = d.data();
+      return b.title.toLowerCase() === title.toLowerCase() &&
+             b.artist.toLowerCase() === artist.toLowerCase();
+    });
+    if (isBanned) {
+      showMsg("🚫 THAT TRACK ISN'T AVAILABLE TONIGHT", 'err');
+      return;
+    }
+  } catch(e) { /* if banned check fails, allow through */ }
+
   useRequest();
   try {
     // Fetch album art from Last.fm before saving
