@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ROCKBOARD</title>
@@ -52,63 +51,6 @@
     z-index:2; display:none;
   }
   #yt-label.show { display:block; }
-
-  /* ── BLACK ROSE MUSIC TV FALLBACK ── */
-  #logo-fallback {
-    position:fixed; inset:0; z-index:0;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px;
-    opacity:0; transition:opacity 2s ease;
-    pointer-events:none;
-    perspective:900px;
-  }
-  #logo-fallback.show { opacity:1; }
-
-  #logo-flip-wrap {
-    animation:mtvFlip 4s ease-in-out infinite;
-    transform-style:preserve-3d;
-    transform-origin:center center;
-  }
-  #logo-fallback img {
-    width:min(36vw, 36vh);
-    display:block;
-    filter:drop-shadow(0 0 40px rgba(139,0,0,0.8)) drop-shadow(0 0 80px rgba(139,0,0,0.35));
-    animation:logoPulse 4s ease-in-out infinite;
-  }
-
-  /* MTV-style: sit face-on, then flip around vertical axis and come back */
-  @keyframes mtvFlip {
-    0%   { transform:rotateY(0deg); }
-    35%  { transform:rotateY(0deg); }        /* hold front */
-    50%  { transform:rotateY(180deg); }      /* spin to back */
-    65%  { transform:rotateY(360deg); }      /* return to front */
-    100% { transform:rotateY(360deg); }      /* hold front again */
-  }
-  @keyframes logoPulse {
-    0%,100% { filter:drop-shadow(0 0 40px rgba(139,0,0,0.8)) drop-shadow(0 0 80px rgba(139,0,0,0.35)) brightness(0.88); }
-    50%      { filter:drop-shadow(0 0 70px rgba(139,0,0,1))   drop-shadow(0 0 130px rgba(139,0,0,0.6)) brightness(1.08); }
-  }
-
-  /* Music TV text label */
-  #music-tv-label {
-    display:flex; flex-direction:column; align-items:center; gap:4px;
-    animation:labelFade 4s ease-in-out infinite;
-  }
-  #music-tv-label .mtv-top {
-    font-family:var(--font-pixel); font-size:13px; letter-spacing:8px;
-    color:rgba(139,0,0,0.7);
-  }
-  #music-tv-label .mtv-main {
-    font-family:var(--font-head); font-size:52px; letter-spacing:10px;
-    color:var(--white); line-height:1;
-    text-shadow:0 0 30px rgba(139,0,0,0.6), 0 0 60px rgba(139,0,0,0.2);
-  }
-  #music-tv-label .mtv-sub {
-    font-family:var(--font-pixel); font-size:13px; letter-spacing:6px;
-    color:rgba(240,237,232,0.25);
-  }
-  @keyframes labelFade {
-    0%,100% { opacity:0.7; } 50% { opacity:1; }
-  }
 
   /* ── LAYOUT ── */
   #app {
@@ -222,31 +164,10 @@
   .eq-bar:nth-child(3n)   { background:linear-gradient(to top,#550000,#aa1100,#ff8800); box-shadow:0 0 4px rgba(200,50,0,0.3); }
 
   /* ── TICKER ── */
-  #callout {
-    grid-area:callout; display:flex; align-items:center; gap:0;
-    padding-top:10px; border-top:2px solid rgba(139,0,0,0.4);
-    overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px;
-    position:relative; z-index:5;
-  }
-  #callout-tag {
-    font-family:var(--font-pixel); font-size:16px; letter-spacing:3px;
-    color:var(--white); white-space:nowrap; flex-shrink:0;
-    padding:6px 16px; background:var(--accent); height:100%;
-    display:flex; align-items:center;
-    position:relative; z-index:6; /* always in front of scrolling text */
-  }
-  #callout-text {
-    font-family:var(--font-pixel); font-size:38px; color:#ffe8a0;
-    white-space:nowrap; letter-spacing:2px;
-    text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8);
-    padding-left:24px; font-weight:normal;
-    position:relative; z-index:5;
-  }
-  /* Start fully off-screen right, end fully off-screen left — no overlap with tag */
-  @keyframes ticker {
-    0%   { transform:translateX(100vw); }
-    100% { transform:translateX(calc(-100% - 100vw)); }
-  }
+  #callout { grid-area:callout; display:flex; align-items:center; gap:0; padding-top:10px; border-top:2px solid rgba(139,0,0,0.4); overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px; border-radius:0 0 0 0; }
+  #callout-tag { font-family:var(--font-pixel); font-size:16px; letter-spacing:3px; color:var(--white); white-space:nowrap; flex-shrink:0; padding:6px 16px; background:var(--accent); height:100%; display:flex; align-items:center; }
+  #callout-text { font-family:var(--font-pixel); font-size:38px; color:#ffe8a0; white-space:nowrap; letter-spacing:2px; text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8); padding-left:24px; font-weight:normal; }
+  @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-180%)} }
 
   #qr-hint { position:fixed; bottom:88px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
   #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
@@ -290,7 +211,7 @@
 
   /* Countdown timer */
   #queue-countdown {
-    position:fixed; bottom:130px; left:50%; transform:translateX(-50%);
+    position:fixed; bottom:68px; left:50%; transform:translateX(-50%);
     display:none; flex-direction:column; align-items:center; gap:6px;
     z-index:10; text-align:center;
   }
@@ -324,14 +245,9 @@
   }
 
   /* Black Rose logo in now-playing */
-  #venue-logo-wrap {
-    width:100%; perspective:900px; margin-bottom:4px;
-  }
   #venue-logo {
     width:100%; max-height:120px; object-fit:contain;
-    filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
-    display:block;
-    animation:mtvFlip 4s ease-in-out infinite, logoPulse 4s ease-in-out infinite;
+    margin-bottom:4px; filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
   }
 </style>
 </head>
@@ -342,16 +258,6 @@
 <div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
 <div id="yt-overlay"></div>
 <div id="yt-label">▶ MUSIC VIDEO</div>
-<div id="logo-fallback">
-  <div id="logo-flip-wrap">
-    <img src="assets/Black-Rose-Logo.png" alt="The Black Rose">
-  </div>
-  <div id="music-tv-label">
-    <div class="mtv-top">▶ PRESENTING</div>
-    <div class="mtv-main">MUSIC TV</div>
-    <div class="mtv-sub">THE BLACK ROSE · EDINBURGH</div>
-  </div>
-</div>
 <div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
   <div style="text-align:center">
     <img src="assets/Black-Rose-Logo.png" style="max-width:420px;width:80%;filter:drop-shadow(0 0 20px rgba(139,0,0,0.7));margin-bottom:8px">
@@ -363,9 +269,7 @@
 
 <div id="app">
   <div id="now-playing">
-    <div id="venue-logo-wrap">
-      <img id="venue-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose">
-    </div>
+    <img id="venue-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose">
     <div id="album-art">
       <img id="album-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80" alt="Album Art">
       <div id="album-art-overlay"></div>
@@ -414,7 +318,7 @@
 </div>
 
 <div id="qr-hint">
-  <canvas id="qr-canvas" style="width:80px;height:80px;border-radius:4px;display:block;margin:0 auto 8px;image-rendering:pixelated;"></canvas>
+  <div style="width:80px;height:80px;background:#1a0808;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:var(--font-pixel);font-size:11px;color:rgba(240,237,232,0.3);letter-spacing:1px;text-align:center;">QR<br>CODE</div>
   <div id="qr-hint-label">SCAN TO VOTE</div>
 </div>
 
@@ -601,19 +505,10 @@ async function enrichTrackData(artist, track) {
 // ── AI QUOTE ENGINE ──
 let aiQuoteQueue = [];
 let aiQuoteFetching = false;
-let lastAiTrackKey = '';   // tracks which song quotes were generated for
+let lastAiContext = '';
 let currentTrackFacts = null;
 
-// Shuffled fallback pool — never repeat until exhausted
-let fallbackPool = [];
-function getNextFallback() {
-  if (!fallbackPool.length) {
-    fallbackPool = [...FALLBACK_QUOTES].sort(() => Math.random() - 0.5);
-  }
-  return fallbackPool.shift();
-}
-
-async function fetchAIQuotes(forceTrackKey) {
+async function fetchAIQuotes() {
   if (aiQuoteFetching) return;
   aiQuoteFetching = true;
   try {
@@ -623,12 +518,9 @@ async function fetchAIQuotes(forceTrackKey) {
     const nowArtist   = document.getElementById('track-artist').textContent;
     const trackCount  = tracks.filter(t=>t.approved).length;
 
-    // Skip if same track and queue still has plenty
-    const trackKey = `${nowPlaying}|||${nowArtist}`;
-    if (trackKey === lastAiTrackKey && aiQuoteQueue.length > 4 && !forceTrackKey) {
-      aiQuoteFetching = false; return;
-    }
-    lastAiTrackKey = trackKey;
+    const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
+    if (context === lastAiContext && aiQuoteQueue.length > 4) { aiQuoteFetching = false; return; }
+    lastAiContext = context;
 
     // Enrich current track in background
     let facts = null;
@@ -689,15 +581,18 @@ RULES:
 
 Example format: ["quote one here", "quote two here"]`;
 
-    const response = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
 
     const data = await response.json();
-    // Worker returns { text: "..." } — fall back to raw Anthropic shape if needed
-    const text = data.text || data.content?.[0]?.text || '';
+    const text = data.content?.[0]?.text || '';
     const cleaned = text.replace(/```json[\s\S]*?```/g, t => t.replace(/```json|```/g,'')).replace(/```/g,'').trim();
     const start = cleaned.indexOf('['), end = cleaned.lastIndexOf(']');
     if (start !== -1 && end !== -1) {
@@ -705,10 +600,7 @@ Example format: ["quote one here", "quote two here"]`;
       if (Array.isArray(quotes) && quotes.length > 0) {
         aiQuoteQueue.push(...quotes.filter(q => typeof q === 'string' && q.length > 0));
         if (aiQuoteQueue.length > 40) aiQuoteQueue = aiQuoteQueue.slice(-25);
-        console.log(`✅ AI ticker: ${quotes.length} quotes loaded for "${nowPlaying}"`);
       }
-    } else {
-      console.warn('AI ticker: could not parse JSON from response', text.substring(0, 100));
     }
   } catch(e) {
     console.warn('AI quotes failed:', e);
@@ -717,10 +609,9 @@ Example format: ["quote one here", "quote two here"]`;
 }
 
 function getNextQuote() {
-  if (aiQuoteQueue.length > 0) return aiQuoteQueue.shift();
-  // Queue ran dry — trigger background refresh
+  if (aiQuoteQueue.length > 2) return aiQuoteQueue.shift();
   fetchAIQuotes();
-  return getNextFallback();
+  return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
 }
 
 // ── INIT FIREBASE ──
@@ -989,16 +880,15 @@ function nextQuote() {
   const quote = getNextQuote();
   el.textContent = quote;
   void el.offsetWidth;
-  // Duration scales with length — must travel 100vw in + full text width + 100vw out
-  // Multiplier 0.55 gives ~18s for average quote, 28s for long ones
-  const duration = Math.max(16, Math.min(30, quote.length * 0.55));
+  // Adjust speed based on quote length — longer quotes scroll slower
+  const duration = Math.max(14, Math.min(26, quote.length * 0.45));
   el.style.animation = `ticker ${duration}s linear`;
   el.addEventListener('animationend', nextQuote, { once:true });
 }
 
-// Kick off immediately — AI in background, fallbacks fill the gap
+// Fetch first batch of AI quotes immediately, then every 3 minutes
 fetchAIQuotes();
-setInterval(() => fetchAIQuotes(), 3 * 60 * 1000);
+setInterval(fetchAIQuotes, 3 * 60 * 1000);
 nextQuote();
 
 // ── STATS PANEL ──
@@ -1092,11 +982,6 @@ async function fetchNowPlaying() {
       nowPlayingTrack = trackKey;
       trackNumber++;
 
-      // 🎯 NEW TRACK — clear old quotes and fetch fresh ones for this song
-      aiQuoteQueue = [];
-      lastAiTrackKey = ''; // force a new fetch even if same title somehow
-      fetchAIQuotes(trackKey); // pass key to bypass dedup check
-
       // Update album art background
       if (thumb && thumb !== nowPlayingThumb) {
         const bgNext = document.getElementById('bg-art-next');
@@ -1130,13 +1015,10 @@ window.activateVideo = function activateVideo() {
   overlay.style.opacity = '0';
   overlay.style.transition = 'opacity 0.8s ease';
   setTimeout(() => { overlay.style.display = 'none'; }, 900);
-  // Show spinning logo immediately — hides once video plays, stays if no video found
-  showLogoFallback();
   // Trigger video search for current track
   if (nowPlayingTrack) {
     const parts = nowPlayingTrack.split('|||');
     if (CONFIG.youtube_key) searchYouTube(parts[0], parts[1]);
-    else showLogoFallback(); // no YouTube key — keep spinning logo
   }
 }
 
@@ -1147,22 +1029,66 @@ let currentVideoId = '';
 
 async function searchYouTube(title, artist) {
   try {
-    const q = encodeURIComponent(`${artist} ${title} official music video`);
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&videoCategoryId=10&maxResults=3&key=${CONFIG.youtube_key}`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    const items = data.items || [];
-    if (!items.length) { hideYouTube(); return; }
+    // Try multiple search strategies in order — most specific to broadest
+    const searches = [
+      `${artist} ${title} official music video`,
+      `${artist} ${title} official audio`,
+      `${artist} ${title} official`,
+      `${artist} ${title} live`,
+      `${artist} ${title}`,
+      `${artist} ${title.split(' ').slice(0,3).join(' ')}`, // first 3 words of title
+    ];
 
-    // Pick first result — prefer "official" or "vevo" in title
-    const preferred = items.find(i =>
-      /official|vevo|music video/i.test(i.snippet.title)
-    ) || items[0];
+    let videoId = null;
 
-    const videoId = preferred.id.videoId;
+    for (const query of searches) {
+      try {
+        // No videoCategoryId filter — too restrictive for many tracks
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${CONFIG.youtube_key}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        // Log quota errors
+        if (data.error) {
+          console.warn('YT API error:', data.error.message);
+          hideYouTube();
+          return;
+        }
+
+        const items = data.items || [];
+        if (!items.length) { console.log(`YT: no results for "${query}"`); continue; }
+
+        // Score each result
+        const scored = items.map(item => {
+          const t  = (item.snippet.title || '').toLowerCase();
+          const ch = (item.snippet.channelTitle || '').toLowerCase();
+          let score = 0;
+          if (t.includes(title.toLowerCase()))   score += 4;
+          if (t.includes(artist.toLowerCase()))  score += 3;
+          if (ch.includes(artist.toLowerCase())) score += 3;
+          if (/vevo/i.test(ch))                  score += 3;
+          if (/official/i.test(t))               score += 2;
+          if (/music.?video/i.test(t))           score += 2;
+          if (/audio|lyric/i.test(t))            score += 1;
+          if (/live/i.test(t))                   score += 1;
+          if (/cover|reaction|tutorial|karaoke|how to|ranking|top 10|tribute/i.test(t)) score -= 4;
+          return { item, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        const best = scored[0];
+        videoId = best.item.id.videoId;
+        console.log(`YT: found via "${query}" score=${best.score} — "${best.item.snippet.title}" by ${best.item.snippet.channelTitle}`);
+        break; // take first result that gives us anything
+
+      } catch(e) { console.warn('YT search error:', e); continue; }
+    }
+
+    if (!videoId) { hideYouTube(); return; }
     if (videoId === currentVideoId) return;
     currentVideoId = videoId;
     loadYouTubeVideo(videoId);
+
   } catch(e) {
     console.warn('YouTube search failed', e);
     hideYouTube();
@@ -1214,23 +1140,7 @@ window.onYouTubeIframeAPIReady = function() {
           if (q !== 'hd1080' && q !== 'hd720' && q !== 'highres') {
             ytPlayer.setPlaybackQuality('hd1080');
           }
-          // Video is actually playing — hide the fallback logo
-          hideLogoFallback();
         }
-      },
-      onError: (e) => {
-        // Error codes 100, 101, 150 = video unavailable / restricted / not embeddable
-        console.warn('YouTube player error:', e.data);
-        // Fully hide the wrap so the YouTube error message can't show through
-        const wrap = document.getElementById('yt-bg-wrap');
-        wrap.classList.remove('show');
-        wrap.style.display = 'none';
-        document.getElementById('yt-label').classList.remove('show');
-        document.getElementById('bg-art').style.opacity = '1';
-        currentVideoId = '';
-        // Load a blank page into the player to kill the error message
-        if (ytPlayer?.loadVideoById) ytPlayer.loadVideoById({ videoId: '' });
-        showLogoFallback();
       }
     }
   });
@@ -1263,11 +1173,8 @@ function loadYouTubeVideo(videoId) {
   const label = document.getElementById('yt-label');
   const bgArt = document.getElementById('bg-art');
 
-  wrap.style.display = 'block'; // restore in case it was hidden by a previous error
   wrap.classList.remove('show');
   clearInterval(syncInterval);
-  // Hide spinning logo — video is loading
-  hideLogoFallback();
 
   setTimeout(async () => {
     // Get current Spotify progress to sync video + apply offset
@@ -1302,24 +1209,13 @@ function loadYouTubeVideo(videoId) {
   }, 600);
 }
 
-function showLogoFallback() {
-  document.getElementById('logo-fallback').classList.add('show');
-}
-
-function hideLogoFallback() {
-  document.getElementById('logo-fallback').classList.remove('show');
-}
-
 function hideYouTube() {
-  const wrap = document.getElementById('yt-bg-wrap');
-  wrap.classList.remove('show');
-  wrap.style.display = 'none';
+  document.getElementById('yt-bg-wrap').classList.remove('show');
   document.getElementById('yt-label').classList.remove('show');
   document.getElementById('bg-art').style.opacity = '1';
   clearInterval(syncInterval);
   currentVideoId = '';
   if (ytPlayer?.stopVideo) ytPlayer.stopVideo();
-  showLogoFallback();
 }
 
 function updateAlbumArt(url) {
@@ -1498,33 +1394,6 @@ function launchConfetti() {
     }, i*30);
   }
 }
-</script>
-
-<!-- QR Code generator — points to request.html at whatever domain this is served from -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script>
-(function() {
-  // Build the request URL dynamically — works on any domain, any path
-  const base = window.location.href.replace(/\/[^/]*$/, ''); // strip filename if any
-  const requestUrl = base.endsWith('/') ? base + 'request.html' : base + '/request.html';
-
-  // Replace the canvas with a div QRCode can render into
-  const hint = document.getElementById('qr-hint');
-  const canvas = document.getElementById('qr-canvas');
-  const wrapper = document.createElement('div');
-  wrapper.id = 'qr-wrapper';
-  wrapper.style.cssText = 'width:80px;height:80px;margin:0 auto 8px;border-radius:4px;overflow:hidden;';
-  canvas.replaceWith(wrapper);
-
-  new QRCode(wrapper, {
-    text:           requestUrl,
-    width:          80,
-    height:         80,
-    colorDark:      '#f0ede8',   // cream — matches the board's white
-    colorLight:     '#120505',   // near-black dark red — matches board background
-    correctLevel:   QRCode.CorrectLevel.M
-  });
-})();
 </script>
 </body>
 </html>
