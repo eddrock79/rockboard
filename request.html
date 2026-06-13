@@ -284,7 +284,7 @@
 
       <!-- Step 1: type artist -->
       <div class="step" id="step-artist">
-        <div class="step-label">STEP 1 — ARTIST NAME</div>
+        <div class="step-label">STEP 1 - ARTIST NAME</div>
         <div class="inp-wrap">
           <input id="inp-artist" type="text" placeholder="Start typing an artist name..." autocomplete="off" oninput="onArtistType()">
           <div class="inp-spinner" id="sp-artist"></div>
@@ -297,14 +297,14 @@
       <div class="chosen-pill" id="pill-artist">
         <div class="pill-icon">🎸</div>
         <div class="pill-text">
-          <div class="pill-name" id="pill-artist-name">—</div>
+          <div class="pill-name" id="pill-artist-name">-</div>
         </div>
         <button class="pill-clear" onclick="resetArtist()">✕</button>
       </div>
 
       <!-- Step 2: pick track -->
       <div class="step" id="step-track" style="display:none">
-        <div class="step-label" id="step-track-label">STEP 2 — PICK A TRACK</div>
+        <div class="step-label" id="step-track-label">STEP 2 - PICK A TRACK</div>
         <div class="inp-wrap">
           <input id="inp-track" type="text" placeholder="Choose from the list or type to search..." autocomplete="off" oninput="onTrackType()">
           <div class="inp-spinner" id="sp-track"></div>
@@ -317,7 +317,7 @@
       <div class="chosen-pill" id="pill-track">
         <div class="pill-icon">🎵</div>
         <div class="pill-text">
-          <div class="pill-name" id="pill-track-name">—</div>
+          <div class="pill-name" id="pill-track-name">-</div>
         </div>
         <button class="pill-clear" onclick="resetTrack()">✕</button>
       </div>
@@ -329,7 +329,7 @@
 
       <!-- Step 1: type song -->
       <div class="step" id="step-song">
-        <div class="step-label">STEP 1 — SONG NAME</div>
+        <div class="step-label">STEP 1 - SONG NAME</div>
         <div class="inp-wrap">
           <input id="inp-song" type="text" placeholder="Start typing a song name..." autocomplete="off" oninput="onSongType()">
           <div class="inp-spinner" id="sp-song"></div>
@@ -342,8 +342,8 @@
       <div class="chosen-pill" id="pill-song">
         <div class="pill-icon">🎵</div>
         <div class="pill-text">
-          <div class="pill-name" id="pill-song-name">—</div>
-          <div class="pill-sub" id="pill-song-artist">—</div>
+          <div class="pill-name" id="pill-song-name">-</div>
+          <div class="pill-sub" id="pill-song-artist">-</div>
         </div>
         <button class="pill-clear" onclick="resetSong()">✕</button>
       </div>
@@ -371,7 +371,7 @@
     <div class="rl-icon">🤘</div>
     <div class="rl-title">YOU'VE MADE YOUR MARK</div>
     <div class="rl-text">You've used all your requests for this hour.</div>
-    <div id="countdown">—</div>
+    <div id="countdown">-</div>
     <div class="rl-text">Check back when the clock resets.</div>
   </div>
 
@@ -388,7 +388,7 @@
 
 <script src="config.js"></script>
 
-<!-- Global bridge — onclick handlers need global scope, ES modules are isolated -->
+<!-- Global bridge - onclick handlers need global scope, ES modules are isolated -->
 <script>
 function setMode(m)        { window.setMode        && window.setMode(m);        }
 function onArtistType()    { window.onArtistType   && window.onArtistType();    }
@@ -486,7 +486,7 @@ let chosenTrack  = '';   // confirmed track name (artist mode)
 let chosenSong   = '';   // confirmed song name (song mode)
 let chosenSongArtist = ''; // artist from song-mode selection
 
-// ── ARTIST MODE — Step 1: type artist ──
+// ── ARTIST MODE - Step 1: type artist ──
 let timerA;
 window.onArtistType = function() {
   const v = document.getElementById('inp-artist').value.trim();
@@ -514,7 +514,7 @@ function pickArtist(name) {
   document.getElementById('pill-artist-name').textContent = name;
   document.getElementById('pill-artist').classList.add('on');
   // Show step 2
-  document.getElementById('step-track-label').textContent = `STEP 2 — PICK A TRACK BY ${name.toUpperCase()}`;
+  document.getElementById('step-track-label').textContent = `STEP 2 - PICK A TRACK BY ${name.toUpperCase()}`;
   document.getElementById('step-track').style.display = '';
   document.getElementById('inp-track').placeholder = 'Choose from the list or type to search...';
   document.getElementById('inp-track').focus();
@@ -534,7 +534,7 @@ window.resetArtist = function() {
   document.getElementById('inp-artist').focus();
 };
 
-// ── ARTIST MODE — Step 2: load top tracks, then type to filter ──
+// ── ARTIST MODE - Step 2: load top tracks, then type to filter ──
 async function loadTopTracks(artist) {
   spin('sp-track', true);
   try {
@@ -600,7 +600,7 @@ window.resetTrack = function() {
   document.getElementById('inp-track').focus();
 };
 
-// ── SONG MODE — type song, pick from results (with artist shown) ──
+// ── SONG MODE - type song, pick from results (with artist shown) ──
 let timerS;
 window.onSongType = function() {
   const v = document.getElementById('inp-song').value.trim();
@@ -699,8 +699,8 @@ window.submitRequest = async function() {
 
     // Check pre-banned artists first
     if (PRE_BANNED_ARTISTS.has(artist.toLowerCase())) {
-      showMsg('🎸 Tonight we're keeping it rock — try something heavier!', 'err');
-      submitBtn.disabled = false;
+      showMsg('🎸 Tonight - rock and metal only! Try something heavier!', 'err');
+      document.getElementById('submit-btn').disabled = false;
       return;
     }
 
@@ -711,8 +711,8 @@ window.submitRequest = async function() {
       const bannedKeys = bannedSnap.docs.map(d => d.id);
       const thisKey = (title + '|||' + artist).toLowerCase().replace(/[^a-z0-9|||]/g,'_');
       if (bannedKeys.some(k => k === thisKey || k.includes(artist.toLowerCase().replace(/[^a-z0-9]/g,'_')))) {
-        showMsg('🚫 That one's not on the list tonight — try another track!', 'err');
-        submitBtn.disabled = false;
+        showMsg('🚫 That track is banned tonight - try another!', 'err');
+        document.getElementById('submit-btn').disabled = false;
         return;
       }
     } catch(e) {}
@@ -727,7 +727,7 @@ window.submitRequest = async function() {
         const hasMatch = tags.some(tag => ALLOWED_GENRES.has(tag) || [...ALLOWED_GENRES].some(g => tag.includes(g) || g.includes(tag)));
         if (tags.length > 0 && !hasMatch) {
           genreMismatch = true;
-          showMsg('🎸 Hmm, that might not fit tonight's vibe — staff will review it!', 'ok');
+          showMsg('🎸 Hmm, that might not fit tonight's vibe - staff will review it!', 'ok');
         }
       } catch(e) {}
     }
@@ -826,7 +826,7 @@ async function fetchNP() {
   try {
     const data = await lfFetch(`user.getrecenttracks&user=${CONFIG.lastfm_user}&limit=1`);
     const t = data.recenttracks?.track?.[0];
-    if (t) document.getElementById('np-text').textContent = (t['@attr']?.nowplaying==='true'?'':' Last: ')+t.name+' — '+t.artist['#text'];
+    if (t) document.getElementById('np-text').textContent = (t['@attr']?.nowplaying==='true'?'':' Last: ')+t.name+' - '+t.artist['#text'];
   } catch(e){}
 }
 fetchNP(); setInterval(fetchNP, 15000);
@@ -858,7 +858,7 @@ function renderDD(id, items, header) {
         '</div>' +
       '</div>'
     ).join('');
-  // Attach listeners — distinguish tap from scroll before firing
+  // Attach listeners - distinguish tap from scroll before firing
   el.querySelectorAll('.dd-item[data-idx]').forEach(row => {
     const fn = items[parseInt(row.dataset.idx)].onclick;
     let touchStartY = 0;
@@ -870,7 +870,7 @@ function renderDD(id, items, header) {
     row.addEventListener('touchend', e => {
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
       const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
-      // Only fire if finger barely moved — genuine tap, not a scroll
+      // Only fire if finger barely moved - genuine tap, not a scroll
       if (dy < 10 && dx < 10) {
         e.preventDefault();
         e.stopPropagation();
