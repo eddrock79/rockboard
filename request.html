@@ -435,20 +435,35 @@ async function loadTopTracks(artist) {
       inner.innerHTML = '<div style="padding:16px;text-align:center;font-family:var(--font-pixel);font-size:13px;color:rgba(255,255,255,0.3)">NO TRACKS FOUND</div>';
       return;
     }
+    // Build HTML without inline onclick — use data-name + event delegation instead
     inner.innerHTML = tracks.map((t, i) =>
-      `<div class="scroll-track-item" onclick="pickTrack('${t.name.replace(/'/g,"&#39;")}')" style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(122,40,204,0.12);cursor:pointer;transition:background 0.1s;${i===0?'background:rgba(122,40,204,0.1)':''}">
+      `<div class="scroll-track-item" data-name="${t.name.replace(/"/g,'&quot;')}" style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(122,40,204,0.12);cursor:pointer;transition:background 0.1s;${i===0?'background:rgba(122,40,204,0.08)':''}">
         <div style="font-size:16px;flex-shrink:0;width:26px;text-align:center">🎵</div>
         <div style="font-family:var(--font-head);font-size:18px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
       </div>`
     ).join('');
+
+    // Single event delegation on the container — works for both touch and click
+    inner.addEventListener('click', handleScrollTrackTap);
+    inner.addEventListener('touchend', handleScrollTrackTap, { passive: false });
+
     // Touch highlight
     inner.querySelectorAll('.scroll-track-item').forEach(el => {
       el.addEventListener('touchstart', () => el.style.background = 'rgba(196,40,94,0.15)', {passive:true});
-      el.addEventListener('touchend',   () => el.style.background = '', {passive:true});
+      el.addEventListener('touchcancel', () => el.style.background = '', {passive:true});
     });
   } catch(e) {
     inner.innerHTML = '<div style="padding:16px;text-align:center;font-family:var(--font-pixel);font-size:13px;color:rgba(255,255,255,0.3)">ERROR LOADING TRACKS</div>';
   }
+}
+
+function handleScrollTrackTap(e) {
+  // Prevent touch events also firing click
+  if (e.type === 'touchend') e.preventDefault();
+  const item = e.target.closest('.scroll-track-item');
+  if (!item) return;
+  const name = item.dataset.name;
+  if (name) pickTrack(name);
 }
 
 // Show/hide the search input for Step 2
@@ -457,13 +472,24 @@ window.showTrackSearch = function() {
   document.getElementById('track-search-wrap').style.display = '';
   setTimeout(() => document.getElementById('inp-track').focus(), 100);
 };
+
 window.hideTrackSearch = function() {
   document.getElementById('track-search-wrap').style.display = 'none';
   document.getElementById('track-scroll-list').style.display = '';
   const el = document.getElementById('inp-track');
-  if (el) { el.value = ''; el.blur(); }
+  if (el) { el.value = ''; }
+  // iOS keyboard dismiss — blur the active element via a temp hidden input trick
+  const tmp = document.createElement('input');
+  tmp.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0;height:1px;font-size:16px';
+  document.body.appendChild(tmp);
+  tmp.focus();
+  tmp.blur();
+  document.body.removeChild(tmp);
+  // Also blur whatever was focused
+  if (document.activeElement) document.activeElement.blur();
   closeDD('dd-track');
 };
+
 window.resetTrackSearch = function() {
   document.getElementById('inp-track').value = '';
   document.getElementById('cl-track').classList.remove('on');
