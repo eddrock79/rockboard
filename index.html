@@ -299,11 +299,15 @@
 
   /* Black Rose logo in now-playing */
   @keyframes logoMTV {
-    0%   { transform: perspective(400px) rotateY(0deg); }
-    18%  { transform: perspective(400px) rotateY(360deg); }
-    40%  { transform: perspective(400px) rotateY(360deg); }
-    58%  { transform: perspective(400px) rotateY(720deg); }
-    100% { transform: perspective(400px) rotateY(720deg); }
+    0%   { transform: perspective(400px) rotateY(0deg);   opacity:1; }
+    8%   { transform: perspective(400px) rotateY(90deg);  opacity:0; }
+    9%   { transform: perspective(400px) rotateY(270deg); opacity:0; }
+    18%  { transform: perspective(400px) rotateY(360deg); opacity:1; }
+    40%  { transform: perspective(400px) rotateY(360deg); opacity:1; }
+    48%  { transform: perspective(400px) rotateY(450deg); opacity:0; }
+    49%  { transform: perspective(400px) rotateY(630deg); opacity:0; }
+    58%  { transform: perspective(400px) rotateY(720deg); opacity:1; }
+    100% { transform: perspective(400px) rotateY(720deg); opacity:1; }
   }
   #venue-logo {
     width:100%; max-height:120px; object-fit:contain;
@@ -999,6 +1003,8 @@ function animateEQ() {
 animateEQ();
 
 // ── CALLOUT TICKER ──
+let lastTickerFire = Date.now();
+
 function nextQuote() {
   const el = document.getElementById('callout-text');
   el.style.animation = 'none';
@@ -1008,10 +1014,34 @@ function nextQuote() {
   // Adjust speed based on quote length — longer quotes scroll slower
   const duration = Math.max(14, Math.min(26, quote.length * 0.45));
   el.style.animation = `ticker ${duration}s linear`;
+  lastTickerFire = Date.now();
   el.addEventListener('animationend', nextQuote, { once:true });
 }
 
+// Watchdog — if ticker hasn't fired in 35s, restart it (handles tab-background stalls)
+setInterval(() => {
+  if (Date.now() - lastTickerFire > 35000) {
+    console.log('Ticker watchdog: restarting stalled ticker');
+    nextQuote();
+  }
+}, 10000);
+
 // Fetch first batch of AI quotes immediately, then every 90 seconds
+// Clear YouTube cache entries older than 1 day on startup
+// This prevents bad search results from being stuck for the full 7-day cache window
+(function clearStaleYTCache() {
+  try {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    Object.keys(localStorage).forEach(k => {
+      if (!k.startsWith('yt_')) return;
+      try {
+        const { ts } = JSON.parse(localStorage.getItem(k));
+        if (ts < cutoff) localStorage.removeItem(k);
+      } catch(e) { localStorage.removeItem(k); }
+    });
+  } catch(e) {}
+})();
+
 testAIConnection();
 fetchAIQuotes();
 setInterval(fetchAIQuotes, 90 * 1000);
@@ -1124,6 +1154,15 @@ async function fetchNowPlaying() {
       nowPlayingTrack = trackKey;
       trackNumber++;
 
+      // Flush stale AI quotes from the previous track immediately
+      aiQuoteQueue = [];
+      lastAiContext = '';
+      // Wait 20s for Last.fm to scrobble the new track, then fetch fresh quotes about it
+      clearTimeout(window._aiTrackChangeTimer);
+      window._aiTrackChangeTimer = setTimeout(() => {
+        fetchAIQuotes();
+      }, 20000);
+
       // Update album art background
       if (thumb && thumb !== nowPlayingThumb) {
         const bgNext = document.getElementById('bg-art-next');
@@ -1171,14 +1210,17 @@ let currentVideoId = '';
 
 async function searchYouTube(title, artist) {
   try {
+    // Strip suffixes like "- Remastered 2021", "(Live)", "(feat. X)" before searching
+    const cleanTitle = cleanT(title);
+
     // Check localStorage cache first — avoid burning quota on repeat tracks
-    const cacheKey = 'yt_' + (artist + '|' + title).toLowerCase().replace(/[^a-z0-9|]/g,'_').slice(0,80);
+    const cacheKey = 'yt_' + (artist + '|' + cleanTitle).toLowerCase().replace(/[^a-z0-9|]/g,'_').slice(0,80);
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const { videoId: cachedId, ts } = JSON.parse(cached);
       // Use cache if less than 7 days old
       if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000 && cachedId) {
-        console.log(`YT: cache hit for "${artist} - ${title}" → ${cachedId}`);
+        console.log(`YT: cache hit for "${artist} - ${cleanTitle}" → ${cachedId}`);
         if (cachedId === 'NONE') { hideYouTube(); return; } // cached miss
         if (cachedId === currentVideoId) return;
         currentVideoId = cachedId;
@@ -1189,14 +1231,14 @@ async function searchYouTube(title, artist) {
 
     // Try multiple search strategies in order — most specific to broadest
     const searches = [
-      { q: `${artist} ${title} official music video`, cat: true },
-      { q: `${artist} ${title} official audio`,       cat: true },
-      { q: `${artist} ${title} official`,             cat: true },
-      { q: `${artist} ${title} live`,                 cat: true },
-      { q: `${artist} ${title}`,                      cat: true },
+      { q: `${artist} ${cleanTitle} official music video`, cat: true },
+      { q: `${artist} ${cleanTitle} official audio`,       cat: true },
+      { q: `${artist} ${cleanTitle} official`,             cat: true },
+      { q: `${artist} ${cleanTitle} live`,                 cat: true },
+      { q: `${artist} ${cleanTitle}`,                      cat: true },
       // Fallback without music category — broader but still scored
-      { q: `${artist} ${title} official music video`, cat: false },
-      { q: `${artist} ${title}`,                      cat: false },
+      { q: `${artist} ${cleanTitle} official music video`, cat: false },
+      { q: `${artist} ${cleanTitle}`,                      cat: false },
     ];
 
     let videoId = null;
@@ -1224,14 +1266,14 @@ async function searchYouTube(title, artist) {
           const t  = (item.snippet.title || '').toLowerCase();
           const ch = (item.snippet.channelTitle || '').toLowerCase();
           let score = 0;
-          if (t.includes(title.toLowerCase()))   score += 4;
-          if (t.includes(artist.toLowerCase()))  score += 3;
-          if (ch.includes(artist.toLowerCase())) score += 3;
-          if (/vevo/i.test(ch))                  score += 3;
-          if (/official/i.test(t))               score += 2;
-          if (/music.?video/i.test(t))           score += 2;
-          if (/audio|lyric/i.test(t))            score += 1;
-          if (/live/i.test(t))                   score += 1;
+          if (t.includes(cleanTitle.toLowerCase())) score += 4;
+          if (t.includes(artist.toLowerCase()))     score += 3;
+          if (ch.includes(artist.toLowerCase()))    score += 3;
+          if (/vevo/i.test(ch))                     score += 3;
+          if (/official/i.test(t))                  score += 2;
+          if (/music.?video/i.test(t))              score += 2;
+          if (/audio|lyric/i.test(t))               score += 1;
+          if (/live/i.test(t))                      score += 1;
           if (/cover|reaction|tutorial|karaoke|how to|ranking|top 10|tribute/i.test(t)) score -= 4;
           return { item, score };
         });
