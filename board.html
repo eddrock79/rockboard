@@ -394,7 +394,7 @@
 </div>
 
 <div id="qr-hint">
-  <div id="qr-canvas" style="width:80px;height:80px;margin:0 auto 8px;"></div>
+  <div id="qr-canvas" style="width:160px;height:160px;margin:0 auto 8px;"></div>
   <div id="qr-hint-label">SCAN TO VOTE</div>
 </div>
 
@@ -441,24 +441,67 @@ const CONFIG = {
   spotify_worker_url: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url) || "https://rockboard.eddrock79.workers.dev",
 };
 
-// ── QR CODE — generate on load pointing to request page ──
-(function generateQR() {
-  const voteUrl = window.location.href.replace(/\/board\.html.*$/, '/') + 'request.html';
+// ── SESSION TOKEN — generates a 2-hour QR session, stored in Firebase ──
+const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+function generateToken() {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+async function initSession() {
+  const { getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  const sessionRef = doc(db, 'settings', 'session');
+  const snap = await getDoc(sessionRef);
+  const now = Date.now();
+  let token, expiry;
+
+  if (snap.exists()) {
+    const data = snap.data();
+    // Reuse existing token if still valid
+    if (data.expiry && data.expiry > now) {
+      token  = data.token;
+      expiry = data.expiry;
+    }
+  }
+
+  // No valid session — generate a fresh one
+  if (!token) {
+    token  = generateToken();
+    expiry = now + SESSION_DURATION_MS;
+    await setDoc(sessionRef, { token, expiry, createdAt: now });
+  }
+
+  buildQR(token, expiry);
+
+  // Auto-refresh QR when session expires
+  const msLeft = expiry - Date.now();
+  setTimeout(async () => {
+    // Generate a brand new session
+    const newToken  = generateToken();
+    const newExpiry = Date.now() + SESSION_DURATION_MS;
+    await setDoc(sessionRef, { token: newToken, expiry: newExpiry, createdAt: Date.now() });
+    buildQR(newToken, newExpiry);
+  }, msLeft);
+}
+
+function buildQR(token, expiry) {
+  const base    = window.location.href.replace(/\/board\.html.*$/, '/');
+  const voteUrl = base + '?s=' + token;
   const container = document.getElementById('qr-canvas');
   if (!container) return;
-  // Wait for QRCode library to load
+  container.innerHTML = ''; // Clear any existing QR
   const tryGen = () => {
     if (typeof QRCode === 'undefined') { setTimeout(tryGen, 300); return; }
     new QRCode(container, {
       text: voteUrl,
-      width: 80, height: 80,
+      width: 160, height: 160,
       colorDark: '#f0ede8',
       colorLight: '#0a0505',
       correctLevel: QRCode.CorrectLevel.M
     });
   };
   tryGen();
-})();
+}
 
 // ── FALLBACK QUOTES (used until AI kicks in) ──
 const FALLBACK_QUOTES = [
@@ -780,6 +823,9 @@ function getNextQuote() {
 // ── INIT FIREBASE ──
 const app = initializeApp(CONFIG.firebase);
 const db = getFirestore(app);
+
+// ── START SESSION (QR token) once Firebase is ready ──
+initSession();
 
 const statusEl = document.getElementById('firebase-status');
 

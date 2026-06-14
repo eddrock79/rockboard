@@ -375,7 +375,7 @@ function outsideTap(e)     { window.outsideTap     && window.outsideTap(e);     
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, addDoc, updateDoc, increment, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── CONFIG ──
 const CONFIG = {
@@ -399,6 +399,41 @@ const db    = getFirestore(fbApp);
 const topVenue = document.getElementById('top-venue');
 if (topVenue) topVenue.textContent = CONFIG.venueName;
 document.title = CONFIG.venueName + ' · Request a Track';
+
+// ── SESSION VALIDATION — must have scanned QR to access ──
+(async function validateSession() {
+  const SESSION_KEY  = 'rb_session_token';
+  const REDIRECT_URL = 'https://www.blackrosetavern.com/';
+  const params       = new URLSearchParams(window.location.search);
+  const urlToken     = params.get('s');
+
+  // If a token is in the URL, store it (this is a fresh scan)
+  if (urlToken) {
+    localStorage.setItem(SESSION_KEY, urlToken);
+    // Clean the token from the URL bar without reloading
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  const storedToken = localStorage.getItem(SESSION_KEY);
+  if (!storedToken) {
+    window.location.replace(REDIRECT_URL);
+    return;
+  }
+
+  // Validate token against Firebase
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'session'));
+    if (!snap.exists()) { window.location.replace(REDIRECT_URL); return; }
+    const { token, expiry } = snap.data();
+    if (storedToken !== token || Date.now() > expiry) {
+      localStorage.removeItem(SESSION_KEY);
+      window.location.replace(REDIRECT_URL);
+    }
+  } catch(e) {
+    // Firebase read failed — fail open so a network blip doesn't lock everyone out
+    console.warn('Session check failed, allowing through', e);
+  }
+})();
 
 // ── DEVICE ID ──
 function getDeviceId() {
