@@ -237,24 +237,6 @@
     margin-top:1px;
   }
 
-  /* Stats panel (keep but repurpose as tonight-only mini panel — hidden for now) */
-  #stats-panel {
-    position:fixed; bottom:88px; left:24px;
-    background:rgba(8,3,3,0.92); border:1px solid rgba(139,0,0,0.3);
-    border-radius:6px; padding:14px 16px; z-index:10;
-    backdrop-filter:blur(20px); min-width:240px;
-    display:none;
-  }
-  #stats-panel.show { display:block; }
-  .stats-title { font-family:var(--font-pixel); font-size:13px; letter-spacing:4px; color:rgba(240,237,232,0.3); margin-bottom:10px; border-bottom:1px solid rgba(139,0,0,0.2); padding-bottom:6px; }
-  .stats-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-  .stats-pos { font-family:var(--font-head); font-size:18px; color:rgba(240,237,232,0.2); min-width:22px; }
-  .stats-track { font-family:var(--font-head); font-size:16px; color:var(--white); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0.5px; }
-  .stats-count { font-family:var(--font-pixel); font-size:16px; color:var(--amber); min-width:28px; text-align:right; }
-  .stats-sub { font-size:11px; color:rgba(240,237,232,0.35); }
-  .stats-divider { height:1px; background:rgba(139,0,0,0.15); margin:8px 0; }
-  .stats-top-requester { font-family:var(--font-pixel); font-size:13px; color:var(--green); letter-spacing:1px; }
-
   #winner-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:500; flex-direction:column; align-items:center; justify-content:center; gap:24px; text-align:center; }
   #winner-overlay.show { display:flex; }
   #winner-crown { font-size:80px; animation:bounce 0.8s ease infinite alternate; }
@@ -310,14 +292,17 @@
   }
 
   /* Black Rose logo in now-playing */
-  @keyframes logoSpin {
+  @keyframes logoMTV {
     0%   { transform: perspective(400px) rotateY(0deg); }
-    100% { transform: perspective(400px) rotateY(360deg); }
+    18%  { transform: perspective(400px) rotateY(360deg); }
+    40%  { transform: perspective(400px) rotateY(360deg); }
+    58%  { transform: perspective(400px) rotateY(720deg); }
+    100% { transform: perspective(400px) rotateY(720deg); }
   }
   #venue-logo {
     width:100%; max-height:120px; object-fit:contain;
     margin-bottom:4px; filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
-    animation:logoSpin 8s linear infinite;
+    animation:logoMTV 5s ease-in-out infinite;
     transform-style: preserve-3d;
   }
 </style>
@@ -409,14 +394,6 @@
   <div id="alltime-list"></div>
 </div>
 
-<div id="stats-panel">
-  <div class="stats-title">▸ MOST REQUESTED TONIGHT</div>
-  <div id="stats-tracks"></div>
-  <div class="stats-divider"></div>
-  <div class="stats-title" style="margin-top:4px">▸ TOP REQUESTER</div>
-  <div id="stats-requester" class="stats-top-requester">—</div>
-</div>
-
 <div id="winner-overlay">
   <div id="winner-crown">🏆</div>
   <div id="winner-title">TONIGHT'S CHAMPION</div>
@@ -466,46 +443,49 @@ const CONFIG = {
 
 // ── FALLBACK QUOTES (used until AI kicks in) ──
 const FALLBACK_QUOTES = [
-  "Uh... this song is like, really cool. Heh heh.",
-  "Heh heh heh. Someone just voted for THAT. Heh.",
-  "Uh... I am Cornholio! I need votes for my bunghole!",
-  "Are you threatening me?! Vote properly!",
-  "Settle down Beavis. Someone's about to take No.1.",
-  "Heh heh heh heh. Yeah. Yeah! YEAH! This is cool.",
-  "Heh. This song has, like, a guitar. It rules. Heh.",
-  "Uh... the music... it speaks to me. Heh heh.",
-  "Whoa! That's like, a lot of votes. That's pretty cool. Heh.",
-  "Beavis says: that song rules. Butt-Head disagrees. Heh.",
-  "Are you, like, gonna vote or just stand there? Heh.",
-  "Heh heh. This place is like a concert. But with beer.",
-  "Uh... I think I'm gonna be sick. Play something better.",
-  "This is like that time we saw that video. Heh heh.",
-  "Heh. Someone keeps requesting the same song. Loser. Heh.",
-  "Uh... you said vote. Heh heh. Vote. Heh.",
-  "Heh heh. Two people just fought over No.1. Heh.",
-  "PARTY ON! Vote for your track, excellent!",
-  "SCHWING! That track just hit No.1! Excellent!",
-  "No way. Way. That song just went to No.1. Party on.",
-  "We're not worthy! We're not worthy! That track is fire.",
-  "Ah yes, it will be mine. The top spot. Oh yes.",
-  "Shyeah, and monkeys might fly out of my butt.",
-  "Party on Garth. PARTY ON WAYNE. Excellent.",
-  "A goth walks into a bar. The bar becomes a void of eternal suffering.",
-  "How many metal fans does it take to change a lightbulb? None. They prefer the dark.",
-  "A skeleton walks into a bar and orders a beer and a mop.",
-  "A vampire walks into a bar. Sorry, we only serve spirits. That's fine, neither do I.",
-  "Why do goths hate autocorrect? It keeps changing doom to boom.",
-  "A ghost walks into a bar. Sorry, we don't serve spirits. Good. Neither do I.",
-  "A werewolf walks into a bar. We close at midnight. Sounds about right.",
-  "How many goths to screw in a lightbulb? None. Sit in the dark and write poetry about it.",
-  "The lead singer just asked for a light beer. We have asked them to leave.",
-  "What do you call a goth with a job? A disappointment to the scene.",
-  "The No.1 spot just changed hands. The people have spoken.",
-  "Someone here definitely has a band. You know who you are.",
-  "Statistically, someone in here owns a Creed album.",
-  "If that track gets to No.1 the barman quits. No pressure.",
-  "This is either a great crowd or the votes are rigged. Could be both.",
-  "We're not saying it was you. But it was definitely you.",
+  // Rock bar atmosphere
+  "The Black Rose. Edinburgh's loudest democracy. Vote now.",
+  "Your vote. Your track. Your night. Don't waste it.",
+  "No.1 on the board plays next. Simple as that.",
+  "Someone in here has excellent taste. Prove it's you.",
+  "The board is live. The bar is open. What more do you need?",
+  "First rule of The Black Rose — you always request again.",
+  "Scan the QR. Vote the track. Change the night.",
+  "If your track isn't on the board yet, that's on you.",
+  "The people have voted. The board has spoken. Almost.",
+  "One more vote could change everything. Just saying.",
+  "This isn't a jukebox. This is a democracy. Vote wisely.",
+  "The bar staff have opinions about No.1. They're keeping them to themselves.",
+  "Every vote is anonymous. Every bad request is not.",
+  "Someone just got knocked off No.1. They'll recover. Maybe.",
+  // Edinburgh / venue
+  "Edinburgh's finest rock bar. Tonight's finest board. You're welcome.",
+  "It's midnight somewhere. In here it's always showtime.",
+  "The Black Rose has been loud since opening night. Tonight is no different.",
+  "If the barman starts singing along, you picked the right track.",
+  "Somewhere in Edinburgh right now, someone wishes they were here. They're right.",
+  "This city has survived plagues, sieges, and bagpipes. It can handle your request.",
+  // Music facts / atmosphere
+  "The loudest vote wins. That's not how it works. But it feels like it should.",
+  "Track zero is always the one nobody expected. Make it happen.",
+  "The riff that started at the top of the board ends on the speaker. That's the deal.",
+  "A great track at No.1 is just a great track with better timing.",
+  "Every legendary night in a rock bar started with someone hitting request.",
+  "The difference between a good night and a great night is usually three votes.",
+  "History is full of bands that didn't get requested. Don't let yours be one.",
+  // Dry/dark humour
+  "Statistically, someone in here owns a Creed album. We forgive you.",
+  "Someone just requested something and immediately regretted it. Bold move.",
+  "The guitarist in the corner is judging your request. So is everyone else.",
+  "If you can hear yourself think, the board needs more votes.",
+  "A rock bar without opinions is just a bar. Have some. Vote.",
+  "Nobody ever left a great gig wishing they'd requested less.",
+  "Your taste in music says everything. What's it saying tonight?",
+  "The person who requested No.1 is either a genius or very lucky. Could be both.",
+  "We're not saying the board is rigged. We're saying vote more.",
+  "Some nights write themselves. This one needs your help.",
+  "The sign of a great crowd — they argue about what plays next.",
+  "This isn't background music. This is the soundtrack to your night.",
 ];
 
 // ── TRACK ENRICHMENT ENGINE ──
@@ -653,33 +633,34 @@ async function fetchAIQuotes() {
       if (top1Facts.formed && top1Facts.origin) factLines.push(`${topTrack.artist} from ${top1Facts.origin}, formed ${top1Facts.formed}`);
     }
 
-    const prompt = `You are the voice of ROCKBOARD — live music voting at The Black Rose, a rock/metal/goth bar in Edinburgh. Generate 10 ticker messages (max 14 words each) for the bottom of a big screen display.
+    const prompt = `You are the ticker voice of ROCKBOARD — a live music voting screen at The Black Rose, a rock, metal and goth bar in Edinburgh, Scotland. Generate 10 short ticker messages for the bottom of the display.
 
 LIVE BOARD STATE:
-- Now playing on Spotify: "${nowPlaying}" by ${nowArtist}
+- Now playing: "${nowPlaying}" by ${nowArtist}
 - No.1 most voted: ${topTrack ? '"' + topTrack.title + '" by ' + topTrack.artist + ' (' + topTrack.uniqueVoters + ' votes)' : 'nothing yet'}
-- Total votes cast tonight: ${totalVotes}
-- Tracks on the board: ${trackCount}
+- Total votes tonight: ${totalVotes}
+- Tracks on board: ${trackCount}
 
-ARTIST & TRACK FACTS (weave these in naturally):
-${factLines.length ? factLines.map(f=>'- '+f).join('\n') : '- No facts available yet'}
+ARTIST & TRACK FACTS (use these — they make the ticker feel alive):
+${factLines.length ? factLines.map(f=>'- '+f).join('\n') : '- No facts yet'}
 
-STYLE — mix ALL of these every batch:
-- Beavis & Butt-Head (3 quotes): Use their actual voice. "Heh heh", "Uh...", "This is cool", "This sucks", "I am Cornholio", "Bunghole", "Buttmunch", "Fartknocker", "Are you threatening me", "Settle down Beavis". Make them react to the actual track/artist facts stupidly. e.g. "Heh heh, this band is from Sweden. Heh. Sweden. Heh heh."
-- Wayne's World (2 quotes): "Excellent!", "Party on!", "Schwing!", "No way... Way", "I will have it", "Most non-heinous". React to vote counts or facts.
-- Rock/metal/goth bar jokes (2 quotes): Dark dry pub humour. Vampires, goths, drummers, guitarists, metal fans. Original jokes only.
-- Track/artist facts (2 quotes): Natural, punchy use of the facts above. Chart facts, member trivia, origin stories. Make it feel like a knowledgeable rock DJ presenting.
-- Live crowd commentary (1 quote): Reference THIS MOMENT — the vote gap, who's winning, the countdown.
+STYLE — you are a sharp, dry, knowledgeable rock bar announcer. Think late-night rock radio DJ meets sardonic Edinburgh wit. Every line should feel like it belongs in this bar tonight.
+
+Mix these types across the 10:
+- Artist/track facts (3): Use the facts above. Punchy, surprising, delivered like a DJ who actually knows the music. "Ghost formed in Sweden in 2008. The Pope did not approve."
+- Live board commentary (3): React to THIS MOMENT — the vote gap, who's leading, the track playing now. Make it feel live. "Only 2 votes between No.1 and No.2. This could go either way."
+- Edinburgh / Black Rose atmosphere (2): Sharp, local, dark humour. This is a serious rock bar in a serious city. "Edinburgh's had louder debates. Not many."
+- Vote call-to-action (2): Direct but not cheesy. "Scan the QR. One vote. You know you want to."
 
 RULES:
-- MAX 14 words per quote — they scroll across a screen
-- Make every quote feel LIVE and specific — no generic filler
-- Beavis/Butt-Head quotes must sound authentically like them
-- Fact quotes should feel surprising or impressive
-- Never start two consecutive quotes with the same word
+- MAX 14 words per message — this scrolls across a screen
+- No pop culture character voices or catchphrases
+- No exclamation marks unless the moment genuinely earns it
+- Dry is better than loud. Smart is better than obvious.
+- Every message must feel specific to tonight, not generic filler
 - Return ONLY a JSON array of 10 strings, nothing else
 
-Example format: ["quote one here", "quote two here"]`;
+Example: ["Ghost formed in Linköping, Sweden. The Pope has never commented.", "Two votes separate No.1 and No.2. Act accordingly."]`;
 
     // Route through Cloudflare worker to avoid CORS
     const response = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
@@ -1004,68 +985,6 @@ fetchAIQuotes();
 setInterval(fetchAIQuotes, 90 * 1000);
 nextQuote();
 
-// ── STATS PANEL ──
-let allPlayedTonight = [];
-
-async function updateStatsPanel() {
-  try {
-    const { getDocs, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-
-    // Get all played tracks tonight
-    const playedSnap = await getDocs(col(db,'played'));
-    const played = playedSnap.docs.map(d => d.data());
-
-    // Get currently approved tracks too (they were requested)
-    const approved = [...tracks].filter(t => t.approved);
-
-    // Combine for "most requested" — count by title+artist
-    const allRequested = [...played, ...approved];
-    const trackCounts = {};
-    const requesterCounts = {};
-
-    allRequested.forEach(t => {
-      const key = t.title + ' — ' + t.artist;
-      trackCounts[key] = (trackCounts[key] || 0) + 1;
-      if (t.requester && t.requester !== 'Anonymous') {
-        requesterCounts[t.requester] = (requesterCounts[t.requester] || 0) + 1;
-      }
-    });
-
-    // Top 5 tracks
-    const top5 = Object.entries(trackCounts)
-      .sort((a,b) => b[1] - a[1])
-      .slice(0, 5);
-
-    // Top requester
-    const topRequester = Object.entries(requesterCounts)
-      .sort((a,b) => b[1] - a[1])[0];
-
-    const panel = document.getElementById('stats-panel');
-    const tracksEl = document.getElementById('stats-tracks');
-    const requesterEl = document.getElementById('stats-requester');
-
-    if (top5.length) {
-      panel.classList.add('show');
-      tracksEl.innerHTML = top5.map(([name, count], i) => {
-        const parts = name.split(' — ');
-        return `<div class="stats-row">
-          <div class="stats-pos">${String(i+1).padStart(2,'0')}</div>
-          <div class="stats-track">${parts[0]}<div class="stats-sub">${parts[1]||''}</div></div>
-          <div class="stats-count">${count}×</div>
-        </div>`;
-      }).join('');
-      requesterEl.textContent = topRequester
-        ? `🏆 ${topRequester[0]} — ${topRequester[1]} REQUESTS`
-        : '— NO DATA YET';
-    } else {
-      panel.classList.remove('show');
-    }
-  } catch(e) { console.warn('Stats error', e); }
-}
-
-// Update stats every 30 seconds
-setInterval(updateStatsPanel, 30000);
-
 // ── ALL-TIME TOP 10 ──
 // Stored in Firestore 'alltime' collection — persists until manually reset
 // Each doc key = sanitised "title|||artist", fields: title, artist, thumb, plays
@@ -1341,25 +1260,18 @@ window.onYouTubeIframeAPIReady = function() {
     events: {
       onReady: (e) => {
         e.target.mute();
-        // Request highest available quality
-        e.target.setPlaybackQuality('hd1080');
+        // 720p is the sweet spot — high quality without buffering on typical connections
+        e.target.setPlaybackQuality('hd720');
         if (pendingVideoId) {
           loadVideoAtPosition(pendingVideoId, pendingStartSecs);
           pendingVideoId = null;
         }
       },
       onStateChange: (e) => {
-        // If video ended before track, just replay from near start
+        // If video ended before track, replay from near start
         if (e.data === YT.PlayerState.ENDED) {
           ytPlayer.seekTo(2, true);
           ytPlayer.playVideo();
-        }
-        // Re-apply quality on buffering/play — YouTube sometimes resets it
-        if (e.data === YT.PlayerState.PLAYING) {
-          const q = ytPlayer.getPlaybackQuality();
-          if (q !== 'hd1080' && q !== 'hd720' && q !== 'highres') {
-            ytPlayer.setPlaybackQuality('hd1080');
-          }
         }
       },
       onError: (e) => {
@@ -1570,7 +1482,6 @@ try {
     tracks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     boardTracks = tracks; // keep auto-queue engine in sync
     renderLeaderboard();
-    updateStatsPanel();
     statusEl.textContent = '● LIVE';
     statusEl.className = 'ok';
     setTimeout(() => { statusEl.style.opacity = '0'; }, 3000);
