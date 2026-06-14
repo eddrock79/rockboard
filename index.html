@@ -598,21 +598,21 @@ let aiConnected = false;
 // Run on startup — logs clearly whether the API key is configured
 async function testAIConnection() {
   try {
-    const res = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: 'Return only this JSON array: ["AI ticker connected"]' })
-    });
+    const res = await fetch(CONFIG.spotify_worker_url + '/ping');
     const data = await res.json();
-    if (data.error) {
-      console.error('🔴 AI TICKER OFFLINE —', data.error);
-      console.error('→ Fix: Cloudflare dash → Workers → rockboard → Settings → Variables → add ANTHROPIC_API_KEY');
-    } else if (data.content?.[0]?.text) {
-      console.log('✅ AI ticker online and responding');
-      aiConnected = true;
+    if (!data.ok) {
+      console.error('🔴 Worker unreachable — check Cloudflare deployment');
+      return;
     }
+    if (!data.hasApiKey) {
+      console.error('🔴 ANTHROPIC_API_KEY missing from worker — add it in Cloudflare → Workers → rockboard → Settings → Variables');
+      return;
+    }
+    console.log('✅ Worker online, API key present — AI ticker ready');
+    // Key is confirmed present, kick off first quote fetch
+    fetchAIQuotes();
   } catch(e) {
-    console.error('🔴 AI ticker connection error:', e.message);
+    console.error('🔴 Worker connection failed:', e.message, '— Is the worker deployed? Check dash.cloudflare.com → Workers → rockboard → Deployments');
   }
 }
 
