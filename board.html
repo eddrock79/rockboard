@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROCKBOARD</title>
+<link rel="icon" type="image/png" href="assets/Black-Rose-Logo.png">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0a; --accent: #8B0000; --green: #39FF14; --amber: #FFB347;
+    --white: #f0ede8; --card-bg: rgba(20,10,10,0.82);
+    --font-pixel: 'VT323', monospace; --font-head: 'Bebas Neue', sans-serif; --font-body: 'Inter', sans-serif;
+  }
+  html, body { width:100%; height:100%; background:var(--bg); color:var(--white); font-family:var(--font-body); overflow:hidden; user-select:none; }
+  body::after { content:''; position:fixed; inset:0; background:repeating-linear-gradient(to bottom,transparent 0px,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px); pointer-events:none; z-index:1000; }
+
+  #bg-art { position:fixed; inset:-5%; background-size:cover; background-position:center; background-image:url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1920&q=80'); filter:blur(18px) saturate(0.6) brightness(0.35); transition:opacity 2.5s ease; z-index:0; animation:kenburns 20s ease-in-out infinite; }
+  #bg-art.fade-out { opacity:0; }
+  #bg-art-next { position:fixed; inset:-5%; background-size:cover; background-position:center; filter:blur(18px) saturate(0.6) brightness(0.35); opacity:0; transition:opacity 2.5s ease; z-index:0; }
+  #bg-art-next.fade-in { opacity:1; }
+  @keyframes kenburns { 0%{transform:scale(1.0) translate(0%,0%)} 50%{transform:scale(1.08) translate(-1.5%,1%)} 100%{transform:scale(1.0) translate(0%,0%)} }
+
+  /* ── YOUTUBE VIDEO BACKGROUND ── */
+  #yt-bg-wrap {
+    position:fixed; inset:0; z-index:0;
+    opacity:0; transition:opacity 2s ease;
+    pointer-events:none; overflow:hidden;
+  }
+  #yt-bg-wrap.show { opacity:1; }
+  #yt-bg-wrap iframe {
+    position:absolute;
+    top:50%; left:50%;
+    width:177.78vh; /* 16:9 */
+    height:100vh;
+    min-width:100vw;
+    min-height:56.25vw;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    border:none;
+  }
+  /* Suppress YouTube's native pause/buffer spinner overlay */
+  #yt-click-blocker {
+    position:fixed; inset:0; z-index:1;
+    pointer-events:none;
+    background:transparent;
+  }
+  #yt-overlay {
+    position:fixed; inset:0; z-index:0;
+    background:linear-gradient(135deg,rgba(0,0,0,0.72),rgba(139,0,0,0.15),rgba(0,0,0,0.8));
+    pointer-events:none;
+  }
+  #yt-label {
+    position:fixed; bottom:90px; right:28px;
+    font-family:var(--font-pixel); font-size:12px;
+    letter-spacing:2px; color:rgba(240,237,232,0.2);
+    z-index:2; display:none;
+  }
+  #yt-label.show { display:block; }
+
+  /* ── LAYOUT ── */
+  #app {
+    position:relative; z-index:1; width:100vw; height:100vh;
+    display:grid;
+    grid-template-columns: 300px 1fr 480px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "nowplaying . header"
+      "nowplaying . leaderboard"
+      "equalizer  callout callout";
+    padding:20px 24px;
+    gap:0;
+  }
+
+  /* ── NOW PLAYING ── */
+  #now-playing { grid-area:nowplaying; display:flex; flex-direction:column; gap:12px; padding-right:20px; }
+  #album-art { width:100%; aspect-ratio:1; border-radius:6px; background:#1a0a0a; overflow:hidden; position:relative; box-shadow:0 0 60px rgba(139,0,0,0.5),0 8px 32px rgba(0,0,0,0.9); }
+  #album-art img { width:100%; height:100%; object-fit:cover; transition:opacity 1.5s ease; }
+  #album-art-overlay { position:absolute; inset:0; background:linear-gradient(135deg,rgba(139,0,0,0.15),transparent); pointer-events:none; }
+
+  #track-info { background:rgba(10,5,5,0.85); border:1px solid rgba(139,0,0,0.35); border-radius:6px; padding:14px 16px; backdrop-filter:blur(30px); }
+  #track-status { font-family:var(--font-pixel); font-size:13px; color:var(--green); letter-spacing:3px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  #status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.4s ease-in-out infinite; box-shadow:0 0 8px var(--green); }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+  #track-name { font-family:var(--font-head); font-size:32px; line-height:1.05; color:var(--white); margin-bottom:3px; letter-spacing:1px; }
+  #track-artist { font-size:15px; color:rgba(240,237,232,0.7); font-weight:400; letter-spacing:0.5px; margin-bottom:10px; }
+  #progress-bar { height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; }
+  #progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--amber)); border-radius:2px; width:0%; transition:width 1s linear; }
+
+  #winamp-counter { display:flex; gap:10px; align-items:center; font-family:var(--font-pixel); font-size:20px; color:var(--amber); padding:8px 14px; background:rgba(0,0,0,0.6); border:1px solid rgba(139,0,0,0.2); border-radius:6px; letter-spacing:2px; }
+  .wc-label { color:rgba(240,237,232,0.3); font-size:11px; letter-spacing:3px; align-self:flex-end; padding-bottom:3px; }
+
+  /* ── HEADER ── */
+  #header { grid-area:header; display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:16px; border-bottom:1px solid rgba(139,0,0,0.3); margin-bottom:16px; padding-left:0; }
+  #venue-name { font-family:var(--font-head); font-size:40px; letter-spacing:4px; color:var(--white); line-height:1; white-space:nowrap; }
+  #venue-sub { font-family:var(--font-pixel); font-size:15px; color:var(--accent); letter-spacing:4px; margin-top:4px; }
+  #tshirt-badge { display:none; flex-direction:column; align-items:flex-end; gap:4px; }
+  #tshirt-badge.active { display:flex; }
+  #tshirt-badge .badge-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:3px; color:var(--amber); }
+  #tshirt-badge .badge-prize { font-family:var(--font-head); font-size:30px; color:var(--white); letter-spacing:2px; }
+  #tshirt-badge .badge-sub { font-family:var(--font-pixel); font-size:11px; color:rgba(240,237,232,0.4); letter-spacing:2px; }
+
+  /* ── LEADERBOARD ── */
+  #leaderboard { grid-area:leaderboard; overflow:hidden; position:relative; }
+  #leaderboard-title { font-family:var(--font-pixel); font-size:13px; letter-spacing:5px; color:rgba(240,237,232,0.3); margin-bottom:10px; }
+  #tracks-list { position:relative; height:calc(100% - 28px); }
+
+  .track-card {
+    position:absolute; left:0; right:0; height:96px;
+    background:rgba(8,3,3,0.9);
+    border:1px solid rgba(139,0,0,0.25);
+    border-left:4px solid rgba(139,0,0,0.4);
+    border-radius:0 6px 6px 0;
+    backdrop-filter:blur(30px);
+    display:flex; align-items:center; gap:14px; padding:0 16px 0 12px;
+    transition:top 0.65s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .track-card.top-card {
+    border-color:rgba(255,179,71,0.6);
+    border-left-color:var(--amber);
+    background:rgba(35,18,0,0.92);
+    box-shadow:0 0 30px rgba(255,179,71,0.12), inset 0 0 40px rgba(255,179,71,0.03);
+  }
+  .track-card.rising { border-left-color:var(--green); border-color:rgba(57,255,20,0.35); }
+  .track-card.new-entry { animation:slideIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+
+  /* No.1 flash animation when countdown hits zero */
+  @keyframes chosenFlash {
+    0%   { border-color:var(--amber); box-shadow:0 0 0px rgba(255,179,71,0); background:rgba(35,18,0,0.92); }
+    25%  { border-color:#fff; box-shadow:0 0 60px rgba(255,255,255,0.6), 0 0 120px rgba(255,179,71,0.8); background:rgba(255,179,71,0.25); }
+    50%  { border-color:var(--amber); box-shadow:0 0 30px rgba(255,179,71,0.4); background:rgba(35,18,0,0.92); }
+    75%  { border-color:#fff; box-shadow:0 0 60px rgba(255,255,255,0.6), 0 0 120px rgba(255,179,71,0.8); background:rgba(255,179,71,0.25); }
+    100% { border-color:var(--amber); box-shadow:0 0 30px rgba(255,179,71,0.12); background:rgba(35,18,0,0.92); }
+  }
+  .track-card.chosen { animation:chosenFlash 0.8s ease-in-out 4; }
+
+  .track-rank { font-family:var(--font-head); font-size:44px; color:rgba(240,237,232,0.12); min-width:52px; text-align:center; line-height:1; flex-shrink:0; }
+  .track-card.top-card .track-rank { color:var(--amber); }
+
+  .track-thumb { width:64px; height:64px; border-radius:6px; background:#1a0808; object-fit:cover; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.6); }
+
+  .track-details { flex:1; min-width:0; }
+  .track-title { font-family:var(--font-head); font-size:30px; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.1; }
+  .track-card.top-card .track-title { font-size:32px; color:var(--amber); }
+  .track-artist-name { font-size:16px; color:rgba(240,237,232,0.7); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; font-weight:400; }
+  .track-meta { display:flex; align-items:center; gap:8px; margin-top:4px; }
+  .track-requester { font-family:var(--font-pixel); font-size:19px; color:rgba(220,80,80,1); letter-spacing:1px; }
+  .track-card.top-card .track-requester { color:var(--amber); font-size:20px; }
+
+  .track-votes { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:64px; }
+  .vote-count { font-family:var(--font-pixel); font-size:44px; color:var(--white); line-height:1; }
+  .track-card.top-card .vote-count { color:var(--amber); font-size:48px; }
+  .vote-label { font-family:var(--font-pixel); font-size:11px; color:rgba(240,237,232,0.3); letter-spacing:2px; }
+  .rank-change { font-family:var(--font-pixel); font-size:18px; min-width:24px; text-align:center; flex-shrink:0; }
+  .rank-change.up { color:var(--green); text-shadow:0 0 8px var(--green); }
+  .rank-change.down { color:#ff4444; }
+  .rank-change.same { color:rgba(240,237,232,0.15); }
+
+  /* ── EQUALIZER — spruced up ── */
+  #equalizer { grid-area:equalizer; display:flex; align-items:flex-end; gap:2px; height:100px; padding-right:24px; padding-top:8px; }
+  .eq-bar {
+    flex:1; border-radius:2px 2px 0 0; min-height:3px;
+    transition:height 0.05s ease-out;
+  }
+  .eq-bar.peak { border-radius:2px; }
+  /* Alternating colours for visual interest */
+  .eq-bar:nth-child(3n+1) { background:linear-gradient(to top,#6b0000,#cc2200,var(--amber)); box-shadow:0 0 6px rgba(139,0,0,0.5); }
+  .eq-bar:nth-child(3n+2) { background:linear-gradient(to top,#8B0000,#ff3300,#FFB347); box-shadow:0 0 4px rgba(255,80,0,0.3); }
+  .eq-bar:nth-child(3n)   { background:linear-gradient(to top,#550000,#aa1100,#ff8800); box-shadow:0 0 4px rgba(200,50,0,0.3); }
+
+  /* ── TICKER ── */
+  #callout { grid-area:callout; display:flex; align-items:center; gap:0; padding-top:10px; border-top:2px solid rgba(139,0,0,0.4); overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px; border-radius:0 0 0 0; position:relative; z-index:1; }
+  #callout-tag { font-family:var(--font-pixel); font-size:16px; letter-spacing:3px; color:var(--white); white-space:nowrap; flex-shrink:0; padding:6px 16px; background:var(--accent); height:100%; display:flex; align-items:center; z-index:2; position:relative; }
+  #callout-text { font-family:var(--font-pixel); font-size:38px; color:#ffe8a0; white-space:nowrap; letter-spacing:2px; text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8); padding-left:24px; font-weight:normal; }
+  @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-180%)} }
+
+  #qr-hint { position:fixed; bottom:160px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
+  #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
+
+  /* ── ALL-TIME TOP 10 PANEL ── */
+  #alltime-panel {
+    position:fixed; bottom:130px; left:24px;
+    background:rgba(8,3,3,0.95); border:1px solid rgba(139,0,0,0.5);
+    border-top:3px solid var(--accent);
+    border-radius:0 0 6px 6px;
+    padding:0; z-index:10;
+    backdrop-filter:blur(20px);
+    width:276px;
+    display:none; flex-direction:column;
+    box-shadow:0 0 40px rgba(139,0,0,0.2), 0 8px 32px rgba(0,0,0,0.8);
+  }
+  #alltime-panel.show { display:flex; }
+  #alltime-header {
+    padding:8px 12px 7px;
+    border-bottom:1px solid rgba(139,0,0,0.3);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #alltime-title {
+    font-family:var(--font-pixel); font-size:13px; letter-spacing:4px;
+    color:rgba(240,237,232,0.4);
+  }
+  #alltime-reset-btn {
+    font-family:var(--font-pixel); font-size:10px; letter-spacing:2px;
+    color:rgba(139,0,0,0.6); background:none; border:1px solid rgba(139,0,0,0.3);
+    border-radius:3px; padding:3px 8px; cursor:pointer;
+  }
+  #alltime-reset-btn:hover { color:var(--accent); border-color:var(--accent); }
+  #alltime-list { padding:4px 0; }
+  .at-row {
+    display:flex; align-items:center; gap:10px; padding:5px 14px;
+    transition:background 0.2s; border-left:3px solid transparent;
+  }
+  .at-row:hover { background:rgba(139,0,0,0.08); }
+  .at-row.at-top {
+    background:rgba(35,18,0,0.6);
+    border-left-color:var(--amber);
+  }
+  .at-pos {
+    font-family:var(--font-head); font-size:22px;
+    color:rgba(240,237,232,0.15); min-width:30px; text-align:center; flex-shrink:0;
+  }
+  .at-row.at-top .at-pos { color:var(--amber); }
+  .at-details { flex:1; min-width:0; }
+  .at-title {
+    font-family:var(--font-head); font-size:17px; color:var(--white);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;
+    letter-spacing:0.3px;
+  }
+  .at-row.at-top .at-title { color:var(--amber); font-size:18px; }
+  .at-artist {
+    font-size:12px; color:rgba(240,237,232,0.5);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
+    letter-spacing:0.5px;
+  }
+  .at-count {
+    font-family:var(--font-pixel); font-size:18px;
+    color:var(--amber); min-width:28px; text-align:right; flex-shrink:0; line-height:1;
+  }
+  .at-count-label {
+    font-family:var(--font-pixel); font-size:9px;
+    color:rgba(240,237,232,0.25); letter-spacing:1px; text-align:right;
+    margin-top:2px;
+  }
+
+  #winner-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:500; flex-direction:column; align-items:center; justify-content:center; gap:24px; text-align:center; }
+  #winner-overlay.show { display:flex; }
+  #winner-crown { font-size:80px; animation:bounce 0.8s ease infinite alternate; }
+  @keyframes bounce { from{transform:translateY(0)} to{transform:translateY(-12px)} }
+  #winner-title { font-family:var(--font-head); font-size:72px; letter-spacing:8px; color:var(--amber); text-shadow:0 0 40px rgba(255,179,71,0.6); }
+  #winner-track { font-family:var(--font-head); font-size:42px; letter-spacing:3px; color:var(--white); }
+  #winner-artist-line { font-size:20px; color:rgba(240,237,232,0.6); letter-spacing:2px; }
+  #winner-callout { font-family:var(--font-pixel); font-size:28px; color:var(--green); letter-spacing:3px; max-width:700px; line-height:1.4; }
+  #winner-votes { font-family:var(--font-pixel); font-size:18px; color:rgba(240,237,232,0.4); letter-spacing:3px; }
+  #winner-close { margin-top:20px; font-family:var(--font-pixel); font-size:16px; letter-spacing:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.1); padding:10px 24px; border-radius:4px; background:transparent; color:rgba(240,237,232,0.4); transition:all 0.2s; }
+  #winner-close:hover { border-color:var(--amber); color:var(--amber); }
+
+  .confetti-piece { position:fixed; width:8px; height:14px; opacity:0; animation:confettiFall 3s ease-in forwards; z-index:501; border-radius:2px; }
+  @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+
+  #firebase-status { position:fixed; top:12px; right:12px; font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; padding:6px 12px; border-radius:4px; z-index:100; transition:opacity 1s ease; }
+  #firebase-status.ok { background:rgba(57,255,20,0.1); border:1px solid rgba(57,255,20,0.3); color:var(--green); }
+  #firebase-status.err { background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.3); color:#ff6666; }
+
+  /* Countdown timer */
+  #queue-countdown {
+    position:fixed; bottom:130px; left:50%; transform:translateX(-50%);
+    display:none; flex-direction:column; align-items:center; gap:6px;
+    z-index:20; text-align:center;
+  }
+  #queue-countdown.show { display:flex; }
+  #countdown-label {
+    font-family:var(--font-pixel); font-size:18px; letter-spacing:4px;
+    color:rgba(240,237,232,0.6);
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+  #countdown-time {
+    font-family:var(--font-pixel); font-size:90px; color:var(--amber);
+    letter-spacing:6px; line-height:1;
+    text-shadow: 0 0 40px rgba(255,179,71,0.6), 0 2px 8px rgba(0,0,0,0.9);
+  }
+  #countdown-time.urgent {
+    color:var(--green);
+    text-shadow:0 0 40px rgba(57,255,20,0.7), 0 2px 8px rgba(0,0,0,0.9);
+    animation:pulse 0.5s ease-in-out infinite;
+  }
+  #countdown-bar {
+    width:320px; height:5px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;
+  }
+  #countdown-fill {
+    height:100%; background:linear-gradient(90deg,var(--accent),var(--amber));
+    border-radius:2px; transition:width 1s linear;
+  }
+  #countdown-sub {
+    font-family:var(--font-pixel); font-size:16px; letter-spacing:3px;
+    color:rgba(240,237,232,0.45);
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+
+  /* Black Rose logo in now-playing */
+  @keyframes logoMTV {
+    0%   { transform: perspective(400px) rotateY(0deg);   opacity:1; }
+    8%   { transform: perspective(400px) rotateY(90deg);  opacity:0; }
+    9%   { transform: perspective(400px) rotateY(270deg); opacity:0; }
+    18%  { transform: perspective(400px) rotateY(360deg); opacity:1; }
+    40%  { transform: perspective(400px) rotateY(360deg); opacity:1; }
+    48%  { transform: perspective(400px) rotateY(450deg); opacity:0; }
+    49%  { transform: perspective(400px) rotateY(630deg); opacity:0; }
+    58%  { transform: perspective(400px) rotateY(720deg); opacity:1; }
+    100% { transform: perspective(400px) rotateY(720deg); opacity:1; }
+  }
+  #venue-logo {
+    width:100%; max-height:120px; object-fit:contain;
+    margin-bottom:4px; filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
+    animation:logoMTV 5s ease-in-out infinite;
+    transform-style: preserve-3d;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<div id="bg-art"></div>
+<div id="bg-art-next"></div>
+<div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
+<div id="yt-click-blocker"></div>
+<div id="yt-overlay"></div>
+<div id="yt-label">▶ RADIO</div>
+<div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
+  <div style="text-align:center">
+    <img src="assets/Black-Rose-Logo.png" style="max-width:420px;width:80%;filter:drop-shadow(0 0 20px rgba(139,0,0,0.7));margin-bottom:8px">
+    <div style="font-family:'VT323',monospace;font-size:24px;letter-spacing:6px;color:#8B0000;margin-top:4px">▶ ROCKBOARD</div>
+    <button id="start-btn" onclick="window.activateVideo()" style="margin-top:32px;background:var(--accent,#8B0000);border:none;border-radius:8px;padding:18px 48px;color:#f0ede8;font-family:'VT323',monospace;font-size:28px;letter-spacing:6px;cursor:pointer;display:block;margin-left:auto;margin-right:auto">▶ TAP TO START</button>
+  </div>
+</div>
+<div id="firebase-status" class="ok">● CONNECTING...</div>
+
+<div id="app">
+  <div id="now-playing">
+    <img id="venue-logo" src="assets/Black-Rose-Logo.png" alt="The Black Rose">
+    <div id="album-art">
+      <img id="album-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80" alt="Album Art">
+      <div id="album-art-overlay"></div>
+    </div>
+    <div id="track-info">
+      <div id="track-status"><div id="status-dot"></div><span id="status-text">NOW PLAYING</span></div>
+      <div id="track-name">Loading...</div>
+      <div id="track-artist">—</div>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+    <div id="winamp-counter">
+      <span class="wc-label">TRACK</span><span id="wc-num">001</span>
+      <span style="color:rgba(240,237,232,0.2)">|</span>
+      <span class="wc-label">VOTES</span><span id="wc-total">0</span>
+    </div>
+  </div>
+
+  <div id="header">
+    <div>
+      <div id="venue-name">THE BLACK ROSE</div>
+      <div id="venue-sub">▶ ROCKBOARD · VOTE FOR YOUR TRACK</div>
+    </div>
+    <div id="tshirt-badge" class="active">
+      <div class="badge-label">🏆 TONIGHT'S PRIZE</div>
+      <div class="badge-prize">T-SHIRT</div>
+      <div class="badge-sub">MOST UNIQUE VOTES WINS</div>
+    </div>
+    <div id="aq-indicator" style="display:none;flex-direction:column;align-items:flex-end;gap:4px;margin-left:16px">
+      <div style="font-family:var(--font-pixel);font-size:11px;letter-spacing:3px;color:rgba(30,215,96,0.6)">AUTO-QUEUE</div>
+      <div style="font-family:var(--font-pixel);font-size:20px;color:#1ED760;letter-spacing:2px">▶ ACTIVE</div>
+      <div style="font-family:var(--font-pixel);font-size:10px;letter-spacing:2px;color:rgba(30,215,96,0.4)">TOP TRACK QUEUES EVERY 5 MINS</div>
+    </div>
+  </div>
+
+  <div id="leaderboard">
+    <div id="leaderboard-title">▸ TONIGHT'S MOST WANTED</div>
+    <div id="tracks-list"></div>
+  </div>
+
+  <div id="equalizer"></div>
+
+  <div id="callout">
+    <div id="callout-tag">▶ ROCKBOARD</div>
+    <div id="callout-text">Loading the vibe...</div>
+  </div>
+</div>
+
+<div id="qr-hint">
+  <div id="qr-canvas" style="width:80px;height:80px;margin:0 auto 8px;"></div>
+  <div id="qr-hint-label">SCAN TO VOTE</div>
+</div>
+
+<div id="queue-countdown">
+  <div id="countdown-label">▸ NEXT TRACK QUEUES IN</div>
+  <div id="countdown-time">--:--</div>
+  <div id="countdown-bar"><div id="countdown-fill" style="width:100%"></div></div>
+  <div id="countdown-sub">VOTE NOW TO PUSH YOUR TRACK TO NO.1</div>
+</div>
+
+<div id="alltime-panel">
+  <div id="alltime-header">
+    <div id="alltime-title">🏆 ALL-TIME TOP 10</div>
+    <button id="alltime-reset-btn" onclick="confirmResetAllTime()">RESET</button>
+  </div>
+  <div id="alltime-list"></div>
+</div>
+
+<div id="winner-overlay">
+  <div id="winner-crown">🏆</div>
+  <div id="winner-title">TONIGHT'S CHAMPION</div>
+  <div id="winner-track">—</div>
+  <div id="winner-artist-line">—</div>
+  <div id="winner-callout">—</div>
+  <div id="winner-votes">— UNIQUE VOTES</div>
+  <button id="winner-close" onclick="closeWinner()">[ CLOSE · NEW NIGHT ]</button>
+</div>
+
+<script src="config.js"></script>
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── CONFIG from config.js ──
+const CONFIG = {
+  venueName:          (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueName)          || "THE BLACK ROSE",
+  venueSub:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.venueSub)           || "▶ ROCKBOARD · VOTE FOR YOUR TRACK",
+  lastfm_user:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_user)        || "",
+  lastfm_key:         (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.lastfm_key)         || "",
+  tshirtMode:         (typeof VENUE_CONFIG!=='undefined') ? VENUE_CONFIG.tshirtMode           : true,
+  firebase:           (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.firebase)           || {},
+  youtube_key:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.youtube_key)        || "",
+  spotify_worker_url: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url) || "https://rockboard.eddrock79.workers.dev",
+};
+
+// ── QR CODE — generate on load pointing to request page ──
+(function generateQR() {
+  const voteUrl = window.location.href.replace(/\/board\.html.*$/, '/') + 'request.html';
+  const container = document.getElementById('qr-canvas');
+  if (!container) return;
+  // Wait for QRCode library to load
+  const tryGen = () => {
+    if (typeof QRCode === 'undefined') { setTimeout(tryGen, 300); return; }
+    new QRCode(container, {
+      text: voteUrl,
+      width: 80, height: 80,
+      colorDark: '#f0ede8',
+      colorLight: '#0a0505',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  };
+  tryGen();
+})();
+
+// ── FALLBACK QUOTES (used until AI kicks in) ──
+const FALLBACK_QUOTES = [
+  // Rock bar atmosphere
+  "The Black Rose. Edinburgh's loudest democracy. Vote now.",
+  "Your vote. Your track. Your night. Don't waste it.",
+  "No.1 on the board plays next. Simple as that.",
+  "Someone in here has excellent taste. Prove it's you.",
+  "The board is live. The bar is open. What more do you need?",
+  "First rule of The Black Rose — you always request again.",
+  "Scan the QR. Vote the track. Change the night.",
+  "If your track isn't on the board yet, that's on you.",
+  "The people have voted. The board has spoken. Almost.",
+  "One more vote could change everything. Just saying.",
+  "This isn't a jukebox. This is a democracy. Vote wisely.",
+  "The bar staff have opinions about No.1. They're keeping them to themselves.",
+  "Every vote is anonymous. Every bad request is not.",
+  "Someone just got knocked off No.1. They'll recover. Maybe.",
+  // Edinburgh / venue
+  "Edinburgh's finest rock bar. Tonight's finest board. You're welcome.",
+  "It's midnight somewhere. In here it's always showtime.",
+  "The Black Rose has been loud since opening night. Tonight is no different.",
+  "If the barman starts singing along, you picked the right track.",
+  "Somewhere in Edinburgh right now, someone wishes they were here. They're right.",
+  "This city has survived plagues, sieges, and bagpipes. It can handle your request.",
+  // Music facts / atmosphere
+  "The loudest vote wins. That's not how it works. But it feels like it should.",
+  "Track zero is always the one nobody expected. Make it happen.",
+  "The riff that started at the top of the board ends on the speaker. That's the deal.",
+  "A great track at No.1 is just a great track with better timing.",
+  "Every legendary night in a rock bar started with someone hitting request.",
+  "The difference between a good night and a great night is usually three votes.",
+  "History is full of bands that didn't get requested. Don't let yours be one.",
+  // Dry/dark humour
+  "Statistically, someone in here owns a Creed album. We forgive you.",
+  "Someone just requested something and immediately regretted it. Bold move.",
+  "The guitarist in the corner is judging your request. So is everyone else.",
+  "If you can hear yourself think, the board needs more votes.",
+  "A rock bar without opinions is just a bar. Have some. Vote.",
+  "Nobody ever left a great gig wishing they'd requested less.",
+  "Your taste in music says everything. What's it saying tonight?",
+  "The person who requested No.1 is either a genius or very lucky. Could be both.",
+  "We're not saying the board is rigged. We're saying vote more.",
+  "Some nights write themselves. This one needs your help.",
+  "The sign of a great crowd — they argue about what plays next.",
+  "This isn't background music. This is the soundtrack to your night.",
+];
+
+// ── TRACK ENRICHMENT ENGINE ──
+// Pulls artist/track data from Last.fm, MusicBrainz & Wikipedia
+let trackFactCache = {}; // cache by "artist|track"
+
+async function enrichTrackData(artist, track) {
+  const cacheKey = `${artist}|${track}`;
+  if (trackFactCache[cacheKey]) return trackFactCache[cacheKey];
+
+  const facts = {
+    artist, track,
+    listeners: null, playcount: null, tags: [],
+    artistBio: null, similarArtists: [],
+    wikiSummary: null, mbInfo: null,
+    members: [], formed: null, origin: null,
+  };
+
+  try {
+    // 1. Last.fm — track info (listeners, tags, wiki)
+    const lfTrack = await fetch(
+      `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${CONFIG.lastfm_key}&format=json`
+    ).then(r=>r.json()).catch(()=>({}));
+
+    if (lfTrack.track) {
+      facts.listeners  = parseInt(lfTrack.track.listeners || 0).toLocaleString();
+      facts.playcount  = parseInt(lfTrack.track.playcount || 0).toLocaleString();
+      facts.tags       = (lfTrack.track.toptags?.tag || []).slice(0,5).map(t=>t.name);
+      facts.albumName  = lfTrack.track.album?.title || null;
+      facts.albumYear  = null; // filled below if available
+      facts.trackWiki  = lfTrack.track.wiki?.summary
+        ?.replace(/<[^>]+>/g,'')
+        ?.replace(/\s+/g,' ')
+        ?.replace(/Read more on Last\.fm\.?/gi,'')
+        ?.trim()
+        ?.substring(0, 400) || null;
+      facts.duration   = lfTrack.track.duration
+        ? Math.floor(parseInt(lfTrack.track.duration)/60) + ' min ' + (parseInt(lfTrack.track.duration)%60) + ' sec'
+        : null;
+    }
+
+    // 2. Last.fm — artist info (bio, similar, listeners)
+    const lfArtist = await fetch(
+      `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(artist)}&api_key=${CONFIG.lastfm_key}&format=json`
+    ).then(r=>r.json()).catch(()=>({}));
+
+    if (lfArtist.artist) {
+      facts.artistListeners = parseInt(lfArtist.artist.stats?.listeners || 0).toLocaleString();
+      facts.artistPlaycount = parseInt(lfArtist.artist.stats?.playcount || 0).toLocaleString();
+      facts.similarArtists  = (lfArtist.artist.similar?.artist || []).slice(0,5).map(a=>a.name);
+      facts.artistBio = lfArtist.artist.bio?.summary
+        ?.replace(/<[^>]+>/g,'')
+        ?.replace(/\s+/g,' ')
+        ?.replace(/Read more on Last\.fm\.?/gi,'')
+        ?.trim()
+        ?.substring(0,500) || null;
+    }
+
+    // 3. MusicBrainz — band members, origin, formed date
+    const mbSearch = await fetch(
+      `https://musicbrainz.org/ws/2/artist/?query=${encodeURIComponent(artist)}&fmt=json&limit=1`,
+      { headers: { 'User-Agent': 'RockBoard/1.0 (eddrock79@hotmail.com)' } }
+    ).then(r=>r.json()).catch(()=>({}));
+
+    const mbArtist = mbSearch.artists?.[0];
+    if (mbArtist) {
+      facts.formed = mbArtist['life-span']?.begin?.substring(0,4) || null;
+      facts.origin = mbArtist.area?.name || mbArtist['begin-area']?.name || null;
+      facts.mbType = mbArtist.type || null; // Group, Person, etc
+
+      // Get artist details including members
+      if (mbArtist.id) {
+        const mbDetail = await fetch(
+          `https://musicbrainz.org/ws/2/artist/${mbArtist.id}?inc=artist-rels&fmt=json`,
+          { headers: { 'User-Agent': 'RockBoard/1.0 (eddrock79@hotmail.com)' } }
+        ).then(r=>r.json()).catch(()=>({}));
+
+        const memberRels = (mbDetail.relations || [])
+          .filter(r => r.type === 'member of band' && r.direction === 'backward')
+          .slice(0,5)
+          .map(r => r.artist?.name)
+          .filter(Boolean);
+        facts.members = memberRels;
+      }
+    }
+
+    // 4. Wikipedia — quick summary for chart facts
+    const wikiSearch = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artist.replace(/ /g,'_'))}`,
+      { headers: { 'User-Agent': 'RockBoard/1.0' } }
+    ).then(r=>r.json()).catch(()=>({}));
+
+    if (wikiSearch.extract) {
+      facts.wikiArtist = wikiSearch.extract.substring(0,400);
+    }
+
+  } catch(e) {
+    console.warn('Enrichment partial error', e);
+  }
+
+  trackFactCache[cacheKey] = facts;
+  return facts;
+}
+
+// ── AI QUOTE ENGINE ──
+let aiQuoteQueue = [];
+let aiQuoteFetching = false;
+let lastAiContext = '';
+let currentTrackFacts = null;
+let aiConnected = false;
+
+// Run on startup — logs clearly whether the API key is configured
+async function testAIConnection() {
+  try {
+    const res = await fetch(CONFIG.spotify_worker_url + '/ping');
+    const data = await res.json();
+    if (!data.ok) {
+      console.error('🔴 Worker unreachable — check Cloudflare deployment');
+      return;
+    }
+    if (!data.hasApiKey) {
+      console.error('🔴 ANTHROPIC_API_KEY missing from worker — add it in Cloudflare → Workers → rockboard → Settings → Variables');
+      return;
+    }
+    console.log('✅ Worker online, API key present — AI ticker ready');
+    // Key is confirmed present, kick off first quote fetch
+    fetchAIQuotes();
+  } catch(e) {
+    console.error('🔴 Worker connection failed:', e.message, '— Is the worker deployed? Check dash.cloudflare.com → Workers → rockboard → Deployments');
+  }
+}
+
+async function fetchAIQuotes() {
+  if (aiQuoteFetching) return;
+  aiQuoteFetching = true;
+  try {
+    const safeTracks  = (typeof tracks !== 'undefined' && Array.isArray(tracks)) ? tracks : [];
+    const topTrack    = [...safeTracks].filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters||(a.addedAt||0)-(b.addedAt||0))[0];
+    const totalVotes  = safeTracks.filter(t=>t.approved).reduce((s,t)=>s+t.uniqueVoters,0);
+    const nowPlaying  = document.getElementById('track-name').textContent;
+    const nowArtist   = document.getElementById('track-artist').textContent;
+    const trackCount  = safeTracks.filter(t=>t.approved).length;
+
+    const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
+    // Only skip if context unchanged AND queue is healthy (>6 quotes buffered)
+    if (context === lastAiContext && aiQuoteQueue.length > 6) { aiQuoteFetching = false; return; }
+    lastAiContext = context;
+
+    // Enrich current track in background
+    let facts = null;
+    if (nowArtist && nowArtist !== '—' && nowArtist !== 'Loading...' && nowArtist !== 'Nothing playing yet') {
+      facts = await enrichTrackData(nowArtist, nowPlaying);
+      currentTrackFacts = facts;
+    }
+
+    // Also enrich No.1 requested track
+    let top1Facts = null;
+    if (topTrack) {
+      top1Facts = await enrichTrackData(topTrack.artist, topTrack.title);
+    }
+
+    // Build rich context for Claude
+    const factLines = [];
+    if (facts) {
+      if (facts.listeners)       factLines.push(`"${nowPlaying}" has ${facts.listeners} Last.fm listeners and ${facts.playcount} total plays`);
+      if (facts.albumName)       factLines.push(`From the album: "${facts.albumName}"`);
+      if (facts.duration)        factLines.push(`Track runs ${facts.duration}`);
+      if (facts.trackWiki)       factLines.push(`Track info: ${facts.trackWiki}`);
+      if (facts.artistListeners) factLines.push(`${nowArtist} has ${facts.artistListeners} Last.fm listeners — ${facts.artistPlaycount} total plays`);
+      if (facts.formed && facts.origin) factLines.push(`${nowArtist} formed in ${facts.formed} in ${facts.origin}`);
+      else if (facts.formed)     factLines.push(`${nowArtist} formed in ${facts.formed}`);
+      else if (facts.origin)     factLines.push(`${nowArtist} from ${facts.origin}`);
+      if (facts.members?.length) factLines.push(`Band members include: ${facts.members.join(', ')}`);
+      if (facts.similarArtists?.length) factLines.push(`Fans of ${nowArtist} also love: ${facts.similarArtists.join(', ')}`);
+      if (facts.tags?.length)    factLines.push(`Genre/tags: ${facts.tags.join(', ')}`);
+      if (facts.artistBio)       factLines.push(`Artist background: ${facts.artistBio}`);
+      if (facts.wikiArtist)      factLines.push(`Wikipedia: ${facts.wikiArtist}`);
+    }
+    if (top1Facts) {
+      if (top1Facts.listeners)   factLines.push(`No.1 requested "${topTrack.title}" has ${top1Facts.listeners} Last.fm listeners`);
+      if (top1Facts.albumName)   factLines.push(`"${topTrack.title}" is from "${top1Facts.albumName}"`);
+      if (top1Facts.trackWiki)   factLines.push(`About "${topTrack.title}": ${top1Facts.trackWiki}`);
+      if (top1Facts.formed && top1Facts.origin) factLines.push(`${topTrack.artist} from ${top1Facts.origin}, formed ${top1Facts.formed}`);
+      if (top1Facts.artistBio)   factLines.push(`${topTrack.artist} background: ${top1Facts.artistBio.substring(0,200)}`);
+    }
+
+    const prompt = `You are the ticker voice of ROCKBOARD — a live music voting screen at The Black Rose, a rock, metal and goth bar in Edinburgh, Scotland. Generate 10 short ticker messages for the bottom of the display.
+
+LIVE BOARD STATE:
+- Now playing: "${nowPlaying}" by ${nowArtist}
+- No.1 most voted: ${topTrack ? '"' + topTrack.title + '" by ' + topTrack.artist + ' (' + topTrack.uniqueVoters + ' votes)' : 'nothing yet'}
+- Total votes tonight: ${totalVotes}
+- Tracks on board: ${trackCount}
+
+RAW DATA (mine this for surprising, weird, or impressive facts — don't just repeat it verbatim):
+${factLines.length ? factLines.map(f=>'- '+f).join('\n') : '- No data yet — use general knowledge about the artist'}
+
+WHAT TO LOOK FOR in the data above:
+- Surprising numbers: if a track has 50M+ plays, that's remarkable. If it has 500, that's also interesting.
+- Origin stories: where a band formed, unusual circumstances, who was in the band before fame
+- Album context: what was happening when this album came out, what it was a reaction to
+- Connections: band members who went on to other famous bands, who influenced who
+- Records or firsts: fastest to No.1, longest in charts, first band to do X
+- Contrast: a heavy metal track that charted alongside something completely different
+- Dark or weird facts buried in the Wikipedia/bio text — read it carefully
+- If total plays are very high, note it memorably: "Played ${totalVotes} times tonight alone"
+
+STYLE — sharp, dry, knowledgeable rock bar announcer. Edinburgh wit. Specific always beats generic.
+
+Mix these 10 as:
+- Weird/surprising fact about now playing track or artist (3): Find the most unexpected thing in the data. "Smells Like Teen Spirit almost didn't make Nevermind — Cobain thought it was too commercial."
+- Live board commentary (2): Vote gap, momentum, who's winning. Specific numbers.
+- Edinburgh / Black Rose flavour (2): Dark, local, dry. "Edinburgh has survived plague, famine, and the Proclaimers. It can handle your request."
+- No.1 requested track fact (1): Something specific about the top-voted track
+- Vote call-to-action (1): Sharp, not cheesy
+- Wild card (1): Anything — a connection between now playing and the most voted, a weird coincidence, a challenge to the crowd
+
+RULES:
+- MAX 14 words per message — scrolls across a screen
+- NO listener count quotes like "X has Y listeners" — that's boring. Transform data into stories.
+- Dry beats loud. Specific beats generic. Weird beats obvious.
+- No exclamation marks unless the moment genuinely earns one
+- Return ONLY a JSON array of 10 strings, nothing else
+
+Bad example: ["Nirvana has 5 million listeners on Last.fm"]
+Good example: ["Nevermind outsold Michael Jackson the week it dropped. Kurt was mortified."]`;
+
+    // Route through Cloudflare worker to avoid CORS
+    const response = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await response.json();
+    // Surface auth/config errors clearly
+    if (data.error) {
+      console.error('🔴 AI quotes worker error:', data.error, '— Check ANTHROPIC_API_KEY is set in Cloudflare worker env vars');
+      aiQuoteFetching = false; return;
+    }
+    const text = data.content?.[0]?.text || '';
+    const cleaned = text.replace(/```json[\s\S]*?```/g, t => t.replace(/```json|```/g,'')).replace(/```/g,'').trim();
+    const start = cleaned.indexOf('['), end = cleaned.lastIndexOf(']');
+    if (start !== -1 && end !== -1) {
+      const quotes = JSON.parse(cleaned.substring(start, end+1));
+      if (Array.isArray(quotes) && quotes.length > 0) {
+        aiConnected = true;
+        aiQuoteQueue.push(...quotes.filter(q => typeof q === 'string' && q.length > 0));
+        if (aiQuoteQueue.length > 40) aiQuoteQueue = aiQuoteQueue.slice(-25);
+      }
+    }
+  } catch(e) {
+    console.warn('AI quotes failed:', e);
+  }
+  aiQuoteFetching = false;
+}
+
+// Shuffle fallback quotes once on load so order varies each session
+const SHUFFLED_FALLBACKS = [...FALLBACK_QUOTES].sort(() => Math.random() - 0.5);
+let fallbackIndex = 0;
+
+function getNextQuote() {
+  if (aiQuoteQueue.length > 0) return aiQuoteQueue.shift();
+  // Trigger a fresh fetch in background
+  fetchAIQuotes();
+  // Cycle through shuffled fallbacks instead of random — ensures no repeat until full cycle done
+  const q = SHUFFLED_FALLBACKS[fallbackIndex % SHUFFLED_FALLBACKS.length];
+  fallbackIndex++;
+  return q;
+}
+
+// ── INIT FIREBASE ──
+// ── INIT FIREBASE ──
+const app = initializeApp(CONFIG.firebase);
+const db = getFirestore(app);
+
+const statusEl = document.getElementById('firebase-status');
+
+// ── LISTEN TO SETTINGS (tshirt toggle from staff page) ──
+let countdownTimer = null;
+let totalQueueMs = 2 * 60 * 1000;
+
+onSnapshot(doc(db,'settings','venue'), (snap) => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+
+  // T-shirt badge
+  if (typeof data.tshirtMode !== 'undefined') {
+    const badge = document.getElementById('tshirt-badge');
+    if (data.tshirtMode) badge.classList.add('active');
+    else badge.classList.remove('active');
+  }
+
+  // Auto-queue indicator
+  const aqIndicator = document.getElementById('aq-indicator');
+  if (aqIndicator) aqIndicator.style.display = data.autoQueue ? 'flex' : 'none';
+
+  // Keep local nextQueueAt mirror in sync
+  if (typeof data.nextQueueAt !== 'undefined') {
+    nextQueueAt_local = data.nextQueueAt;
+  }
+
+  // Start/stop auto-queue engine
+  const mins = data.autoQueueMins || 2;
+  if (data.autoQueue && !boardAutoQueueOn) {
+    boardAutoQueueOn   = true;
+    boardAutoQueueMins = mins;
+    startBoardQueueChecker();
+  } else if (!data.autoQueue && boardAutoQueueOn) {
+    stopBoardAutoQueue();
+  } else if (data.autoQueue && boardAutoQueueMins !== mins) {
+    boardAutoQueueMins = mins;
+  }
+
+  // Video offset
+  if (typeof data.videoOffset !== 'undefined') {
+    window.videoOffset = data.videoOffset || 0;
+  }
+
+  // Countdown timer
+  const countdown = document.getElementById('queue-countdown');
+  if (data.autoQueue && data.nextQueueAt) {
+    totalQueueMs = (data.autoQueueMins || 2) * 60 * 1000;
+    countdown.classList.add('show');
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      const remaining = data.nextQueueAt - Date.now();
+      if (remaining <= 0) {
+        document.getElementById('countdown-time').textContent = '00:00';
+        document.getElementById('countdown-fill').style.width = '0%';
+        clearInterval(countdownTimer);
+        // Flash the No.1 card
+        const topCard = document.querySelector('.track-card.top-card');
+        if (topCard) {
+          topCard.classList.add('chosen');
+          setTimeout(() => topCard.classList.remove('chosen'), 3500);
+        }
+        return;
+      }
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      const timeEl = document.getElementById('countdown-time');
+      timeEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      timeEl.classList.toggle('urgent', remaining < 30000);
+      const pct = Math.min(100, (remaining / totalQueueMs) * 100);
+      document.getElementById('countdown-fill').style.width = pct + '%';
+    }, 1000);
+  } else {
+    countdown.classList.remove('show');
+    clearInterval(countdownTimer);
+  }
+});
+
+// ── AUTO-QUEUE ENGINE ──
+// Driven by nextQueueAt in Firebase — single source of truth, no duplicate firing
+let boardTracks        = [];
+let boardAutoQueueOn   = false;
+let boardAutoQueueMins = 2;
+let boardQueueChecker  = null;  // polls every 10s to check if nextQueueAt has passed
+let boardFiring        = false; // prevents concurrent runs
+
+async function boardSpotifyCall(endpoint, method='GET', body=null) {
+  if (!CONFIG.spotify_worker_url) return null;
+  try {
+    const opts = { method, headers:{ 'Content-Type':'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(CONFIG.spotify_worker_url + endpoint, opts);
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+async function boardGetRecentlyPlayed() {
+  try {
+    const { getDocs, collection: col } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(col(db,'played'));
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    return snap.docs
+      .filter(d => d.data().playedAt > cutoff)
+      .map(d => (d.data().title+'|||'+d.data().artist).toLowerCase());
+  } catch(e) { return []; }
+}
+
+function cleanT(t) {
+  return t.replace(/\s*[-–]\s*(remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|instrumental).*/i,'')
+          .replace(/\s*\((remaster|remastered|remix|live|acoustic|edit|version|radio|single|album|mono|stereo|demo|feat\.?|ft\.?)[^)]*\)/gi,'')
+          .trim() || t.trim();
+}
+
+async function boardRunAutoQueue() {
+  if (boardFiring) return; // prevent concurrent runs
+  boardFiring = true;
+  try {
+    const recentlyPlayed = await boardGetRecentlyPlayed();
+    // Sort by uniqueVoters DESC — highest votes first, earliest added wins ties
+    const approved = [...boardTracks]
+      .filter(t => t.approved && !t.spotifyQueued)
+      .sort((a,b) => b.uniqueVoters - a.uniqueVoters || (a.addedAt||0) - (b.addedAt||0));
+
+    if (!approved.length) { boardFiring = false; return; }
+
+    // Pick top track not played in last hour
+    const top = approved.find(t =>
+      !recentlyPlayed.includes((t.title+'|||'+t.artist).toLowerCase())
+    );
+    if (!top) { boardFiring = false; return; }
+
+    // Search Spotify with fallbacks
+    const ct = cleanT(top.title);
+    const ca = top.artist.replace(/\s*feat\.?.*/i,'').trim() || top.artist;
+    let found = null;
+    for (const [t,a] of [[ct,ca],[top.title,ca],[ct,top.artist],[top.title,top.artist],[ct,''],[top.title,'']]) {
+      found = await boardSpotifyCall('/search?track='+encodeURIComponent(t)+(a?'&artist='+encodeURIComponent(a):''));
+      if (found?.uri) break;
+    }
+    if (!found?.uri) { boardFiring = false; return; }
+
+    // Queue it
+    const result = await boardSpotifyCall('/queue', 'POST', { uri:found.uri });
+    if (result?.ok) {
+      // Mark as queued in Firebase
+      await updateDoc(doc(db,'tracks',top.id), {
+        spotifyQueued:true, spotifyUri:found.uri, queuedAt:Date.now()
+      });
+      // Set next queue time — exactly N minutes from NOW
+      const nextAt = Date.now() + (boardAutoQueueMins * 60 * 1000);
+      nextQueueAt_local = nextAt; // update local mirror immediately
+      await updateDoc(doc(db,'settings','venue'), { nextQueueAt: nextAt });
+      console.log(`✅ Queued: ${top.title} | Next queue at: ${new Date(nextAt).toLocaleTimeString()}`);
+
+      // Auto-remove from board after 30 seconds
+      setTimeout(async () => {
+        try {
+          await setDoc(doc(db,'played',top.id), {
+            title:top.title, artist:top.artist,
+            playedAt:Date.now(), spotifyUri:found.uri
+          });
+          await deleteDoc(doc(db,'tracks',top.id));
+          // Record to all-time leaderboard
+          recordPlayedToAllTime(top.title, top.artist, top.thumb || '');
+          loadAllTimeTop10();
+        } catch(e) {}
+      }, 30000);
+    }
+  } catch(e) { console.warn('Auto-queue error', e); }
+  boardFiring = false;
+}
+
+// ── QUEUE CHECKER — driven entirely by nextQueueAt in Firebase ──
+// Uses a 2-second tick for tight timing. Does NOT use setInterval for queue firing.
+// The countdown display and the actual queue trigger both read the same nextQueueAt.
+
+let nextQueueAt_local = null; // mirrors Firebase value locally for fast checks
+
+function startBoardQueueChecker() {
+  clearInterval(boardQueueChecker);
+  boardQueueChecker = setInterval(async () => {
+    if (!boardAutoQueueOn) return;
+    if (boardFiring) return;
+
+    // Use local mirror for fast check — avoids Firestore read every 2s
+    if (nextQueueAt_local && Date.now() >= nextQueueAt_local) {
+      // Double-check with Firebase to prevent race conditions
+      try {
+        const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const snap = await getDoc(doc(db,'settings','venue'));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (!data.autoQueue) return; // auto-queue was turned off
+        const serverNextAt = data.nextQueueAt;
+        if (serverNextAt && Date.now() >= serverNextAt) {
+          // Clear local mirror immediately to prevent double-fire
+          nextQueueAt_local = null;
+          await boardRunAutoQueue();
+        }
+      } catch(e) { console.warn('Queue check error', e); }
+    }
+  }, 2000); // check every 2 seconds for tight timing
+}
+
+function stopBoardAutoQueue() {
+  clearInterval(boardQueueChecker);
+  boardQueueChecker    = null;
+  boardAutoQueueOn     = false;
+  nextQueueAt_local    = null;
+}
+
+// ── APPLY VENUE CONFIG ──
+document.getElementById('venue-name').textContent = CONFIG.venueName;
+document.getElementById('venue-sub').textContent  = CONFIG.venueSub;
+document.title = CONFIG.venueName + ' · ROCKBOARD';
+if (!CONFIG.tshirtMode) document.getElementById('tshirt-badge').classList.remove('active');
+
+// ── EQUALIZER ──
+const NUM_BARS = 48;
+const eqEl = document.getElementById('equalizer');
+let eqBars = [];
+for (let i = 0; i < NUM_BARS; i++) {
+  const b = document.createElement('div');
+  b.className = 'eq-bar'; b.style.height = '4px';
+  eqEl.appendChild(b);
+  eqBars.push({ el:b, current:4, target:4 });
+}
+// Peak dot tracking for each bar
+let eqPeaks = eqBars.map(() => 0);
+let eqPeakDecay = eqBars.map(() => 0);
+
+function animateEQ() {
+  const time = Date.now() / 1000;
+  eqBars.forEach((b, i) => {
+    // More organic movement — sine waves + random spikes
+    const wave1 = Math.sin(time * 2.1 + i * 0.3) * 0.5 + 0.5;
+    const wave2 = Math.sin(time * 3.7 + i * 0.7) * 0.3 + 0.5;
+    const base  = 8 + Math.sin(i / NUM_BARS * Math.PI) * 55;
+    if (Math.random() < 0.12) {
+      b.target = base * (wave1 * 0.6 + wave2 * 0.4) + Math.random() * 20;
+    }
+    b.current += (b.target - b.current) * 0.22;
+    const h = Math.max(3, b.current);
+    b.el.style.height = h + 'px';
+
+    // Peak tracking — bar briefly holds at its max
+    if (h > eqPeaks[i]) {
+      eqPeaks[i] = h;
+      eqPeakDecay[i] = 0;
+    } else {
+      eqPeakDecay[i]++;
+      if (eqPeakDecay[i] > 15) eqPeaks[i] = Math.max(3, eqPeaks[i] - 0.8);
+    }
+  });
+  requestAnimationFrame(animateEQ);
+}
+animateEQ();
+
+// ── CALLOUT TICKER ──
+let lastTickerFire = Date.now();
+
+function nextQuote() {
+  const el = document.getElementById('callout-text');
+  el.style.animation = 'none';
+  const quote = getNextQuote();
+  el.textContent = quote;
+  void el.offsetWidth;
+  // Adjust speed based on quote length — longer quotes scroll slower
+  const duration = Math.max(14, Math.min(26, quote.length * 0.45));
+  el.style.animation = `ticker ${duration}s linear`;
+  lastTickerFire = Date.now();
+  el.addEventListener('animationend', nextQuote, { once:true });
+}
+
+// Watchdog — if ticker hasn't fired in 35s, restart it (handles tab-background stalls)
+setInterval(() => {
+  if (Date.now() - lastTickerFire > 35000) {
+    console.log('Ticker watchdog: restarting stalled ticker');
+    nextQuote();
+  }
+}, 10000);
+
+// Fetch first batch of AI quotes immediately, then every 90 seconds
+// Clear YouTube cache entries older than 1 day on startup
+// This prevents bad search results from being stuck for the full 7-day cache window
+(function clearStaleYTCache() {
+  try {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    Object.keys(localStorage).forEach(k => {
+      if (!k.startsWith('yt_')) return;
+      try {
+        const { ts } = JSON.parse(localStorage.getItem(k));
+        if (ts < cutoff) localStorage.removeItem(k);
+      } catch(e) { localStorage.removeItem(k); }
+    });
+  } catch(e) {}
+})();
+
+testAIConnection();
+fetchAIQuotes();
+setInterval(fetchAIQuotes, 90 * 1000);
+nextQuote();
+
+// ── ALL-TIME TOP 10 ──
+// Stored in Firestore 'alltime' collection — persists until manually reset
+// Each doc key = sanitised "title|||artist", fields: title, artist, thumb, plays
+async function recordPlayedToAllTime(title, artist, thumb) {
+  try {
+    const { getDoc, setDoc: sd, doc: d } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const key = (title + '|||' + artist).replace(/[^a-zA-Z0-9|_\- ]/g,'').substring(0,100);
+    const ref = d(db, 'alltime', key);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const existing = snap.data();
+      await sd(ref, { ...existing, plays: (existing.plays || 0) + 1, thumb: thumb || existing.thumb });
+    } else {
+      await sd(ref, { title, artist, thumb: thumb || '', plays: 1, addedAt: Date.now() });
+    }
+  } catch(e) { console.warn('alltime record error', e); }
+}
+
+async function loadAllTimeTop10() {
+  try {
+    const { getDocs: gd, collection: col, query: q, orderBy: ob, limit: lim } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await gd(q(col(db,'alltime'), ob('plays','desc'), lim(10)));
+    const panel = document.getElementById('alltime-panel');
+    const list  = document.getElementById('alltime-list');
+    if (snap.empty) { panel.classList.remove('show'); return; }
+    panel.classList.add('show');
+    list.innerHTML = snap.docs.map((d, i) => {
+      const t = d.data();
+      const pos = i + 1;
+      const isTop = pos === 1;
+      return `<div class="at-row${isTop?' at-top':''}">
+        <div class="at-pos">${String(pos).padStart(2,'0')}</div>
+        <div class="at-details">
+          <div class="at-title">${t.title}</div>
+          <div class="at-artist">${t.artist}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div class="at-count">${t.plays}</div>
+          <div class="at-count-label">PLAYS</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.warn('alltime load error', e); }
+}
+
+async function confirmResetAllTime() {
+  const pin = prompt('Enter staff PIN to reset all-time board:');
+  if (!pin) return;
+  if (pin !== String(CONFIG.staffPin || '1234')) { alert('Wrong PIN'); return; }
+  if (!confirm('Reset ALL-TIME TOP 10? This cannot be undone.')) return;
+  try {
+    const { getDocs: gd, collection: col, deleteDoc: dd, doc: d } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await gd(col(db,'alltime'));
+    await Promise.all(snap.docs.map(dc => dd(d(db,'alltime',dc.id))));
+    document.getElementById('alltime-panel').classList.remove('show');
+    document.getElementById('alltime-list').innerHTML = '';
+    alert('All-time board cleared.');
+  } catch(e) { alert('Reset failed: ' + e.message); }
+}
+
+// Refresh all-time board every 60 seconds
+loadAllTimeTop10();
+setInterval(loadAllTimeTop10, 60000);
+
+
+let nowPlayingThumb = '';
+let nowPlayingTrack = '';
+let trackNumber = 1;
+
+async function fetchNowPlaying() {
+  if (!CONFIG.lastfm_key || !CONFIG.lastfm_user) return;
+  try {
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${CONFIG.lastfm_user}&api_key=${CONFIG.lastfm_key}&format=json&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const track = data.recenttracks?.track?.[0];
+    if (!track) return;
+    const title  = track.name;
+    const artist = track.artist['#text'];
+    const thumb  = (track.image?.find(i => i.size === 'extralarge')?.['#text'] || '').replace(/\/noimage\//i,'');
+    const isNow  = track['@attr']?.nowplaying === 'true';
+    const trackKey = title + '|||' + artist;
+
+    document.getElementById('track-name').textContent   = isNow ? title : '—';
+    document.getElementById('track-artist').textContent = isNow ? artist : 'Nothing playing yet';
+    document.getElementById('status-text').textContent  = isNow ? 'NOW PLAYING' : 'STANDBY';
+    document.getElementById('wc-num').textContent       = String(trackNumber).padStart(3,'0');
+
+    // Only update visuals when something is actively playing
+    if (!isNow) {
+      // Clear any stale background art so last-played artwork doesn't persist
+      if (!nowPlayingTrack) {
+        document.getElementById('bg-art').style.backgroundImage = "url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1920&q=80')";
+        document.getElementById('album-img').src = '';
+      }
+      hideYouTube();
+      return;
+    }
+
+    // New track — update visuals
+    if (trackKey !== nowPlayingTrack) {
+      nowPlayingTrack = trackKey;
+      trackNumber++;
+
+      // Flush stale AI quotes from the previous track immediately
+      aiQuoteQueue = [];
+      lastAiContext = '';
+      // Wait 20s for Last.fm to scrobble the new track, then fetch fresh quotes about it
+      clearTimeout(window._aiTrackChangeTimer);
+      window._aiTrackChangeTimer = setTimeout(() => {
+        fetchAIQuotes();
+      }, 20000);
+
+      // Update album art background
+      if (thumb && thumb !== nowPlayingThumb) {
+        const bgNext = document.getElementById('bg-art-next');
+        const bgCurr = document.getElementById('bg-art');
+        bgNext.style.backgroundImage = `url('${thumb}')`;
+        bgNext.classList.add('fade-in');
+        bgCurr.classList.add('fade-out');
+        setTimeout(() => {
+          bgCurr.style.backgroundImage = `url('${thumb}')`;
+          bgCurr.classList.remove('fade-out');
+          bgNext.classList.remove('fade-in');
+          document.getElementById('album-img').src = thumb;
+        }, 2600);
+        nowPlayingThumb = thumb;
+      }
+
+      // Search YouTube for music video (only after user has tapped to activate)
+      if (CONFIG.youtube_key && videoActivated) {
+        searchYouTube(title, artist);
+      }
+    }
+  } catch(e) { console.warn('Last.fm error', e); }
+}
+
+// ── ACTIVATE ON FIRST TAP (needed for autoplay) ──
+let videoActivated = false;
+window.activateVideo = function activateVideo() {
+  if (videoActivated) return;
+  videoActivated = true;
+  const overlay = document.getElementById('activate-overlay');
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.8s ease';
+  setTimeout(() => { overlay.style.display = 'none'; }, 900);
+  // Trigger video search for current track
+  if (nowPlayingTrack) {
+    const parts = nowPlayingTrack.split('|||');
+    if (CONFIG.youtube_key) searchYouTube(parts[0], parts[1]);
+  }
+}
+
+// Button uses onclick="window.activateVideo()" — no listener needed
+
+// ── YOUTUBE VIDEO BACKGROUND ──
+let currentVideoId = '';
+
+async function searchYouTube(title, artist) {
+  try {
+    // Strip suffixes like "- Remastered 2021", "(Live)", "(feat. X)" before searching
+    const cleanTitle = cleanT(title);
+
+    // Check localStorage cache first — avoid burning quota on repeat tracks
+    const cacheKey = 'yt_' + (artist + '|' + cleanTitle).toLowerCase().replace(/[^a-z0-9|]/g,'_').slice(0,80);
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { videoId: cachedId, ts } = JSON.parse(cached);
+      // Use cache if less than 7 days old
+      if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000 && cachedId) {
+        console.log(`YT: cache hit for "${artist} - ${cleanTitle}" → ${cachedId}`);
+        if (cachedId === 'NONE') { hideYouTube(); return; } // cached miss
+        if (cachedId === currentVideoId) return;
+        currentVideoId = cachedId;
+        loadYouTubeVideo(cachedId);
+        return;
+      }
+    }
+
+    // Try multiple search strategies in order — most specific to broadest
+    const searches = [
+      { q: `${artist} ${cleanTitle} official music video`, cat: true },
+      { q: `${artist} ${cleanTitle} official audio`,       cat: true },
+      { q: `${artist} ${cleanTitle} official`,             cat: true },
+      { q: `${artist} ${cleanTitle} live`,                 cat: true },
+      { q: `${artist} ${cleanTitle}`,                      cat: true },
+      // Fallback without music category — broader but still scored
+      { q: `${artist} ${cleanTitle} official music video`, cat: false },
+      { q: `${artist} ${cleanTitle}`,                      cat: false },
+    ];
+
+    let videoId = null;
+
+    for (const { q: query, cat } of searches) {
+      try {
+        // videoCategoryId=10 = Music — filters out movie clips, compilations, reactions etc.
+        const catParam = cat ? '&videoCategoryId=10' : '';
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video${catParam}&maxResults=5&key=${CONFIG.youtube_key}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        // Log quota errors
+        if (data.error) {
+          console.warn('YT API error:', data.error.message);
+          hideYouTube();
+          return;
+        }
+
+        const items = data.items || [];
+        if (!items.length) { console.log(`YT: no results for "${query}"`); continue; }
+
+        // Score each result
+        const scored = items.map(item => {
+          const t  = (item.snippet.title || '').toLowerCase();
+          const ch = (item.snippet.channelTitle || '').toLowerCase();
+          let score = 0;
+          if (t.includes(cleanTitle.toLowerCase())) score += 4;
+          if (t.includes(artist.toLowerCase()))     score += 3;
+          if (ch.includes(artist.toLowerCase()))    score += 3;
+          if (/vevo/i.test(ch))                     score += 3;
+          if (/official/i.test(t))                  score += 2;
+          if (/music.?video/i.test(t))              score += 2;
+          if (/audio|lyric/i.test(t))               score += 1;
+          if (/live/i.test(t))                      score += 1;
+          if (/cover|reaction|tutorial|karaoke|how to|ranking|top 10|tribute/i.test(t)) score -= 4;
+          return { item, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        const best = scored[0];
+        // Must score at least 4 — title OR artist must match
+        if (best.score < 4) { console.log(`YT: best score only ${best.score} for "${query}" — skipping`); continue; }
+        const candidateId = best.item.id.videoId;
+        // Skip videos that errored out this session (restricted/unavailable)
+        try { if (sessionStorage.getItem('yt-blocked-' + candidateId)) { continue; } } catch(e) {}
+        videoId = candidateId;
+        console.log(`YT: found via "${query}" score=${best.score} — "${best.item.snippet.title}" by ${best.item.snippet.channelTitle}`);
+        break; // take first result that gives us anything
+
+      } catch(e) { console.warn('YT search error:', e); continue; }
+    }
+
+    // Cache the result (or the miss) to save quota
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ videoId: videoId || 'NONE', ts: Date.now() }));
+    } catch(e) {}
+
+    if (!videoId) { hideYouTube(); return; }
+    if (videoId === currentVideoId) return;
+    currentVideoId = videoId;
+    loadYouTubeVideo(videoId);
+
+  } catch(e) {
+    console.warn('YouTube search failed', e);
+    hideYouTube();
+  }
+}
+
+// Video offset (set from staff page)
+window.videoOffset = 0;
+
+// ── YOUTUBE IFRAME API ──
+let ytPlayer = null;
+let ytReady  = false;
+let pendingVideoId   = null;
+let pendingStartSecs = 0;
+let syncInterval = null;
+
+// Load YouTube IFrame API
+const ytScript = document.createElement('script');
+ytScript.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(ytScript);
+
+window.onYouTubeIframeAPIReady = function() {
+  ytReady = true;
+  ytPlayer = new YT.Player('yt-iframe', {
+    playerVars: {
+      autoplay: 1, mute: 1, controls: 0, showinfo: 0, rel: 0,
+      modestbranding: 1, iv_load_policy: 3, disablekb: 1, fs: 0,
+      playsinline: 1, loop: 0,
+    },
+    events: {
+      onReady: (e) => {
+        e.target.mute();
+        // 720p is the sweet spot — high quality without buffering on typical connections
+        e.target.setPlaybackQuality('hd720');
+        if (pendingVideoId) {
+          loadVideoAtPosition(pendingVideoId, pendingStartSecs);
+          pendingVideoId = null;
+        }
+      },
+      onStateChange: (e) => {
+        const bgArt = document.getElementById('bg-art');
+        const wrap  = document.getElementById('yt-bg-wrap');
+        if (e.data === YT.PlayerState.PLAYING) {
+          // Video is genuinely playing — show it, dim album art
+          wrap.classList.add('show');
+          bgArt.style.opacity = '0.15';
+        } else if (e.data === YT.PlayerState.BUFFERING) {
+          // Buffering — hide video, bring album art back so screen isn't blank
+          wrap.classList.remove('show');
+          bgArt.style.opacity = '1';
+        } else if (e.data === YT.PlayerState.ENDED) {
+          ytPlayer.seekTo(2, true);
+          ytPlayer.playVideo();
+        }
+      },
+      onError: (e) => {
+        // Error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding blocked
+        // All cases: hide the player, fall back to album art background
+        console.warn('YouTube player error:', e.data);
+        // Cache this video as blocked so we don't retry it this session
+        if (currentVideoId) {
+          try { sessionStorage.setItem('yt-blocked-' + currentVideoId, '1'); } catch(err) {}
+        }
+        hideYouTube();
+      }
+    }
+  });
+};
+
+function loadVideoAtPosition(videoId, startSecs) {
+  if (!ytPlayer || !ytReady) {
+    pendingVideoId   = videoId;
+    pendingStartSecs = startSecs;
+    return;
+  }
+  ytPlayer.loadVideoById({ videoId, startSeconds: Math.max(0, startSecs - 1) });
+  ytPlayer.mute();
+}
+
+async function getSpotifyProgress() {
+  if (!CONFIG.spotify_worker_url) return 0;
+  try {
+    const res  = await fetch(CONFIG.spotify_worker_url + '/nowplaying');
+    const data = await res.json();
+    if (data.playing && data.progress && data.duration) {
+      return Math.floor(data.progress / 1000); // convert ms to seconds
+    }
+  } catch(e) {}
+  return 0;
+}
+
+function loadYouTubeVideo(videoId) {
+  const wrap  = document.getElementById('yt-bg-wrap');
+  const label = document.getElementById('yt-label');
+  const bgArt = document.getElementById('bg-art');
+
+  // Hide video immediately — album art shows until buffering completes
+  wrap.classList.remove('show');
+  bgArt.style.opacity = '1';
+  clearInterval(syncInterval);
+
+  setTimeout(async () => {
+    const spotifySecs = await getSpotifyProgress();
+    const offset      = window.videoOffset || 0;
+    const startSecs   = Math.max(0, spotifySecs + offset);
+    loadVideoAtPosition(videoId, startSecs);
+    label.classList.add('show');
+    // Note: video is revealed by onStateChange PLAYING event, not a timer
+    // This means album art stays visible during all buffering
+
+    // Resync every 45 seconds — wide 15s tolerance to avoid mid-stream seeks
+    syncInterval = setInterval(async () => {
+      if (!ytPlayer || currentVideoId !== videoId) { clearInterval(syncInterval); return; }
+      // Only resync if video is actually playing (not buffering)
+      try {
+        const state = ytPlayer.getPlayerState?.();
+        if (state !== YT.PlayerState.PLAYING) return;
+        const spotifySecs = await getSpotifyProgress();
+        const ytSecs      = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+        const offset2     = window.videoOffset || 0;
+        const targetSecs  = spotifySecs + offset2;
+        const drift       = Math.abs(targetSecs - ytSecs);
+        if (drift > 15) {
+          // Only seek if really drifted — seeking causes rebuffering
+          ytPlayer.seekTo(Math.max(0, targetSecs - 1), true);
+          console.log(`YT resync: drift ${drift.toFixed(1)}s → seeking`);
+        }
+      } catch(e) {}
+    }, 45000);
+
+  }, 600);
+}
+
+function hideYouTube() {
+  const wrap = document.getElementById('yt-bg-wrap');
+  wrap.classList.remove('show');
+  document.getElementById('yt-label').classList.remove('show');
+  document.getElementById('bg-art').style.opacity = '1';
+  clearInterval(syncInterval);
+  currentVideoId = '';
+  if (ytPlayer?.stopVideo) ytPlayer.stopVideo();
+}
+
+function updateAlbumArt(url) {
+  if (!url || url === nowPlayingThumb) return;
+  const bgNext = document.getElementById('bg-art-next');
+  const bgCurr = document.getElementById('bg-art');
+  bgNext.style.backgroundImage = `url('${url}')`;
+  bgNext.classList.add('fade-in');
+  bgCurr.classList.add('fade-out');
+  setTimeout(() => {
+    bgCurr.style.backgroundImage = `url('${url}')`;
+    bgCurr.classList.remove('fade-out');
+    bgNext.classList.remove('fade-in');
+    document.getElementById('album-img').src = url;
+  }, 2600);
+  nowPlayingThumb = url;
+}
+
+fetchNowPlaying();
+setInterval(fetchNowPlaying, 15000);
+
+// ── KEEP ALIVE — prevent browser throttling when tab is in background ──
+
+// 1) Wake Lock API — tells the OS not to sleep the screen/tab (Chrome/Edge/Android)
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('✅ Wake lock active — screen will stay on');
+      wakeLock.addEventListener('release', () => {
+        console.log('Wake lock released — will re-request on next visibility');
+      });
+    }
+  } catch(e) {
+    console.log('Wake lock not available:', e.message);
+  }
+}
+requestWakeLock();
+
+// 2) Visibility change — when tab comes back to foreground, kick everything awake
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden) return;
+  console.log('Tab back in focus — refreshing all state');
+
+  // Re-request wake lock (it gets released when tab goes background)
+  await requestWakeLock();
+
+  // Force immediate refresh of now playing and queue checker
+  fetchNowPlaying();
+  loadAllTimeTop10();
+  fetchAIQuotes();
+
+  // Restart the queue checker in case it was throttled
+  if (typeof startBoardQueueChecker === 'function') {
+    startBoardQueueChecker();
+  }
+
+  // Re-sync countdown display immediately
+  if (nextQueueAt_local) {
+    const remaining = nextQueueAt_local - Date.now();
+    if (remaining > 0) {
+      showCountdown(Math.ceil(remaining / 1000));
+    }
+  }
+});
+
+// 3) Keep-alive ping every 20s using a tiny AudioContext trick
+// This keeps the JS event loop alive even in background tabs
+// (browsers throttle setInterval but not Web Audio)
+try {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (AudioCtx) {
+    const audioCtx = new AudioCtx();
+    const keepAliveNode = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0; // completely silent — zero volume
+    keepAliveNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    keepAliveNode.start();
+    console.log('✅ Silent audio keep-alive active');
+  }
+} catch(e) {
+  console.log('Audio keep-alive not available:', e.message);
+}
+
+// ── LEADERBOARD (Firebase live) ──
+let tracks = [];
+let prevRanks = {};
+const CARD_H = 100; // 96px card + 4px gap
+
+function renderLeaderboard() {
+  const list = document.getElementById('tracks-list');
+  const sorted = [...tracks]
+    .filter(t => t.approved)
+    .sort((a,b) => b.uniqueVoters - a.uniqueVoters || (a.addedAt||0) - (b.addedAt||0))
+    .slice(0, 10);
+
+  document.getElementById('wc-total').textContent = sorted.reduce((s,t)=>s+t.uniqueVoters,0);
+
+  const existingCards = {};
+  list.querySelectorAll('.track-card').forEach(el => { existingCards[el.dataset.id] = el; });
+
+  sorted.forEach((track, idx) => {
+    const top = idx * CARD_H;
+    let card = existingCards[track.id];
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'track-card new-entry';
+      card.dataset.id = track.id;
+      card.style.top = top + 'px';
+      card.style.opacity = '0';
+      setTimeout(() => { card.style.opacity = '1'; }, 50);
+      list.appendChild(card);
+    }
+    const prevRank   = prevRanks[track.id];
+    const rankChange = prevRank !== undefined ? prevRank - idx : 0;
+    const changeIcon = rankChange > 0 ? '▲' : rankChange < 0 ? '▼' : '—';
+    const changeClass = rankChange > 0 ? 'up' : rankChange < 0 ? 'down' : 'same';
+
+    card.className = 'track-card' + (idx===0?' top-card':'') + (rankChange>0?' rising':'');
+    card.style.top = top + 'px';
+    // Get album art — use Spotify URI image if available, else Last.fm lookup
+    const artUrl = track.spotifyImage || '';
+    const thumbHtml = artUrl
+      ? `<img class="track-thumb" src="${artUrl}" onerror="this.parentElement.innerHTML='<div class=\'track-thumb\' style=\'background:#1a0808;display:flex;align-items:center;justify-content:center;font-size:22px;\'>🎵</div>'">`
+      : `<div class="track-thumb" style="background:#1a0808;display:flex;align-items:center;justify-content:center;font-size:22px;">🎵</div>`;
+
+    card.innerHTML = `
+      <div class="track-rank">${String(idx+1).padStart(2,'0')}</div>
+      ${thumbHtml}
+      <div class="track-details">
+        <div class="track-title">${track.title}</div>
+        <div class="track-meta">
+          <span class="track-artist-name">${track.artist}</span>
+          <span style="color:rgba(139,0,0,0.5);margin:0 4px;font-size:12px">·</span>
+          <span class="track-requester">${track.requester}</span>
+        </div>
+      </div>
+      <div class="track-votes">
+        <div class="vote-count">${track.uniqueVoters}</div>
+        <div class="vote-label">VOTES</div>
+      </div>
+      <div class="rank-change ${changeClass}">${changeIcon}</div>`;
+
+    // Fetch album art if not stored — search Last.fm
+    if (!artUrl) {
+      const cacheKey = track.title + '|||' + track.artist;
+      if (!window._artCache) window._artCache = {};
+      if (window._artCache[cacheKey]) {
+        const img = card.querySelector('.track-thumb');
+        if (img && img.tagName === 'DIV') img.style.backgroundImage = `url('${window._artCache[cacheKey]}')`;
+      } else if (CONFIG.lastfm_key) {
+        fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(track.artist)}&track=${encodeURIComponent(track.title)}&api_key=${CONFIG.lastfm_key}&format=json`)
+          .then(r=>r.json()).then(d=>{
+            const url = d.track?.album?.image?.find(i=>i.size==='large')?.['#text'] || '';
+            if (url && !url.includes('noimage')) {
+              window._artCache[cacheKey] = url;
+              // Update card if still visible
+              const c = document.querySelector(`.track-card[data-id="${track.id}"]`);
+              if (c) {
+                const thumb = c.querySelector('.track-thumb');
+                if (thumb && thumb.tagName === 'DIV') {
+                  thumb.style.backgroundImage = `url('${url}')`;
+                  thumb.style.backgroundSize = 'cover';
+                  thumb.style.backgroundPosition = 'center';
+                }
+              }
+            }
+          }).catch(()=>{});
+      }
+    }
+    prevRanks[track.id] = idx;
+    delete existingCards[track.id];
+  });
+
+  Object.values(existingCards).forEach(el => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 400);
+  });
+}
+
+// Listen to Firestore in real time
+try {
+  const q = query(collection(db, 'tracks'), orderBy('uniqueVoters','desc'));
+  onSnapshot(q, (snapshot) => {
+    tracks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    boardTracks = tracks; // keep auto-queue engine in sync
+    renderLeaderboard();
+    statusEl.textContent = '● LIVE';
+    statusEl.className = 'ok';
+    setTimeout(() => { statusEl.style.opacity = '0'; }, 3000);
+  }, (err) => {
+    console.error('Firestore error', err);
+    statusEl.textContent = '● DB ERROR';
+    statusEl.className = 'err';
+  });
+} catch(e) {
+  statusEl.textContent = '● OFFLINE';
+  statusEl.className = 'err';
+}
+
+// ── WINNER REVEAL ──
+window.showWinner = function() {
+  const sorted = [...tracks].filter(t=>t.approved).sort((a,b)=>b.uniqueVoters-a.uniqueVoters||(a.addedAt||0)-(b.addedAt||0));
+  if (!sorted.length) return;
+  const w = sorted[0];
+  document.getElementById('winner-track').textContent      = w.title;
+  document.getElementById('winner-artist-line').textContent = w.artist;
+  document.getElementById('winner-votes').textContent      = `${w.uniqueVoters} UNIQUE VOTES`;
+  const winnerQuotes = [
+    `${w.requester} has the best taste in this bar. Collect your t-shirt.`,
+    `${w.requester} — we bow to your superior taste. T-shirt incoming.`,
+    `${w.requester} wins the night. And possibly our respect. Collect your t-shirt.`,
+    `${w.requester}, tonight you ARE the DJ. T-shirt at the bar.`,
+    `${w.requester} called it. The crowd agreed. T-shirt well earned.`,
+  ];
+  document.getElementById('winner-callout').textContent = winnerQuotes[Math.floor(Math.random()*winnerQuotes.length)];
+  document.getElementById('winner-overlay').classList.add('show');
+  launchConfetti();
+};
+
+window.closeWinner = function() {
+  document.getElementById('winner-overlay').classList.remove('show');
+};
+
+function launchConfetti() {
+  const colors = ['#8B0000','#FFB347','#39FF14','#f0ede8','#ff4444'];
+  for (let i = 0; i < 80; i++) {
+    setTimeout(() => {
+      const c = document.createElement('div');
+      c.className = 'confetti-piece';
+      c.style.left = Math.random()*100+'vw';
+      c.style.top = '-20px';
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      c.style.animationDelay = (Math.random()*2)+'s';
+      c.style.animationDuration = (2+Math.random()*2)+'s';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4500);
+    }, i*30);
+  }
+}
+</script>
+</body>
+</html>
