@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ROCKBOARD</title>
+<link rel="icon" type="image/png" href="assets/Black-Rose-Logo.png">
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -206,41 +207,41 @@
     border-radius:3px; padding:3px 8px; cursor:pointer;
   }
   #alltime-reset-btn:hover { color:var(--accent); border-color:var(--accent); }
-  #alltime-list { padding:6px 0; }
+  #alltime-list { padding:4px 0; }
   .at-row {
-    display:flex; align-items:center; gap:8px; padding:4px 12px;
-    transition:background 0.2s;
+    display:flex; align-items:center; gap:10px; padding:5px 14px;
+    transition:background 0.2s; border-left:3px solid transparent;
   }
   .at-row:hover { background:rgba(139,0,0,0.08); }
-  .at-row.at-top { background:rgba(35,18,0,0.6); }
+  .at-row.at-top {
+    background:rgba(35,18,0,0.6);
+    border-left-color:var(--amber);
+  }
   .at-pos {
-    font-family:var(--font-head); font-size:18px;
-    color:rgba(240,237,232,0.12); min-width:24px; text-align:center; flex-shrink:0;
+    font-family:var(--font-head); font-size:22px;
+    color:rgba(240,237,232,0.15); min-width:30px; text-align:center; flex-shrink:0;
   }
   .at-row.at-top .at-pos { color:var(--amber); }
-  .at-thumb {
-    width:36px; height:36px; border-radius:3px; object-fit:cover;
-    background:#1a0808; flex-shrink:0;
-    box-shadow:0 2px 6px rgba(0,0,0,0.6);
-  }
   .at-details { flex:1; min-width:0; }
   .at-title {
-    font-family:var(--font-head); font-size:14px; color:var(--white);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15;
+    font-family:var(--font-head); font-size:17px; color:var(--white);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;
+    letter-spacing:0.3px;
   }
-  .at-row.at-top .at-title { color:var(--amber); }
+  .at-row.at-top .at-title { color:var(--amber); font-size:18px; }
   .at-artist {
-    font-size:11px; color:rgba(240,237,232,0.45);
+    font-size:12px; color:rgba(240,237,232,0.5);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
+    letter-spacing:0.5px;
   }
   .at-count {
-    font-family:var(--font-pixel); font-size:16px;
-    color:var(--amber); min-width:28px; text-align:right; flex-shrink:0;
+    font-family:var(--font-pixel); font-size:18px;
+    color:var(--amber); min-width:28px; text-align:right; flex-shrink:0; line-height:1;
   }
   .at-count-label {
-    font-family:var(--font-pixel); font-size:8px;
+    font-family:var(--font-pixel); font-size:9px;
     color:rgba(240,237,232,0.25); letter-spacing:1px; text-align:right;
-    margin-top:1px;
+    margin-top:2px;
   }
 
   #winner-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:500; flex-direction:column; align-items:center; justify-content:center; gap:24px; text-align:center; }
@@ -524,11 +525,18 @@ async function enrichTrackData(artist, track) {
     if (lfTrack.track) {
       facts.listeners  = parseInt(lfTrack.track.listeners || 0).toLocaleString();
       facts.playcount  = parseInt(lfTrack.track.playcount || 0).toLocaleString();
-      facts.tags       = (lfTrack.track.toptags?.tag || []).slice(0,4).map(t=>t.name);
-      facts.wikiSummary = lfTrack.track.wiki?.summary
+      facts.tags       = (lfTrack.track.toptags?.tag || []).slice(0,5).map(t=>t.name);
+      facts.albumName  = lfTrack.track.album?.title || null;
+      facts.albumYear  = null; // filled below if available
+      facts.trackWiki  = lfTrack.track.wiki?.summary
         ?.replace(/<[^>]+>/g,'')
         ?.replace(/\s+/g,' ')
-        ?.substring(0, 300) || null;
+        ?.replace(/Read more on Last\.fm\.?/gi,'')
+        ?.trim()
+        ?.substring(0, 400) || null;
+      facts.duration   = lfTrack.track.duration
+        ? Math.floor(parseInt(lfTrack.track.duration)/60) + ' min ' + (parseInt(lfTrack.track.duration)%60) + ' sec'
+        : null;
     }
 
     // 2. Last.fm — artist info (bio, similar, listeners)
@@ -539,11 +547,13 @@ async function enrichTrackData(artist, track) {
     if (lfArtist.artist) {
       facts.artistListeners = parseInt(lfArtist.artist.stats?.listeners || 0).toLocaleString();
       facts.artistPlaycount = parseInt(lfArtist.artist.stats?.playcount || 0).toLocaleString();
-      facts.similarArtists  = (lfArtist.artist.similar?.artist || []).slice(0,4).map(a=>a.name);
+      facts.similarArtists  = (lfArtist.artist.similar?.artist || []).slice(0,5).map(a=>a.name);
       facts.artistBio = lfArtist.artist.bio?.summary
         ?.replace(/<[^>]+>/g,'')
         ?.replace(/\s+/g,' ')
-        ?.substring(0,300) || null;
+        ?.replace(/Read more on Last\.fm\.?/gi,'')
+        ?.trim()
+        ?.substring(0,500) || null;
     }
 
     // 3. MusicBrainz — band members, origin, formed date
@@ -652,19 +662,26 @@ async function fetchAIQuotes() {
     // Build rich context for Claude
     const factLines = [];
     if (facts) {
-      if (facts.listeners)      factLines.push(`"${nowPlaying}" has ${facts.listeners} listeners on Last.fm`);
-      if (facts.artistListeners) factLines.push(`${nowArtist} has ${facts.artistListeners} monthly listeners`);
+      if (facts.listeners)       factLines.push(`"${nowPlaying}" has ${facts.listeners} Last.fm listeners and ${facts.playcount} total plays`);
+      if (facts.albumName)       factLines.push(`From the album: "${facts.albumName}"`);
+      if (facts.duration)        factLines.push(`Track runs ${facts.duration}`);
+      if (facts.trackWiki)       factLines.push(`Track info: ${facts.trackWiki}`);
+      if (facts.artistListeners) factLines.push(`${nowArtist} has ${facts.artistListeners} Last.fm listeners — ${facts.artistPlaycount} total plays`);
       if (facts.formed && facts.origin) factLines.push(`${nowArtist} formed in ${facts.formed} in ${facts.origin}`);
-      else if (facts.formed)    factLines.push(`${nowArtist} formed in ${facts.formed}`);
-      else if (facts.origin)    factLines.push(`${nowArtist} from ${facts.origin}`);
-      if (facts.members?.length) factLines.push(`Members include: ${facts.members.slice(0,3).join(', ')}`);
-      if (facts.similarArtists?.length) factLines.push(`Fans of ${nowArtist} also like: ${facts.similarArtists.slice(0,3).join(', ')}`);
-      if (facts.tags?.length)   factLines.push(`Genre tags: ${facts.tags.join(', ')}`);
-      if (facts.wikiArtist)     factLines.push(`Wikipedia: ${facts.wikiArtist.substring(0,200)}`);
+      else if (facts.formed)     factLines.push(`${nowArtist} formed in ${facts.formed}`);
+      else if (facts.origin)     factLines.push(`${nowArtist} from ${facts.origin}`);
+      if (facts.members?.length) factLines.push(`Band members include: ${facts.members.join(', ')}`);
+      if (facts.similarArtists?.length) factLines.push(`Fans of ${nowArtist} also love: ${facts.similarArtists.join(', ')}`);
+      if (facts.tags?.length)    factLines.push(`Genre/tags: ${facts.tags.join(', ')}`);
+      if (facts.artistBio)       factLines.push(`Artist background: ${facts.artistBio}`);
+      if (facts.wikiArtist)      factLines.push(`Wikipedia: ${facts.wikiArtist}`);
     }
     if (top1Facts) {
-      if (top1Facts.listeners)   factLines.push(`Most requested "${topTrack.title}" has ${top1Facts.listeners} Last.fm listeners`);
+      if (top1Facts.listeners)   factLines.push(`No.1 requested "${topTrack.title}" has ${top1Facts.listeners} Last.fm listeners`);
+      if (top1Facts.albumName)   factLines.push(`"${topTrack.title}" is from "${top1Facts.albumName}"`);
+      if (top1Facts.trackWiki)   factLines.push(`About "${topTrack.title}": ${top1Facts.trackWiki}`);
       if (top1Facts.formed && top1Facts.origin) factLines.push(`${topTrack.artist} from ${top1Facts.origin}, formed ${top1Facts.formed}`);
+      if (top1Facts.artistBio)   factLines.push(`${topTrack.artist} background: ${top1Facts.artistBio.substring(0,200)}`);
     }
 
     const prompt = `You are the ticker voice of ROCKBOARD — a live music voting screen at The Black Rose, a rock, metal and goth bar in Edinburgh, Scotland. Generate 10 short ticker messages for the bottom of the display.
@@ -675,26 +692,38 @@ LIVE BOARD STATE:
 - Total votes tonight: ${totalVotes}
 - Tracks on board: ${trackCount}
 
-ARTIST & TRACK FACTS (use these — they make the ticker feel alive):
-${factLines.length ? factLines.map(f=>'- '+f).join('\n') : '- No facts yet'}
+RAW DATA (mine this for surprising, weird, or impressive facts — don't just repeat it verbatim):
+${factLines.length ? factLines.map(f=>'- '+f).join('\n') : '- No data yet — use general knowledge about the artist'}
 
-STYLE — you are a sharp, dry, knowledgeable rock bar announcer. Think late-night rock radio DJ meets sardonic Edinburgh wit. Every line should feel like it belongs in this bar tonight.
+WHAT TO LOOK FOR in the data above:
+- Surprising numbers: if a track has 50M+ plays, that's remarkable. If it has 500, that's also interesting.
+- Origin stories: where a band formed, unusual circumstances, who was in the band before fame
+- Album context: what was happening when this album came out, what it was a reaction to
+- Connections: band members who went on to other famous bands, who influenced who
+- Records or firsts: fastest to No.1, longest in charts, first band to do X
+- Contrast: a heavy metal track that charted alongside something completely different
+- Dark or weird facts buried in the Wikipedia/bio text — read it carefully
+- If total plays are very high, note it memorably: "Played ${totalVotes} times tonight alone"
 
-Mix these types across the 10:
-- Artist/track facts (3): Use the facts above. Punchy, surprising, delivered like a DJ who actually knows the music. "Ghost formed in Sweden in 2008. The Pope did not approve."
-- Live board commentary (3): React to THIS MOMENT — the vote gap, who's leading, the track playing now. Make it feel live. "Only 2 votes between No.1 and No.2. This could go either way."
-- Edinburgh / Black Rose atmosphere (2): Sharp, local, dark humour. This is a serious rock bar in a serious city. "Edinburgh's had louder debates. Not many."
-- Vote call-to-action (2): Direct but not cheesy. "Scan the QR. One vote. You know you want to."
+STYLE — sharp, dry, knowledgeable rock bar announcer. Edinburgh wit. Specific always beats generic.
+
+Mix these 10 as:
+- Weird/surprising fact about now playing track or artist (3): Find the most unexpected thing in the data. "Smells Like Teen Spirit almost didn't make Nevermind — Cobain thought it was too commercial."
+- Live board commentary (2): Vote gap, momentum, who's winning. Specific numbers.
+- Edinburgh / Black Rose flavour (2): Dark, local, dry. "Edinburgh has survived plague, famine, and the Proclaimers. It can handle your request."
+- No.1 requested track fact (1): Something specific about the top-voted track
+- Vote call-to-action (1): Sharp, not cheesy
+- Wild card (1): Anything — a connection between now playing and the most voted, a weird coincidence, a challenge to the crowd
 
 RULES:
-- MAX 14 words per message — this scrolls across a screen
-- No pop culture character voices or catchphrases
-- No exclamation marks unless the moment genuinely earns it
-- Dry is better than loud. Smart is better than obvious.
-- Every message must feel specific to tonight, not generic filler
+- MAX 14 words per message — scrolls across a screen
+- NO listener count quotes like "X has Y listeners" — that's boring. Transform data into stories.
+- Dry beats loud. Specific beats generic. Weird beats obvious.
+- No exclamation marks unless the moment genuinely earns one
 - Return ONLY a JSON array of 10 strings, nothing else
 
-Example: ["Ghost formed in Linköping, Sweden. The Pope has never commented.", "Two votes separate No.1 and No.2. Act accordingly."]`;
+Bad example: ["Nirvana has 5 million listeners on Last.fm"]
+Good example: ["Nevermind outsold Michael Jackson the week it dropped. Kurt was mortified."]`;
 
     // Route through Cloudflare worker to avoid CORS
     const response = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
@@ -1080,7 +1109,6 @@ async function loadAllTimeTop10() {
       const isTop = pos === 1;
       return `<div class="at-row${isTop?' at-top':''}">
         <div class="at-pos">${String(pos).padStart(2,'0')}</div>
-        ${t.thumb ? `<img class="at-thumb" src="${t.thumb}" onerror="this.style.display='none'">` : '<div class="at-thumb"></div>'}
         <div class="at-details">
           <div class="at-title">${t.title}</div>
           <div class="at-artist">${t.artist}</div>
