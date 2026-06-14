@@ -310,13 +310,18 @@
   }
 
   /* Black Rose logo in now-playing */
-  @keyframes logoSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+  @keyframes logoSpin {
+    0%   { transform: perspective(400px) rotateY(0deg); }
+    100% { transform: perspective(400px) rotateY(360deg); }
+  }
   #venue-logo {
     width:100%; max-height:120px; object-fit:contain;
     margin-bottom:4px; filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
-    animation:logoSpin 12s linear infinite;
+    animation:logoSpin 8s linear infinite;
+    transform-style: preserve-3d;
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -385,7 +390,7 @@
 </div>
 
 <div id="qr-hint">
-  <div style="width:80px;height:80px;background:#1a0808;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:var(--font-pixel);font-size:11px;color:rgba(240,237,232,0.3);letter-spacing:1px;text-align:center;">QR<br>CODE</div>
+  <div id="qr-canvas" style="width:80px;height:80px;margin:0 auto 8px;"></div>
   <div id="qr-hint-label">SCAN TO VOTE</div>
 </div>
 
@@ -439,6 +444,25 @@ const CONFIG = {
   youtube_key:        (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.youtube_key)        || "",
   spotify_worker_url: (typeof VENUE_CONFIG!=='undefined' && VENUE_CONFIG.spotify_worker_url) || "https://rockboard.eddrock79.workers.dev",
 };
+
+// ── QR CODE — generate on load pointing to request page ──
+(function generateQR() {
+  const voteUrl = window.location.href.replace(/\/?$/, '/').replace('index.html', '') + 'request.html';
+  const container = document.getElementById('qr-canvas');
+  if (!container) return;
+  // Wait for QRCode library to load
+  const tryGen = () => {
+    if (typeof QRCode === 'undefined') { setTimeout(tryGen, 300); return; }
+    new QRCode(container, {
+      text: voteUrl,
+      width: 80, height: 80,
+      colorDark: '#f0ede8',
+      colorLight: '#0a0505',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  };
+  tryGen();
+})();
 
 // ── FALLBACK QUOTES (used until AI kicks in) ──
 const FALLBACK_QUOTES = [
@@ -1236,7 +1260,10 @@ async function searchYouTube(title, artist) {
 
         scored.sort((a, b) => b.score - a.score);
         const best = scored[0];
-        videoId = best.item.id.videoId;
+        const candidateId = best.item.id.videoId;
+        // Skip videos that errored out this session (restricted/unavailable)
+        try { if (sessionStorage.getItem('yt-blocked-' + candidateId)) { continue; } } catch(e) {}
+        videoId = candidateId;
         console.log(`YT: found via "${query}" score=${best.score} — "${best.item.snippet.title}" by ${best.item.snippet.channelTitle}`);
         break; // take first result that gives us anything
 
@@ -1305,6 +1332,16 @@ window.onYouTubeIframeAPIReady = function() {
             ytPlayer.setPlaybackQuality('hd1080');
           }
         }
+      },
+      onError: (e) => {
+        // Error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding blocked
+        // All cases: hide the player, fall back to album art background
+        console.warn('YouTube player error:', e.data);
+        // Cache this video as blocked so we don't retry it this session
+        if (currentVideoId) {
+          try { sessionStorage.setItem('yt-blocked-' + currentVideoId, '1'); } catch(err) {}
+        }
+        hideYouTube();
       }
     }
   });
