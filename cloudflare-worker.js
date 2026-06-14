@@ -125,6 +125,9 @@ export default {
         const data = await res.json();
         return json({tracks:(data.items||[]).map(i=>({uri:i.track?.uri,name:i.track?.name,artist:i.track?.artists?.[0]?.name}))});
       }
+      if (path === '/ping') {
+        return json({ ok: true, hasApiKey: !!env.ANTHROPIC_API_KEY, ts: Date.now() });
+      }
       if (path === '/ai-quotes' && request.method === 'POST') {
         const body = await request.json();
         const prompt = body.prompt || '';
