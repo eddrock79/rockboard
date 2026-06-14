@@ -837,13 +837,23 @@ window._markPlayed = async function(id) {
   // Record in played history with timestamp
   if (track) {
     try {
-      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const { setDoc, getDoc, doc: d2 } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
       await setDoc(doc(db,'played', id), {
         title:    track.title,
         artist:   track.artist,
         playedAt: Date.now(),
         spotifyUri: track.spotifyUri || '',
       });
+      // ── Record to all-time leaderboard ──
+      const key = (track.title + '|||' + track.artist).replace(/[^a-zA-Z0-9|_\- ]/g,'').substring(0,100);
+      const ref = d2(db, 'alltime', key);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const ex = snap.data();
+        await setDoc(ref, { ...ex, plays: (ex.plays || 0) + 1, thumb: track.thumb || ex.thumb });
+      } else {
+        await setDoc(ref, { title: track.title, artist: track.artist, thumb: track.thumb || '', plays: 1, addedAt: Date.now() });
+      }
     } catch(e) { console.warn('Could not record played track', e); }
   }
   showStaffToast('✅ MARKED AS PLAYED — QUEUING NEXT...');

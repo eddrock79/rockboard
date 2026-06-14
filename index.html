@@ -164,15 +164,80 @@
   .eq-bar:nth-child(3n)   { background:linear-gradient(to top,#550000,#aa1100,#ff8800); box-shadow:0 0 4px rgba(200,50,0,0.3); }
 
   /* ── TICKER ── */
-  #callout { grid-area:callout; display:flex; align-items:center; gap:0; padding-top:10px; border-top:2px solid rgba(139,0,0,0.4); overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px; border-radius:0 0 0 0; }
-  #callout-tag { font-family:var(--font-pixel); font-size:16px; letter-spacing:3px; color:var(--white); white-space:nowrap; flex-shrink:0; padding:6px 16px; background:var(--accent); height:100%; display:flex; align-items:center; }
+  #callout { grid-area:callout; display:flex; align-items:center; gap:0; padding-top:10px; border-top:2px solid rgba(139,0,0,0.4); overflow:hidden; background:rgba(0,0,0,0.3); margin-top:4px; border-radius:0 0 0 0; position:relative; z-index:1; }
+  #callout-tag { font-family:var(--font-pixel); font-size:16px; letter-spacing:3px; color:var(--white); white-space:nowrap; flex-shrink:0; padding:6px 16px; background:var(--accent); height:100%; display:flex; align-items:center; z-index:2; position:relative; }
   #callout-text { font-family:var(--font-pixel); font-size:38px; color:#ffe8a0; white-space:nowrap; letter-spacing:2px; text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8); padding-left:24px; font-weight:normal; }
   @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-180%)} }
 
   #qr-hint { position:fixed; bottom:88px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
   #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
 
-  /* Stats panel */
+  /* ── ALL-TIME TOP 10 PANEL ── */
+  #alltime-panel {
+    position:fixed; bottom:130px; left:24px;
+    background:rgba(8,3,3,0.95); border:1px solid rgba(139,0,0,0.5);
+    border-top:3px solid var(--accent);
+    border-radius:0 0 6px 6px;
+    padding:0; z-index:10;
+    backdrop-filter:blur(20px);
+    width:340px;
+    display:none; flex-direction:column;
+    box-shadow:0 0 40px rgba(139,0,0,0.2), 0 8px 32px rgba(0,0,0,0.8);
+  }
+  #alltime-panel.show { display:flex; }
+  #alltime-header {
+    padding:10px 16px 8px;
+    border-bottom:1px solid rgba(139,0,0,0.3);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #alltime-title {
+    font-family:var(--font-pixel); font-size:13px; letter-spacing:4px;
+    color:rgba(240,237,232,0.4);
+  }
+  #alltime-reset-btn {
+    font-family:var(--font-pixel); font-size:10px; letter-spacing:2px;
+    color:rgba(139,0,0,0.6); background:none; border:1px solid rgba(139,0,0,0.3);
+    border-radius:3px; padding:3px 8px; cursor:pointer;
+  }
+  #alltime-reset-btn:hover { color:var(--accent); border-color:var(--accent); }
+  #alltime-list { padding:8px 0; }
+  .at-row {
+    display:flex; align-items:center; gap:10px; padding:5px 16px;
+    transition:background 0.2s;
+  }
+  .at-row:hover { background:rgba(139,0,0,0.08); }
+  .at-row.at-top { background:rgba(35,18,0,0.6); }
+  .at-pos {
+    font-family:var(--font-head); font-size:22px;
+    color:rgba(240,237,232,0.12); min-width:28px; text-align:center; flex-shrink:0;
+  }
+  .at-row.at-top .at-pos { color:var(--amber); }
+  .at-thumb {
+    width:44px; height:44px; border-radius:4px; object-fit:cover;
+    background:#1a0808; flex-shrink:0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.6);
+  }
+  .at-details { flex:1; min-width:0; }
+  .at-title {
+    font-family:var(--font-head); font-size:17px; color:var(--white);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15;
+  }
+  .at-row.at-top .at-title { color:var(--amber); }
+  .at-artist {
+    font-size:12px; color:rgba(240,237,232,0.45);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
+  }
+  .at-count {
+    font-family:var(--font-pixel); font-size:20px;
+    color:var(--amber); min-width:34px; text-align:right; flex-shrink:0;
+  }
+  .at-count-label {
+    font-family:var(--font-pixel); font-size:9px;
+    color:rgba(240,237,232,0.25); letter-spacing:1px; text-align:right;
+    margin-top:1px;
+  }
+
+  /* Stats panel (keep but repurpose as tonight-only mini panel — hidden for now) */
   #stats-panel {
     position:fixed; bottom:88px; left:24px;
     background:rgba(8,3,3,0.92); border:1px solid rgba(139,0,0,0.3);
@@ -211,43 +276,45 @@
 
   /* Countdown timer */
   #queue-countdown {
-    position:fixed; bottom:68px; left:50%; transform:translateX(-50%);
+    position:fixed; bottom:130px; left:50%; transform:translateX(-50%);
     display:none; flex-direction:column; align-items:center; gap:6px;
-    z-index:10; text-align:center;
+    z-index:20; text-align:center;
   }
   #queue-countdown.show { display:flex; }
   #countdown-label {
-    font-family:var(--font-pixel); font-size:16px; letter-spacing:4px;
-    color:rgba(240,237,232,0.5);
+    font-family:var(--font-pixel); font-size:18px; letter-spacing:4px;
+    color:rgba(240,237,232,0.6);
     text-shadow:0 1px 4px rgba(0,0,0,0.8);
   }
   #countdown-time {
-    font-family:var(--font-pixel); font-size:72px; color:var(--amber);
+    font-family:var(--font-pixel); font-size:90px; color:var(--amber);
     letter-spacing:6px; line-height:1;
-    text-shadow: 0 0 30px rgba(255,179,71,0.5), 0 2px 8px rgba(0,0,0,0.9);
+    text-shadow: 0 0 40px rgba(255,179,71,0.6), 0 2px 8px rgba(0,0,0,0.9);
   }
   #countdown-time.urgent {
     color:var(--green);
-    text-shadow:0 0 30px rgba(57,255,20,0.6), 0 2px 8px rgba(0,0,0,0.9);
+    text-shadow:0 0 40px rgba(57,255,20,0.7), 0 2px 8px rgba(0,0,0,0.9);
     animation:pulse 0.5s ease-in-out infinite;
   }
   #countdown-bar {
-    width:280px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;
+    width:320px; height:5px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;
   }
   #countdown-fill {
     height:100%; background:linear-gradient(90deg,var(--accent),var(--amber));
     border-radius:2px; transition:width 1s linear;
   }
   #countdown-sub {
-    font-family:var(--font-pixel); font-size:14px; letter-spacing:3px;
-    color:rgba(240,237,232,0.35);
+    font-family:var(--font-pixel); font-size:16px; letter-spacing:3px;
+    color:rgba(240,237,232,0.45);
     text-shadow:0 1px 4px rgba(0,0,0,0.8);
   }
 
   /* Black Rose logo in now-playing */
+  @keyframes logoSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
   #venue-logo {
     width:100%; max-height:120px; object-fit:contain;
     margin-bottom:4px; filter:drop-shadow(0 0 12px rgba(139,0,0,0.5));
+    animation:logoSpin 12s linear infinite;
   }
 </style>
 </head>
@@ -327,6 +394,14 @@
   <div id="countdown-time">--:--</div>
   <div id="countdown-bar"><div id="countdown-fill" style="width:100%"></div></div>
   <div id="countdown-sub">VOTE NOW TO PUSH YOUR TRACK TO NO.1</div>
+</div>
+
+<div id="alltime-panel">
+  <div id="alltime-header">
+    <div id="alltime-title">🏆 ALL-TIME TOP 10</div>
+    <button id="alltime-reset-btn" onclick="confirmResetAllTime()">RESET</button>
+  </div>
+  <div id="alltime-list"></div>
 </div>
 
 <div id="stats-panel">
@@ -607,7 +682,7 @@ Example format: ["quote one here", "quote two here"]`;
 }
 
 function getNextQuote() {
-  if (aiQuoteQueue.length > 2) return aiQuoteQueue.shift();
+  if (aiQuoteQueue.length > 0) return aiQuoteQueue.shift();
   fetchAIQuotes();
   return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
 }
@@ -778,6 +853,9 @@ async function boardRunAutoQueue() {
             playedAt:Date.now(), spotifyUri:found.uri
           });
           await deleteDoc(doc(db,'tracks',top.id));
+          // Record to all-time leaderboard
+          recordPlayedToAllTime(top.title, top.artist, top.thumb || '');
+          loadAllTimeTop10();
         } catch(e) {}
       }, 30000);
     }
@@ -884,9 +962,9 @@ function nextQuote() {
   el.addEventListener('animationend', nextQuote, { once:true });
 }
 
-// Fetch first batch of AI quotes immediately, then every 3 minutes
+// Fetch first batch of AI quotes immediately, then every 90 seconds
 fetchAIQuotes();
-setInterval(fetchAIQuotes, 3 * 60 * 1000);
+setInterval(fetchAIQuotes, 90 * 1000);
 nextQuote();
 
 // ── STATS PANEL ──
@@ -951,7 +1029,74 @@ async function updateStatsPanel() {
 // Update stats every 30 seconds
 setInterval(updateStatsPanel, 30000);
 
-// ── NOW PLAYING (Last.fm) ──
+// ── ALL-TIME TOP 10 ──
+// Stored in Firestore 'alltime' collection — persists until manually reset
+// Each doc key = sanitised "title|||artist", fields: title, artist, thumb, plays
+async function recordPlayedToAllTime(title, artist, thumb) {
+  try {
+    const { getDoc, setDoc: sd, doc: d } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const key = (title + '|||' + artist).replace(/[^a-zA-Z0-9|_\- ]/g,'').substring(0,100);
+    const ref = d(db, 'alltime', key);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const existing = snap.data();
+      await sd(ref, { ...existing, plays: (existing.plays || 0) + 1, thumb: thumb || existing.thumb });
+    } else {
+      await sd(ref, { title, artist, thumb: thumb || '', plays: 1, addedAt: Date.now() });
+    }
+  } catch(e) { console.warn('alltime record error', e); }
+}
+
+async function loadAllTimeTop10() {
+  try {
+    const { getDocs: gd, collection: col, query: q, orderBy: ob, limit: lim } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await gd(q(col(db,'alltime'), ob('plays','desc'), lim(10)));
+    const panel = document.getElementById('alltime-panel');
+    const list  = document.getElementById('alltime-list');
+    if (snap.empty) { panel.classList.remove('show'); return; }
+    panel.classList.add('show');
+    list.innerHTML = snap.docs.map((d, i) => {
+      const t = d.data();
+      const pos = i + 1;
+      const isTop = pos === 1;
+      return `<div class="at-row${isTop?' at-top':''}">
+        <div class="at-pos">${String(pos).padStart(2,'0')}</div>
+        ${t.thumb ? `<img class="at-thumb" src="${t.thumb}" onerror="this.style.display='none'">` : '<div class="at-thumb"></div>'}
+        <div class="at-details">
+          <div class="at-title">${t.title}</div>
+          <div class="at-artist">${t.artist}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div class="at-count">${t.plays}</div>
+          <div class="at-count-label">PLAYS</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.warn('alltime load error', e); }
+}
+
+async function confirmResetAllTime() {
+  const pin = prompt('Enter staff PIN to reset all-time board:');
+  if (!pin) return;
+  if (pin !== String(CONFIG.staffPin || '1234')) { alert('Wrong PIN'); return; }
+  if (!confirm('Reset ALL-TIME TOP 10? This cannot be undone.')) return;
+  try {
+    const { getDocs: gd, collection: col, deleteDoc: dd, doc: d } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await gd(col(db,'alltime'));
+    await Promise.all(snap.docs.map(dc => dd(d(db,'alltime',dc.id))));
+    document.getElementById('alltime-panel').classList.remove('show');
+    document.getElementById('alltime-list').innerHTML = '';
+    alert('All-time board cleared.');
+  } catch(e) { alert('Reset failed: ' + e.message); }
+}
+
+// Refresh all-time board every 60 seconds
+loadAllTimeTop10();
+setInterval(loadAllTimeTop10, 60000);
+
+
 let nowPlayingThumb = '';
 let nowPlayingTrack = '';
 let trackNumber = 1;
