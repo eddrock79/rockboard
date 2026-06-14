@@ -479,7 +479,9 @@ window.onArtistType = function() {
 function pickArtist(name) {
   chosenArtist = name;
   closeDD('dd-artist');
-  document.getElementById('inp-artist').value = '';
+  const inpArtist = document.getElementById('inp-artist');
+  inpArtist.value = '';
+  inpArtist.blur(); // dismiss keyboard
   document.getElementById('cl-artist').classList.remove('on');
   // Show pill
   document.getElementById('pill-artist-name').textContent = name;
@@ -488,7 +490,7 @@ function pickArtist(name) {
   document.getElementById('step-track-label').textContent = `PICK A TRACK BY ${name.toUpperCase()}`;
   document.getElementById('step-track').style.display = '';
   document.getElementById('inp-track').placeholder = 'Choose from the list or type to search...';
-  document.getElementById('inp-track').focus();
+  // Don't auto-focus track input — user can tap in when ready
   // Auto-load top tracks
   loadTopTracks(name);
 }
@@ -554,7 +556,9 @@ window.onTrackType = function() {
 function pickTrack(name) {
   chosenTrack = name;
   closeDD('dd-track');
-  document.getElementById('inp-track').value = '';
+  const inpTrack = document.getElementById('inp-track');
+  inpTrack.value = '';
+  inpTrack.blur(); // dismiss keyboard
   document.getElementById('cl-track').classList.remove('on');
   document.getElementById('step-track').style.display = 'none';
   document.getElementById('pill-track-name').textContent = name;
@@ -598,7 +602,9 @@ function pickSong(name, artist) {
   chosenSong = name;
   chosenSongArtist = artist;
   closeDD('dd-song');
-  document.getElementById('inp-song').value = '';
+  const inpSong = document.getElementById('inp-song');
+  inpSong.value = '';
+  inpSong.blur(); // dismiss keyboard
   document.getElementById('cl-song').classList.remove('on');
   document.getElementById('step-song').style.display = 'none';
   document.getElementById('pill-song-name').textContent   = name;
