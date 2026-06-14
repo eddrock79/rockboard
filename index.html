@@ -257,7 +257,7 @@
 <div id="bg-art-next"></div>
 <div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
 <div id="yt-overlay"></div>
-<div id="yt-label">▶ MUSIC VIDEO</div>
+<div id="yt-label">▶ RADIO</div>
 <div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
   <div style="text-align:center">
     <img src="assets/Black-Rose-Logo.png" style="max-width:420px;width:80%;filter:drop-shadow(0 0 20px rgba(139,0,0,0.7));margin-bottom:8px">
@@ -582,14 +582,11 @@ RULES:
 
 Example format: ["quote one here", "quote two here"]`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Route through Cloudflare worker to avoid CORS
+    const response = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ prompt })
     });
 
     const data = await response.json();
