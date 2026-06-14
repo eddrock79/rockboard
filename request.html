@@ -692,7 +692,7 @@ onSnapshot(lq, snap => {
   const tracks = snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.approved);
   const el = document.getElementById('vote-list');
   if (!tracks.length) { el.innerHTML='<div id="empty-board">NO TRACKS ON THE BOARD YET<br>BE THE FIRST TO REQUEST ONE<br>🎸</div>'; return; }
-  el.innerHTML = tracks.slice(0,10).map((t,i) => {
+  el.innerHTML = tracks.map((t,i) => {
     const v = hasVoted(t.id);
     const art = t.spotifyImage ? `<img class="vc-art" src="${t.spotifyImage}" onerror="this.outerHTML='<div class=\'vc-art\'>🎵</div>'">` : `<div class="vc-art">🎵</div>`;
     return `<div class="vote-card ${i===0?'top':''} ${v?'voted':''}">
