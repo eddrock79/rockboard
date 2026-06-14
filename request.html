@@ -511,7 +511,7 @@ window.resetArtist = function() {
 async function loadTopTracks(artist) {
   spin('sp-track', true);
   try {
-    const data = await lfFetch(`artist.gettoptracks&artist=${encodeURIComponent(artist)}&limit=12`);
+    const data = await lfFetch(`artist.gettoptracks&artist=${encodeURIComponent(artist)}&limit=20`);
     spin('sp-track', false);
     const tracks = data.toptracks?.track || [];
     if (!tracks.length) return;
@@ -534,14 +534,14 @@ window.onTrackType = function() {
   timerT = setTimeout(async () => {
     try {
       // Search tracks filtered to this artist
-      const data = await lfFetch(`track.search&track=${encodeURIComponent(v)}&artist=${encodeURIComponent(chosenArtist)}&limit=8`);
+      const data = await lfFetch(`track.search&track=${encodeURIComponent(v)}&artist=${encodeURIComponent(chosenArtist)}&limit=20`);
       let list = data.results?.trackmatches?.track || [];
       // If sparse, broaden search
       if (list.length < 3) {
-        const data2 = await lfFetch(`track.search&track=${encodeURIComponent(v)}&limit=10`);
+        const data2 = await lfFetch(`track.search&track=${encodeURIComponent(v)}&limit=20`);
         const all = data2.results?.trackmatches?.track || [];
         const extras = all.filter(t => t.artist.toLowerCase().includes(chosenArtist.toLowerCase()) && !list.find(x=>x.name===t.name));
-        list = [...list, ...extras].slice(0,8);
+        list = [...list, ...extras].slice(0,20);
       }
       spin('sp-track', false);
       if (!list.length) { closeDD('dd-track'); return; }
@@ -586,7 +586,7 @@ window.onSongType = function() {
   spin('sp-song', true);
   timerS = setTimeout(async () => {
     try {
-      const data = await lfFetch(`track.search&track=${encodeURIComponent(v)}&limit=8`);
+      const data = await lfFetch(`track.search&track=${encodeURIComponent(v)}&limit=20`);
       const list = data.results?.trackmatches?.track || [];
       spin('sp-song', false);
       if (!list.length) return;
