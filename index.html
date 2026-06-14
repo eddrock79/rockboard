@@ -24,7 +24,7 @@
   /* ── YOUTUBE VIDEO BACKGROUND ── */
   #yt-bg-wrap {
     position:fixed; inset:0; z-index:0;
-    opacity:0; transition:opacity 3s ease;
+    opacity:0; transition:opacity 2s ease;
     pointer-events:none; overflow:hidden;
   }
   #yt-bg-wrap.show { opacity:1; }
@@ -38,6 +38,12 @@
     transform:translate(-50%,-50%);
     pointer-events:none;
     border:none;
+  }
+  /* Suppress YouTube's native pause/buffer spinner overlay */
+  #yt-click-blocker {
+    position:fixed; inset:0; z-index:1;
+    pointer-events:none;
+    background:transparent;
   }
   #yt-overlay {
     position:fixed; inset:0; z-index:0;
@@ -313,6 +319,7 @@
 <div id="bg-art"></div>
 <div id="bg-art-next"></div>
 <div id="yt-bg-wrap"><div id="yt-iframe"></div></div>
+<div id="yt-click-blocker"></div>
 <div id="yt-overlay"></div>
 <div id="yt-label">▶ RADIO</div>
 <div id="activate-overlay" style="position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
@@ -1268,8 +1275,17 @@ window.onYouTubeIframeAPIReady = function() {
         }
       },
       onStateChange: (e) => {
-        // If video ended before track, replay from near start
-        if (e.data === YT.PlayerState.ENDED) {
+        const bgArt = document.getElementById('bg-art');
+        const wrap  = document.getElementById('yt-bg-wrap');
+        if (e.data === YT.PlayerState.PLAYING) {
+          // Video is genuinely playing — show it, dim album art
+          wrap.classList.add('show');
+          bgArt.style.opacity = '0.15';
+        } else if (e.data === YT.PlayerState.BUFFERING) {
+          // Buffering — hide video, bring album art back so screen isn't blank
+          wrap.classList.remove('show');
+          bgArt.style.opacity = '1';
+        } else if (e.data === YT.PlayerState.ENDED) {
           ytPlayer.seekTo(2, true);
           ytPlayer.playVideo();
         }
@@ -1315,44 +1331,46 @@ function loadYouTubeVideo(videoId) {
   const label = document.getElementById('yt-label');
   const bgArt = document.getElementById('bg-art');
 
+  // Hide video immediately — album art shows until buffering completes
   wrap.classList.remove('show');
+  bgArt.style.opacity = '1';
   clearInterval(syncInterval);
 
   setTimeout(async () => {
-    // Get current Spotify progress to sync video + apply offset
     const spotifySecs = await getSpotifyProgress();
     const offset      = window.videoOffset || 0;
     const startSecs   = Math.max(0, spotifySecs + offset);
     loadVideoAtPosition(videoId, startSecs);
+    label.classList.add('show');
+    // Note: video is revealed by onStateChange PLAYING event, not a timer
+    // This means album art stays visible during all buffering
 
-    setTimeout(() => {
-      wrap.classList.add('show');
-      bgArt.style.opacity = '0.15';
-      label.classList.add('show');
-    }, 1200);
-
-    // Resync every 30 seconds to correct drift
+    // Resync every 45 seconds — wide 15s tolerance to avoid mid-stream seeks
     syncInterval = setInterval(async () => {
       if (!ytPlayer || currentVideoId !== videoId) { clearInterval(syncInterval); return; }
+      // Only resync if video is actually playing (not buffering)
       try {
+        const state = ytPlayer.getPlayerState?.();
+        if (state !== YT.PlayerState.PLAYING) return;
         const spotifySecs = await getSpotifyProgress();
         const ytSecs      = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
         const offset2     = window.videoOffset || 0;
         const targetSecs  = spotifySecs + offset2;
         const drift       = Math.abs(targetSecs - ytSecs);
-        if (drift > 5) {
-          // More than 5 seconds out — resync with offset
+        if (drift > 15) {
+          // Only seek if really drifted — seeking causes rebuffering
           ytPlayer.seekTo(Math.max(0, targetSecs - 1), true);
-          console.log(`YT resync: drift ${drift.toFixed(1)}s → seeking to ${spotifySecs}s`);
+          console.log(`YT resync: drift ${drift.toFixed(1)}s → seeking`);
         }
       } catch(e) {}
-    }, 30000);
+    }, 45000);
 
   }, 600);
 }
 
 function hideYouTube() {
-  document.getElementById('yt-bg-wrap').classList.remove('show');
+  const wrap = document.getElementById('yt-bg-wrap');
+  wrap.classList.remove('show');
   document.getElementById('yt-label').classList.remove('show');
   document.getElementById('bg-art').style.opacity = '1';
   clearInterval(syncInterval);
