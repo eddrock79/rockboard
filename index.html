@@ -689,6 +689,11 @@ Example format: ["quote one here", "quote two here"]`;
     });
 
     const data = await response.json();
+    // Surface auth/config errors clearly
+    if (data.error) {
+      console.error('🔴 AI quotes worker error:', data.error, '— Check ANTHROPIC_API_KEY is set in Cloudflare worker env vars');
+      aiQuoteFetching = false; return;
+    }
     const text = data.content?.[0]?.text || '';
     const cleaned = text.replace(/```json[\s\S]*?```/g, t => t.replace(/```json|```/g,'')).replace(/```/g,'').trim();
     const start = cleaned.indexOf('['), end = cleaned.lastIndexOf(']');
@@ -705,10 +710,18 @@ Example format: ["quote one here", "quote two here"]`;
   aiQuoteFetching = false;
 }
 
+// Shuffle fallback quotes once on load so order varies each session
+const SHUFFLED_FALLBACKS = [...FALLBACK_QUOTES].sort(() => Math.random() - 0.5);
+let fallbackIndex = 0;
+
 function getNextQuote() {
   if (aiQuoteQueue.length > 0) return aiQuoteQueue.shift();
+  // Trigger a fresh fetch in background
   fetchAIQuotes();
-  return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+  // Cycle through shuffled fallbacks instead of random — ensures no repeat until full cycle done
+  const q = SHUFFLED_FALLBACKS[fallbackIndex % SHUFFLED_FALLBACKS.length];
+  fallbackIndex++;
+  return q;
 }
 
 // ── INIT FIREBASE ──
@@ -1139,10 +1152,21 @@ async function fetchNowPlaying() {
     const isNow  = track['@attr']?.nowplaying === 'true';
     const trackKey = title + '|||' + artist;
 
-    document.getElementById('track-name').textContent   = title;
-    document.getElementById('track-artist').textContent = artist;
-    document.getElementById('status-text').textContent  = isNow ? 'NOW PLAYING' : 'LAST PLAYED';
+    document.getElementById('track-name').textContent   = isNow ? title : '—';
+    document.getElementById('track-artist').textContent = isNow ? artist : 'Nothing playing yet';
+    document.getElementById('status-text').textContent  = isNow ? 'NOW PLAYING' : 'STANDBY';
     document.getElementById('wc-num').textContent       = String(trackNumber).padStart(3,'0');
+
+    // Only update visuals when something is actively playing
+    if (!isNow) {
+      // Clear any stale background art so last-played artwork doesn't persist
+      if (!nowPlayingTrack) {
+        document.getElementById('bg-art').style.backgroundImage = "url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1920&q=80')";
+        document.getElementById('album-img').src = '';
+      }
+      hideYouTube();
+      return;
+    }
 
     // New track — update visuals
     if (trackKey !== nowPlayingTrack) {
@@ -1214,20 +1238,23 @@ async function searchYouTube(title, artist) {
 
     // Try multiple search strategies in order — most specific to broadest
     const searches = [
-      `${artist} ${title} official music video`,
-      `${artist} ${title} official audio`,
-      `${artist} ${title} official`,
-      `${artist} ${title} live`,
-      `${artist} ${title}`,
-      `${artist} ${title.split(' ').slice(0,3).join(' ')}`, // first 3 words of title
+      { q: `${artist} ${title} official music video`, cat: true },
+      { q: `${artist} ${title} official audio`,       cat: true },
+      { q: `${artist} ${title} official`,             cat: true },
+      { q: `${artist} ${title} live`,                 cat: true },
+      { q: `${artist} ${title}`,                      cat: true },
+      // Fallback without music category — broader but still scored
+      { q: `${artist} ${title} official music video`, cat: false },
+      { q: `${artist} ${title}`,                      cat: false },
     ];
 
     let videoId = null;
 
-    for (const query of searches) {
+    for (const { q: query, cat } of searches) {
       try {
-        // No videoCategoryId filter — too restrictive for many tracks
-        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${CONFIG.youtube_key}`;
+        // videoCategoryId=10 = Music — filters out movie clips, compilations, reactions etc.
+        const catParam = cat ? '&videoCategoryId=10' : '';
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video${catParam}&maxResults=5&key=${CONFIG.youtube_key}`;
         const res  = await fetch(url);
         const data = await res.json();
 
@@ -1260,6 +1287,8 @@ async function searchYouTube(title, artist) {
 
         scored.sort((a, b) => b.score - a.score);
         const best = scored[0];
+        // Must score at least 4 — title OR artist must match
+        if (best.score < 4) { console.log(`YT: best score only ${best.score} for "${query}" — skipping`); continue; }
         const candidateId = best.item.id.videoId;
         // Skip videos that errored out this session (restricted/unavailable)
         try { if (sessionStorage.getItem('yt-blocked-' + candidateId)) { continue; } } catch(e) {}
