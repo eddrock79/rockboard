@@ -175,7 +175,7 @@
   #callout-text { font-family:var(--font-pixel); font-size:38px; color:#ffe8a0; white-space:nowrap; letter-spacing:2px; text-shadow:0 0 30px rgba(255,220,100,0.5), 0 2px 4px rgba(0,0,0,0.8); padding-left:24px; font-weight:normal; }
   @keyframes ticker { 0%{transform:translateX(100vw)} 100%{transform:translateX(-180%)} }
 
-  #qr-hint { position:fixed; bottom:88px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
+  #qr-hint { position:fixed; bottom:160px; right:24px; background:rgba(10,5,5,0.9); border:1px solid rgba(139,0,0,0.3); border-radius:6px; padding:12px 16px; text-align:center; backdrop-filter:blur(20px); z-index:10; }
   #qr-hint-label { font-family:var(--font-pixel); font-size:13px; letter-spacing:2px; color:rgba(240,237,232,0.5); }
 
   /* ── ALL-TIME TOP 10 PANEL ── */
@@ -593,6 +593,28 @@ let aiQuoteQueue = [];
 let aiQuoteFetching = false;
 let lastAiContext = '';
 let currentTrackFacts = null;
+let aiConnected = false;
+
+// Run on startup — logs clearly whether the API key is configured
+async function testAIConnection() {
+  try {
+    const res = await fetch(CONFIG.spotify_worker_url + '/ai-quotes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: 'Return only this JSON array: ["AI ticker connected"]' })
+    });
+    const data = await res.json();
+    if (data.error) {
+      console.error('🔴 AI TICKER OFFLINE —', data.error);
+      console.error('→ Fix: Cloudflare dash → Workers → rockboard → Settings → Variables → add ANTHROPIC_API_KEY');
+    } else if (data.content?.[0]?.text) {
+      console.log('✅ AI ticker online and responding');
+      aiConnected = true;
+    }
+  } catch(e) {
+    console.error('🔴 AI ticker connection error:', e.message);
+  }
+}
 
 async function fetchAIQuotes() {
   if (aiQuoteFetching) return;
@@ -606,12 +628,13 @@ async function fetchAIQuotes() {
     const trackCount  = safeTracks.filter(t=>t.approved).length;
 
     const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
-    if (context === lastAiContext && aiQuoteQueue.length > 4) { aiQuoteFetching = false; return; }
+    // Only skip if context unchanged AND queue is healthy (>6 quotes buffered)
+    if (context === lastAiContext && aiQuoteQueue.length > 6) { aiQuoteFetching = false; return; }
     lastAiContext = context;
 
     // Enrich current track in background
     let facts = null;
-    if (nowArtist && nowArtist !== '—' && nowArtist !== 'Loading...') {
+    if (nowArtist && nowArtist !== '—' && nowArtist !== 'Loading...' && nowArtist !== 'Nothing playing yet') {
       facts = await enrichTrackData(nowArtist, nowPlaying);
       currentTrackFacts = facts;
     }
@@ -688,6 +711,7 @@ Example: ["Ghost formed in Linköping, Sweden. The Pope has never commented.", "
     if (start !== -1 && end !== -1) {
       const quotes = JSON.parse(cleaned.substring(start, end+1));
       if (Array.isArray(quotes) && quotes.length > 0) {
+        aiConnected = true;
         aiQuoteQueue.push(...quotes.filter(q => typeof q === 'string' && q.length > 0));
         if (aiQuoteQueue.length > 40) aiQuoteQueue = aiQuoteQueue.slice(-25);
       }
@@ -988,6 +1012,7 @@ function nextQuote() {
 }
 
 // Fetch first batch of AI quotes immediately, then every 90 seconds
+testAIConnection();
 fetchAIQuotes();
 setInterval(fetchAIQuotes, 90 * 1000);
 nextQuote();
