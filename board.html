@@ -686,6 +686,11 @@ async function testAIConnection() {
 
 async function fetchAIQuotes() {
   if (aiQuoteFetching) return;
+  // Don't burn credits when nothing is playing and queue is healthy
+  const nowPlayingCheck = document.getElementById('track-name')?.textContent || '';
+  if (!nowPlayingCheck || nowPlayingCheck === '—' || nowPlayingCheck === 'Loading...') {
+    if (aiQuoteQueue.length > 0) return;
+  }
   aiQuoteFetching = true;
   try {
     const safeTracks  = (typeof tracks !== 'undefined' && Array.isArray(tracks)) ? tracks : [];
@@ -697,7 +702,7 @@ async function fetchAIQuotes() {
 
     const context = `${nowPlaying}|${topTrack?.title}|${totalVotes}|${trackCount}`;
     // Only skip if context unchanged AND queue is healthy (>6 quotes buffered)
-    if (context === lastAiContext && aiQuoteQueue.length > 6) { aiQuoteFetching = false; return; }
+    if (context === lastAiContext && aiQuoteQueue.length > 3) { aiQuoteFetching = false; return; }
     lastAiContext = context;
 
     // Enrich current track in background
@@ -789,7 +794,12 @@ Good example: ["Nevermind outsold Michael Jackson the week it dropped. Kurt was 
     const data = await response.json();
     // Surface auth/config errors clearly
     if (data.error) {
-      console.error('🔴 AI quotes worker error:', data.error, '— Check ANTHROPIC_API_KEY is set in Cloudflare worker env vars');
+      console.error('🔴 AI quotes worker error:', data.error);
+      if (typeof data.error === 'string' && (data.error.includes('credit') || data.error.includes('billing') || data.error.includes('balance'))) {
+        console.error('💳 Anthropic credit depleted — AI ticker paused. Top up at console.anthropic.com');
+        aiQuoteFetching = false;
+        return;
+      }
       aiQuoteFetching = false; return;
     }
     const text = data.content?.[0]?.text || '';
@@ -814,9 +824,9 @@ const SHUFFLED_FALLBACKS = [...FALLBACK_QUOTES].sort(() => Math.random() - 0.5);
 let fallbackIndex = 0;
 
 function getNextQuote() {
+  // Proactively refill when getting low — don't wait until empty
+  if (aiQuoteQueue.length < 3) fetchAIQuotes();
   if (aiQuoteQueue.length > 0) return aiQuoteQueue.shift();
-  // Trigger a fresh fetch in background
-  fetchAIQuotes();
   // Cycle through shuffled fallbacks instead of random — ensures no repeat until full cycle done
   const q = SHUFFLED_FALLBACKS[fallbackIndex % SHUFFLED_FALLBACKS.length];
   fallbackIndex++;
@@ -1132,8 +1142,10 @@ setInterval(() => {
 })();
 
 testAIConnection();
-fetchAIQuotes();
-setInterval(fetchAIQuotes, 90 * 1000);
+setTimeout(() => {
+  fetchAIQuotes();
+  setInterval(fetchAIQuotes, 5 * 60 * 1000); // backstop — low-queue trigger does the real work
+}, 8000);
 nextQuote();
 
 // ── ALL-TIME TOP 10 ──
