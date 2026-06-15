@@ -795,8 +795,11 @@ Good example: ["Nevermind outsold Michael Jackson the week it dropped. Kurt was 
     // Surface auth/config errors clearly
     if (data.error) {
       console.error('🔴 AI quotes worker error:', data.error);
-      if (typeof data.error === 'string' && (data.error.includes('credit') || data.error.includes('billing') || data.error.includes('balance'))) {
-        console.error('💳 Anthropic credit depleted — AI ticker paused. Top up at console.anthropic.com');
+      if (typeof data.error === 'string' && (
+        data.error.includes('credit') || data.error.includes('billing') || 
+        data.error.includes('balance') || data.error.includes('paused')
+      )) {
+        console.log('⏸ AI ticker paused — falling back to static quotes');
         aiQuoteFetching = false;
         return;
       }
