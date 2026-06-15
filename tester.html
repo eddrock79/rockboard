@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>The Banshee Labyrinth — Manager Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0d0d0f; --surface:#17171a; --surface2:#1f1f24; --border:#2a2a30;
+    --accent:#e8b84b; --accent-dim:rgba(232,184,75,0.12);
+    --green:#3ecf6e; --green-dim:rgba(62,207,110,0.12);
+    --red:#e85d5d; --red-dim:rgba(232,93,93,0.1);
+    --purple:#a78bfa; --purple-dim:rgba(167,139,250,0.12);
+    --text:#e8e8ec; --muted:#6b6b78; --done-bg:rgba(62,207,110,0.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh;}
+
+  /* PIN */
+  .pin-logo{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:3px;color:var(--accent);}
+  .pin-sub{font-size:12px;color:var(--muted);margin-top:-18px;letter-spacing:2px;text-transform:uppercase;}
+
+  /* APP */
+  #app{display:block;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px;}
+  .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);}
+  .topbar-right{display:flex;align-items:center;gap:12px;}
+  .live-indicator{display:flex;align-items:center;gap:6px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+  .live-dot.stale{background:var(--muted);animation:none;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  .live-label{font-size:12px;color:var(--green);}
+  .last-refresh{font-size:11px;color:var(--muted);}
+  .refresh-btn{font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .refresh-btn:hover{color:var(--text);}
+
+  .nav-bar{display:flex;gap:8px;background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 16px;flex-wrap:wrap;}
+  .nav-btn{padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--muted);text-decoration:none;display:inline-block;transition:color .2s,border-color .2s;-webkit-tap-highlight-color:transparent;}
+  .nav-btn:hover{color:var(--text);border-color:var(--accent);}
+  .nav-btn.current{background:var(--purple-dim);color:var(--purple);border-color:var(--purple);}
+
+  .content{padding:20px;max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:16px;}
+
+  /* Stat cards */
+  .row{display:grid;gap:12px;}
+  .row-4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}
+  .row-2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+  .row-3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+  .card-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:500;}
+  .stat-val{font-size:30px;font-weight:600;line-height:1;}
+  .stat-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+  /* Day bars */
+  .day-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .day-row:last-child{border-bottom:none;}
+  .day-name{font-size:13px;font-weight:500;width:84px;color:var(--text);}
+  .day-name.today{color:var(--accent);font-weight:700;}
+  .day-bar-track{flex:1;background:var(--surface2);border-radius:3px;height:7px;overflow:hidden;}
+  .day-bar-fill{height:100%;border-radius:3px;transition:width .6s;}
+  .day-pct{font-size:12px;width:38px;text-align:right;font-weight:500;}
+  .day-count{font-size:11px;color:var(--muted);width:44px;text-align:right;}
+
+  /* Staff leaderboard */
+  .staff-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .staff-row:last-child{border-bottom:none;}
+  .staff-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+  .staff-name{font-size:13px;font-weight:500;color:var(--text);}
+  .staff-meta{font-size:11px;color:var(--muted);}
+  .bar-mini{height:4px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:3px;}
+  .bar-mini-fill{height:100%;border-radius:2px;}
+  .badge{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:500;white-space:nowrap;}
+  .badge-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(62,207,110,0.3);}
+  .badge-amber{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(232,184,75,0.3);}
+  .badge-purple{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(167,139,250,0.3);}
+  .badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(232,93,93,0.3);}
+
+  /* Live job feed */
+  .job-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);}
+  .job-row:last-child{border-bottom:none;}
+  .job-tick{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .tick-done{background:var(--green-dim);border:1px solid var(--green);color:var(--green);}
+  .tick-todo{background:var(--red-dim);border:1px solid var(--red);color:var(--red);}
+  .job-name{flex:1;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .job-name.done{text-decoration:line-through;color:var(--muted);}
+  .job-who{font-size:11px;color:var(--accent);white-space:nowrap;}
+  .job-time{font-size:10px;color:var(--muted);white-space:nowrap;}
+
+  /* Handover notes */
+  .note-item{padding:10px 12px 10px 14px;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;background:var(--surface2);margin-bottom:8px;}
+  .note-item:last-child{margin-bottom:0;}
+  .note-src{font-size:10px;color:var(--accent);font-weight:600;letter-spacing:.5px;margin-bottom:3px;text-transform:uppercase;}
+  .note-text{font-size:13px;color:var(--text);line-height:1.5;}
+  .note-time{font-size:10px;color:var(--muted);margin-top:4px;}
+
+  /* On shift chips */
+  .shift-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--green-dim);border:1px solid rgba(62,207,110,0.3);font-size:12px;color:var(--green);margin:3px;}
+
+  /* Email button */
+  .email-btn{background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif;transition:opacity .2s;}
+  .email-btn:active{opacity:.8;}
+
+  /* Settings */
+  .settings-section{margin-bottom:24px;}
+  .settings-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;}
+  .input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .text-input{flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 14px;}
+  .text-input:focus{outline:none;border-color:var(--accent);}
+  .sheet-id-note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;}
+  .sheet-id-note code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px;color:var(--accent);}
+  .btn{padding:9px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s,transform .1s;}
+  .btn:active{transform:scale(.97);}
+  .btn-accent{background:var(--accent);color:#000;}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+
+  .empty-state{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0;}
+  .section-divider{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:10px;}
+
+  @media(max-width:600px){.row-4{grid-template-columns:repeat(2,1fr);}.topbar{height:auto;padding:12px 16px;}}
+</style>
+<script src="../bl-config.js"></script>
+<script src="../bl-auth.js"></script>
+</head>
+<body>
+
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">⚡ Banshee Labyrinth — Manager Dashboard</div>
+    <div class="topbar-right">
+      <div class="live-indicator">
+        <div class="live-dot" id="live-dot"></div>
+        <div class="live-label" id="live-label">Live</div>
+      </div>
+      <div class="last-refresh" id="last-refresh">—</div>
+      <button class="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="nav-bar">
+    <a class="nav-btn" id="nav-home" href="#">🏠 Home</a>
+    <a class="nav-btn" id="nav-wj" href="../weekly-cleaning">📋 Weekly Jobs</a>
+    <a class="nav-btn" id="nav-eon" href="../end-of-night">🌙 End Of Night</a>
+    <a class="nav-btn" href="../cocktails">🍸 Cocktails</a>
+    <a class="nav-btn" href="../rotas">📅 Rotas</a>
+    <a class="nav-btn" href="../holidays/">🏖 Holidays</a>
+    <span class="nav-btn current">📊 Dashboard</span>
+    <a class="nav-btn" href="../whatson/" style="background:var(--purple-dim);color:var(--purple);border-color:var(--purple)">🎭 What's On</a>
+    <button class="nav-btn" onclick="showSection('settings')" style="cursor:pointer">⚙ Settings</button>
+    <button class="nav-btn" type="button" onclick="BLAuth.switchVenue()" style="cursor:pointer">🏘️ Switch Venue</button>
+    <button class="nav-btn" onclick="BLAuth.logout()" style="cursor:pointer;color:var(--red);border-color:var(--red)">🔒 Log Out</button>
+  </div>
+
+  <div class="content" id="main-content">
+    <div style="color:var(--muted);font-size:13px;padding:20px 0;">Loading data…</div>
+  </div>
+
+  <div class="content" id="settings-content" style="display:none">
+    <div class="card">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;margin-bottom:20px;">Settings</div>
+      <div class="settings-section">
+        <div class="settings-label">Weekly Jobs — Sheet ID</div>
+        <div class="input-row">
+          <input class="text-input" id="wj-sheet-input" placeholder="Weekly Jobs Sheet ID"/>
+          <button class="btn btn-accent" onclick="saveWJSheet()">Save</button>
+        </div>
+        <div class="sheet-id-note">The long string between <code>/d/</code> and <code>/edit</code> in your Weekly Jobs sheet URL.</div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">End Of Night — Sheet ID</div>
+        <div class="input-row">
+          <input class="text-input" id="eon-sheet-input" placeholder="End Of Night Sheet ID"/>
+          <button class="btn btn-accent" onclick="saveEONSheet()">Save</button>
+        </div>
+        <div class="sheet-id-note">The long string between <code>/d/</code> and <code>/edit</code> in your End Of Night sheet URL.</div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Email addresses for report</div>
+        <div class="sheet-id-note" style="margin-bottom:8px">One per line.</div>
+        <textarea class="text-input" id="email-input" rows="4" placeholder="manager@bar.com" style="resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;line-height:1.6"></textarea>
+        <div style="margin-top:8px"><button class="btn btn-ghost" onclick="saveEmails()">Save Emails</button></div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Auto-refresh interval</div>
+        <div class="sheet-id-note" style="margin-bottom:8px">How often to pull fresh data from the sheets. Minimum 10 seconds.</div>
+        <div class="input-row">
+          <input class="text-input" id="refresh-interval" type="number" min="10" max="3600" placeholder="30" style="min-width:0;flex:0 0 120px"/>
+          <span style="font-size:13px;color:var(--muted);white-space:nowrap">seconds</span>
+          <button class="btn btn-ghost" onclick="saveRefreshInterval()">Save</button>
+        </div>
+        <div class="sheet-id-note" style="margin-top:6px">
+          Quick picks:
+          <span onclick="setRefresh(10)" style="color:var(--accent);cursor:pointer;margin-right:8px">10s</span>
+          <span onclick="setRefresh(30)" style="color:var(--accent);cursor:pointer;margin-right:8px">30s</span>
+          <span onclick="setRefresh(60)" style="color:var(--accent);cursor:pointer;margin-right:8px">1 min</span>
+          <span onclick="setRefresh(300)" style="color:var(--accent);cursor:pointer;margin-right:8px">5 min</span>
+          <span onclick="setRefresh(600)" style="color:var(--accent);cursor:pointer">10 min</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Handover notes</div>
+        <div class="sheet-id-note" style="margin-bottom:8px">Clear all handover notes from this device. Use this if notes from old app versions are causing issues.</div>
+        <button class="btn btn-ghost" onclick="clearNotes()" style="border-color:var(--red);color:var(--red)">Clear all handover notes</button>
+        <div id="notes-cleared-msg" style="font-size:12px;color:var(--green);margin-top:6px;display:none">✓ Notes cleared</div>
+      </div>
+      <button class="btn btn-ghost" onclick="showSection('main')" style="margin-top:8px">← Back to Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PIN_SHEET_ID=BL_CFG.weeklyJobs;
+const HANDOVER_KEY='bl_handover_notes';
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const DAY_KEYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+let wjSheetId='', eonSheetId='', emailAddr='';
+let wjJobs=[], wjStaff=[], eonJobs=[], eonStaff=[];
+let refreshTimer=null, refreshInterval=30, currentSection='main';
+
+// ── CSV HELPERS ──
+function parseCSV(line){const cols=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur.trim());cur='';}else{cur+=c;}}cols.push(cur.trim());return cols;}
+function clean(s){return(s||'').replace(/^"|"$/g,'').trim();}
+
+// ── BOOT — no PIN needed, dashboard is manager-only via home page ──
+(async function boot(){
+  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // load central config first
+  const WJ=BL_CFG.weeklyJobs;
+  const EON=BL_CFG.endOfNight;
+  let w=(WJ && (''+WJ).indexOf('PUT_')!==0) ? WJ : (localStorage.getItem('bl_dash_wj_sheet')||'');
+  let e=(EON && (''+EON).indexOf('PUT_')!==0) ? EON : (localStorage.getItem('bl_dash_eon_sheet')||'');
+  wjSheetId=w; eonSheetId=e;
+  emailAddr=localStorage.getItem('bl_dash_email')||'';
+  refreshInterval=parseInt(localStorage.getItem('bl_dash_refresh')||'30');
+  BLAuth.init({appName:'Manager Dashboard', require:'manager', onReady:function(){ showApp(); }});
+})();
+
+// ── SHOW APP ──
+function showApp(){
+  document.getElementById('app').style.display='block';
+  const homeUrl=wjSheetId?`../home?sheet=${wjSheetId}`:'../home';
+  document.getElementById('nav-home').href=homeUrl;
+  refreshAll();
+  startAutoRefresh();
+}
+
+function showSection(s){
+  currentSection=s;
+  document.getElementById('main-content').style.display=s==='main'?'flex':'none';
+  document.getElementById('settings-content').style.display=s==='settings'?'flex':'none';
+  if(s==='settings') renderSettingsPage();
+}
+
+// ── DATA LOADING ──
+async function fetchSheet(sheetId, tabName){
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${tabName}`;
+    const res=await fetch(url);
+    if(!res.ok) return [];
+    const csv=await res.text();
+    return csv.split('\n').slice(1).filter(l=>l.trim());
+  }catch(e){return [];}
+}
+
+async function loadAllData(){
+  setLiveStatus('loading');
+  try{
+    // Weekly Jobs — Staff and Jobs tabs
+    const [wjStaffLines, wjJobLines, eonStaffLines, eonJobLines] = await Promise.all([
+      fetchSheet(wjSheetId, 'Staff'),
+      fetchSheet(wjSheetId, 'Jobs'),
+      fetchSheet(eonSheetId, 'Staff'),
+      fetchSheet(eonSheetId, 'Jobs')
+    ]);
+
+    wjStaff=parseStaff(wjStaffLines);
+    wjJobs=parseJobs(wjJobLines);
+    eonStaff=parseStaff(eonStaffLines);
+    eonJobs=parseJobs(eonJobLines);
+
+    setLiveStatus('ok');
+    return true;
+  }catch(e){
+    setLiveStatus('err');
+    return false;
+  }
+}
+
+function parseStaff(lines){
+  return lines.map(l=>{
+    const c=parseCSV(l);
+    const name=clean(c[0]);
+    const onShift=clean(c[1]).toUpperCase()==='TRUE';
+    return name?{name,onShift}:null;
+  }).filter(Boolean);
+}
+
+function parseJobs(lines){
+  return lines.map(l=>{
+    const c=parseCSV(l);
+    const id=parseInt(c[0]);
+    const day=clean(c[1]);
+    const job=clean(c[2]);
+    if(!id||!day||!job)return null;
+    return{
+      id,day,job,
+      assignedTo:clean(c[3]),
+      done:clean(c[4]).toUpperCase()==='TRUE',
+      notes:clean(c[5]),
+      timestamp:clean(c[6]),
+      homeDay:clean(c[8])||day
+    };
+  }).filter(Boolean);
+}
+
+async function refreshAll(){
+  const ok=await loadAllData();
+  if(ok && currentSection==='main') renderDashboard();
+  document.getElementById('last-refresh').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ── AUTO REFRESH ──
+function startAutoRefresh(){
+  if(refreshTimer) clearInterval(refreshTimer);
+  refreshTimer=setInterval(refreshAll, refreshInterval*1000);
+}
+
+function setLiveStatus(st){
+  const dot=document.getElementById('live-dot');
+  const label=document.getElementById('live-label');
+  if(st==='ok'){dot.className='live-dot';label.textContent='Live';label.style.color='var(--green)';}
+  else if(st==='loading'){dot.className='live-dot';label.textContent='Refreshing…';label.style.color='var(--muted)';}
+  else{dot.className='live-dot stale';label.textContent='Error';label.style.color='var(--red)';}
+}
+
+// ── TODAY ──
+function getToday(){
+  const now=new Date();
+  const adj=now.getHours()<7?new Date(now-864e5):now;
+  return adj.toLocaleDateString('en-GB',{weekday:'long'});
+}
+
+function pct(done,total){return total?Math.round(done/total*100):0;}
+function barColor(p){return p===100?'var(--green)':p>0?'var(--accent)':'var(--border)';}
+function fmtTime(ts){if(!ts)return'';try{return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── RENDER DASHBOARD ──
+function renderDashboard(){
+  const today=getToday();
+  const content=document.getElementById('main-content');
+  content.style.display='flex';
+  content.style.flexDirection='column';
+  content.style.gap='16px';
+
+  // ── SUMMARY STATS ──
+  const wjDone=wjJobs.filter(j=>j.done).length;
+  const wjTotal=wjJobs.length;
+  const eonDone=eonJobs.filter(j=>j.done).length;
+  const eonTotal=eonJobs.length;
+  const onShiftTonight=[...new Set([...wjStaff.filter(s=>s.onShift).map(s=>s.name),...eonStaff.filter(s=>s.onShift).map(s=>s.name)])];
+  const overall=pct(wjDone+eonDone,wjTotal+eonTotal);
+
+  // ── HANDOVER NOTES ──
+  let handoverNotes=loadHandoverNotes();
+  handoverNotes.sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  // ── STAFF LEADERBOARD ──
+  const staffMap={};
+  [...wjJobs,...eonJobs].forEach(j=>{
+    if(!j.assignedTo)return;
+    if(!staffMap[j.assignedTo])staffMap[j.assignedTo]={wj:0,eon:0};
+    if(wjJobs.includes(j))staffMap[j.assignedTo].wj++;
+    else staffMap[j.assignedTo].eon++;
+  });
+  // separate counts properly
+  const staffStats={};
+  wjJobs.filter(j=>j.assignedTo).forEach(j=>{
+    if(!staffStats[j.assignedTo])staffStats[j.assignedTo]={wj:0,eon:0};
+    staffStats[j.assignedTo].wj++;
+  });
+  eonJobs.filter(j=>j.assignedTo).forEach(j=>{
+    if(!staffStats[j.assignedTo])staffStats[j.assignedTo]={wj:0,eon:0};
+    staffStats[j.assignedTo].eon++;
+  });
+  const leaderboard=Object.entries(staffStats).map(([name,c])=>({name,wj:c.wj,eon:c.eon,total:c.wj+c.eon})).sort((a,b)=>b.total-a.total);
+  const maxTotal=leaderboard.length?leaderboard[0].total:1;
+
+  // ── TODAY JOBS (EON) ──
+  const todayEON=eonJobs.filter(j=>j.day===today);
+  const todayWJ=wjJobs.filter(j=>j.day===today);
+  const todayOnShift=eonStaff.filter(s=>s.onShift).map(s=>s.name);
+
+  // ── INCOMPLETE JOBS ──
+  const incomplete=[
+    ...wjJobs.filter(j=>!j.done&&j.assignedTo).map(j=>({...j,app:'Weekly Jobs'})),
+    ...eonJobs.filter(j=>!j.done&&j.assignedTo).map(j=>({...j,app:'End Of Night'}))
+  ].slice(0,10);
+
+  content.innerHTML=`
+    <h2 class="sr-only">Banshee Labyrinth manager dashboard showing live job completion, staff stats, and handover notes</h2>
+
+    <div class="row row-4">
+      <div class="card">
+        <div class="card-title">Weekly jobs</div>
+        <div class="stat-val" style="color:${wjTotal?barColor(pct(wjDone,wjTotal)):'var(--muted)'}">${wjDone}</div>
+        <div class="stat-sub">of ${wjTotal} completed (${pct(wjDone,wjTotal)}%)</div>
+      </div>
+      <div class="card">
+        <div class="card-title">End of night</div>
+        <div class="stat-val" style="color:${eonTotal?barColor(pct(eonDone,eonTotal)):'var(--muted)'}">${eonDone}</div>
+        <div class="stat-sub">of ${eonTotal} completed (${pct(eonDone,eonTotal)}%)</div>
+      </div>
+      <div class="card">
+        <div class="card-title">On shift tonight</div>
+        <div class="stat-val" style="color:var(--purple)">${onShiftTonight.length}</div>
+        <div class="stat-sub">${onShiftTonight.length?onShiftTonight.join(', '):'No one marked on shift'}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Overall this week</div>
+        <div class="stat-val" style="color:${barColor(overall)}">${overall}%</div>
+        <div class="stat-sub">${wjDone+eonDone} of ${wjTotal+eonTotal} jobs done</div>
+      </div>
+    </div>
+
+    <div class="row row-2">
+      <div class="card">
+        <div class="card-title">Weekly jobs — day by day</div>
+        ${DAYS.map(day=>{
+          const jobs=wjJobs.filter(j=>j.day===day);
+          const done=jobs.filter(j=>j.done).length;
+          const p=pct(done,jobs.length);
+          const isToday=day===today;
+          return`<div class="day-row">
+            <div class="day-name ${isToday?'today':''}">${day}${isToday?' ◀':''}</div>
+            <div class="day-bar-track"><div class="day-bar-fill" style="width:${p}%;background:${barColor(p)}"></div></div>
+            <div class="day-pct" style="color:${barColor(p)}">${jobs.length?p+'%':'—'}</div>
+            <div class="day-count">${jobs.length?done+'/'+jobs.length:'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title">End of night — day by day</div>
+        ${DAYS.map(day=>{
+          const jobs=eonJobs.filter(j=>j.day===day);
+          const done=jobs.filter(j=>j.done).length;
+          const p=pct(done,jobs.length);
+          const isToday=day===today;
+          return`<div class="day-row">
+            <div class="day-name ${isToday?'today':''}">${day}${isToday?' ◀':''}</div>
+            <div class="day-bar-track"><div class="day-bar-fill" style="width:${p}%;background:${barColor(p)}"></div></div>
+            <div class="day-pct" style="color:${barColor(p)}">${jobs.length?p+'%':'—'}</div>
+            <div class="day-count">${jobs.length?done+'/'+jobs.length:'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="row row-2">
+      <div class="card">
+        <div class="card-title">Staff leaderboard — this week</div>
+        ${leaderboard.length?leaderboard.map((s,i)=>{
+          const initials=s.name.slice(0,2).toUpperCase();
+          const col=i===0?'var(--green)':i===1?'var(--accent)':'var(--muted)';
+          const isOnShift=onShiftTonight.includes(s.name);
+          return`<div class="staff-row">
+            <div class="staff-avatar" style="background:${col}22;color:${col}">${initials}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span class="staff-name">${s.name}</span>
+                ${isOnShift?'<span class="badge badge-green">on shift</span>':''}
+                ${i===0?'<span class="badge badge-amber">top this week</span>':''}
+              </div>
+              <div class="bar-mini"><div class="bar-mini-fill" style="width:${Math.round(s.total/maxTotal*100)}%;background:${col}"></div></div>
+              <div class="staff-meta">${s.wj} weekly · ${s.eon} end of night</div>
+            </div>
+            <div style="font-size:18px;font-weight:600;color:${col}">${s.total}</div>
+          </div>`;
+        }).join(''):`<div class="empty-state">No jobs assigned yet this week.</div>`}
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-title">Tonight — ${today} — End Of Night</div>
+          ${todayOnShift.length?`<div style="margin-bottom:10px">${todayOnShift.map(n=>`<span class="shift-chip">✓ ${n}</span>`).join('')}</div>`:''}
+          ${todayEON.length?`<div style="background:var(--surface2);border-radius:8px;overflow:hidden">
+            ${todayEON.slice(0,8).map((j,i,arr)=>`
+            <div class="job-row" style="${i===arr.length-1?'border-bottom:none':''}">
+              <div class="job-tick ${j.done?'tick-done':'tick-todo'}">${j.done?'✓':'○'}</div>
+              <div class="job-name ${j.done?'done':''}">${escHtml(j.job)}</div>
+              <div class="job-who">${escHtml(j.assignedTo||'')}</div>
+              <div class="job-time">${fmtTime(j.timestamp)}</div>
+            </div>`).join('')}
+            ${todayEON.length>8?`<div style="padding:8px 12px;font-size:11px;color:var(--muted)">+${todayEON.length-8} more jobs…</div>`:''}
+          </div>`:`<div class="empty-state">No EON jobs found for ${today}.</div>`}
+        </div>
+
+        ${todayWJ.length?`<div class="card">
+          <div class="card-title">Tonight — ${today} — Weekly Jobs</div>
+          <div style="background:var(--surface2);border-radius:8px;overflow:hidden">
+            ${todayWJ.slice(0,5).map((j,i,arr)=>`
+            <div class="job-row" style="${i===arr.length-1?'border-bottom:none':''}">
+              <div class="job-tick ${j.done?'tick-done':'tick-todo'}">${j.done?'✓':'○'}</div>
+              <div class="job-name ${j.done?'done':''}">${escHtml(j.job)}</div>
+              <div class="job-who">${escHtml(j.assignedTo||'')}</div>
+              <div class="job-time">${fmtTime(j.timestamp)}</div>
+            </div>`).join('')}
+            ${todayWJ.length>5?`<div style="padding:8px 12px;font-size:11px;color:var(--muted)">+${todayWJ.length-5} more…</div>`:''}
+          </div>
+        </div>`:''}
+      </div>
+    </div>
+
+    ${incomplete.length?`<div class="card">
+      <div class="card-title">Assigned but not completed</div>
+      <div style="background:var(--surface2);border-radius:8px;overflow:hidden">
+        ${incomplete.map((j,i,arr)=>`
+        <div class="job-row" style="${i===arr.length-1?'border-bottom:none':''}">
+          <div class="job-tick tick-todo">✕</div>
+          <div style="flex:1;min-width:0">
+            <div class="job-name">${escHtml(j.job)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">${j.day} · ${j.app}</div>
+          </div>
+          <div class="job-who">${escHtml(j.assignedTo||'Unassigned')}</div>
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+
+    <div class="card">
+      <div class="card-title">Handover notes this week</div>
+      ${handoverNotes.length?
+        `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">
+          ${handoverNotes.map(n=>`
+          <div class="note-item">
+            <div class="note-src">${escHtml(n.source||'Staff note')}</div>
+            <div class="note-text">${escHtml(n.text||'')}</div>
+            <div class="note-time">${escHtml(n.time||'')}</div>
+          </div>`).join('')}
+        </div>`
+        :`<div class="empty-state">No handover notes this week.</div>`}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Weekly report email</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Sends a formatted report combining both apps — staff stats, completion rates, incomplete jobs, and all handover notes.</div>
+      <button class="email-btn" onclick="sendReport()">📧 Send Weekly Report</button>
+    </div>`;
+}
+
+// ── SETTINGS PAGE ──
+function renderSettingsPage(){
+  document.getElementById('wj-sheet-input').value=wjSheetId;
+  document.getElementById('eon-sheet-input').value=eonSheetId;
+  document.getElementById('email-input').value=emailAddr;
+  document.getElementById('refresh-interval').value=refreshInterval;
+}
+function saveWJSheet(){wjSheetId=document.getElementById('wj-sheet-input').value.trim();localStorage.setItem('bl_dash_wj_sheet',wjSheetId);refreshAll();}
+function saveEONSheet(){eonSheetId=document.getElementById('eon-sheet-input').value.trim();localStorage.setItem('bl_dash_eon_sheet',eonSheetId);refreshAll();}
+function saveEmails(){emailAddr=document.getElementById('email-input').value.trim();localStorage.setItem('bl_dash_email',emailAddr);}
+function saveRefreshInterval(){
+  const val=parseInt(document.getElementById('refresh-interval').value)||30;
+  refreshInterval=Math.max(10,val); // minimum 10 seconds
+  localStorage.setItem('bl_dash_refresh',refreshInterval);
+  document.getElementById('refresh-interval').value=refreshInterval;
+  startAutoRefresh();
+}
+function setRefresh(secs){
+  document.getElementById('refresh-interval').value=secs;
+  saveRefreshInterval();
+}
+
+// ── SAFE NOTES READER ──
+function loadHandoverNotes(){
+  try{
+    const raw=localStorage.getItem(HANDOVER_KEY)||'[]';
+    const parsed=JSON.parse(raw);
+    if(!Array.isArray(parsed)) return [];
+    return parsed.filter(n=>n && typeof n==='object' && typeof n.text==='string' && n.text.trim());
+  }catch(e){
+    console.warn('Handover notes parse error, clearing:',e);
+    localStorage.removeItem(HANDOVER_KEY);
+    return [];
+  }
+}
+function clearNotes(){
+  localStorage.removeItem(HANDOVER_KEY);
+  const msg=document.getElementById('notes-cleared-msg');
+  if(msg){msg.style.display='block';setTimeout(()=>msg.style.display='none',3000);}
+  renderDashboard();
+}
+function sendReport(){
+  let handoverNotes=loadHandoverNotes();
+  handoverNotes.sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  const wjDone=wjJobs.filter(j=>j.done).length;
+  const eonDone=eonJobs.filter(j=>j.done).length;
+  const overall=pct(wjDone+eonDone,wjJobs.length+eonJobs.length);
+
+  let body='BANSHEE LABYRINTH — WEEKLY REPORT\n';
+  body+='Generated: '+new Date().toLocaleString('en-GB')+'\n';
+  body+='='.repeat(44)+'\n\n';
+  body+=`OVERALL: ${wjDone+eonDone}/${wjJobs.length+eonJobs.length} jobs completed (${overall}%)\n\n`;
+
+  body+='WEEKLY JOBS\n'+'-'.repeat(36)+'\n';
+  DAYS.forEach(day=>{
+    const jobs=wjJobs.filter(j=>j.day===day);
+    const done=jobs.filter(j=>j.done).length;
+    body+=`${day}: ${done}/${jobs.length} (${pct(done,jobs.length)}%)\n`;
+    jobs.filter(j=>!j.done).forEach(j=>{body+=`  ❌ ${j.job}${j.assignedTo?' — '+j.assignedTo:''}\n`;});
+  });
+
+  body+='\nEND OF NIGHT\n'+'-'.repeat(36)+'\n';
+  DAYS.forEach(day=>{
+    const jobs=eonJobs.filter(j=>j.day===day);
+    const done=jobs.filter(j=>j.done).length;
+    body+=`${day}: ${done}/${jobs.length} (${pct(done,jobs.length)}%)\n`;
+    jobs.filter(j=>!j.done).forEach(j=>{body+=`  ❌ ${j.job}${j.assignedTo?' — '+j.assignedTo:''}\n`;});
+  });
+
+  // Staff stats
+  const staffStats={};
+  wjJobs.filter(j=>j.assignedTo&&j.done).forEach(j=>{if(!staffStats[j.assignedTo])staffStats[j.assignedTo]={wj:0,eon:0};staffStats[j.assignedTo].wj++;});
+  eonJobs.filter(j=>j.assignedTo&&j.done).forEach(j=>{if(!staffStats[j.assignedTo])staffStats[j.assignedTo]={wj:0,eon:0};staffStats[j.assignedTo].eon++;});
+  const sorted=Object.entries(staffStats).sort((a,b)=>(b[1].wj+b[1].eon)-(a[1].wj+a[1].eon));
+  if(sorted.length){
+    body+='\nSTAFF COMPLETED JOBS\n'+'-'.repeat(36)+'\n';
+    sorted.forEach(([name,c])=>{body+=`${name}: ${c.wj+c.eon} total (${c.wj} weekly, ${c.eon} EON)\n`;});
+  }
+
+  // Handover notes
+  if(handoverNotes.length){
+    body+='\nHANDOVER NOTES\n'+'-'.repeat(36)+'\n';
+    handoverNotes.forEach(n=>{body+=`[${n.source||''}] ${n.time||''}\n${n.text||''}\n\n`;});
+  }
+
+  body+='\n— Banshee Labyrinth Manager Dashboard';
+  const addrs=emailAddr.split('\n').map(a=>a.trim()).filter(Boolean).join(',');
+  window.location.href=`mailto:${addrs||''}?subject=${encodeURIComponent('Banshee Labyrinth — Weekly Report')}&body=${encodeURIComponent(body)}`;
+}
+</script>
+</body>
+</html>
