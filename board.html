@@ -472,15 +472,19 @@ async function initSession() {
   }
 
   buildQR(token, expiry);
+  scheduleQRRefresh(expiry, setDoc, sessionRef);
+}
 
-  // Auto-refresh QR when session expires
-  const msLeft = expiry - Date.now();
+function scheduleQRRefresh(expiry, setDoc, sessionRef) {
+  const msLeft = Math.max(expiry - Date.now(), 0);
   setTimeout(async () => {
     // Generate a brand new session
     const newToken  = generateToken();
     const newExpiry = Date.now() + SESSION_DURATION_MS;
     await setDoc(sessionRef, { token: newToken, expiry: newExpiry, createdAt: Date.now() });
     buildQR(newToken, newExpiry);
+    // Schedule the next refresh — runs indefinitely throughout the night
+    scheduleQRRefresh(newExpiry, setDoc, sessionRef);
   }, msLeft);
 }
 
@@ -864,6 +868,9 @@ onSnapshot(doc(db,'settings','venue'), (snap) => {
   } else if (data.autoQueue && boardAutoQueueMins !== mins) {
     boardAutoQueueMins = mins;
   }
+
+  // Auto-approve flag — mirror locally so the tracks listener can use it
+  window.boardAutoApprove = data.autoApprove === true;
 
   // Video offset
   if (typeof data.videoOffset !== 'undefined') {
@@ -1711,6 +1718,13 @@ try {
   const q = query(collection(db, 'tracks'), orderBy('uniqueVoters','desc'));
   onSnapshot(q, (snapshot) => {
     tracks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Auto-approve: if enabled on staff panel, approve pending tracks immediately on the board
+    if (window.boardAutoApprove) {
+      const pending = tracks.filter(t => !t.approved);
+      pending.forEach(t => {
+        updateDoc(doc(db, 'tracks', t.id), { approved: true }).catch(() => {});
+      });
+    }
     boardTracks = tracks; // keep auto-queue engine in sync
     renderLeaderboard();
     statusEl.textContent = '● LIVE';
