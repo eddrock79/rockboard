@@ -1,159 +1,394 @@
-const CORS_HEADERS = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type'};
+// ============================================================
+//  BANSHEE JUKEBOX — Cloudflare Worker
+//  Spotify queueing, Stripe payments, play credits, AI facts.
+//  Separate from the Black Rose worker: own secrets, own ledger.
+// ============================================================
+import { DurableObject } from 'cloudflare:workers';
+
+// Server-side price list. The phone only ever sends a tier id.
+const TIERS = {
+  tier1: { amountPence: 100, plays: 2, label: '£1' },
+  tier2: { amountPence: 200, plays: 5, label: '£2' },
+};
+const VENUE = 'banshee';
+const SESSION_WINDOW_MS = 2 * 60 * 60 * 1000; // screen QR token lasts 2-4 hours
+const TRACK_URI = /^spotify:track:[A-Za-z0-9]{22}$/;
+
+// ── LEDGER (Durable Object) ──────────────────────────────────
+// One instance holds every balance and the pending queue, so two
+// requests can never spend the same play twice.
+export class Ledger extends DurableObject {
+  async balance(device) {
+    return (await this.ctx.storage.get('bal:' + device)) || 0;
+  }
+  async debit(device) {
+    const b = await this.balance(device);
+    if (b < 1) return { ok: false, left: b };
+    await this.ctx.storage.put('bal:' + device, b - 1);
+    return { ok: true, left: b - 1 };
+  }
+  async refund(device) {
+    const b = await this.balance(device);
+    await this.ctx.storage.put('bal:' + device, b + 1);
+    return b + 1;
+  }
+  // Idempotent: the same Stripe session can only ever credit once.
+  async creditSession(sessionId, device, plays, amountPence) {
+    if (await this.ctx.storage.get('sess:' + sessionId)) return { credited: false };
+    await this.ctx.storage.put('sess:' + sessionId, Date.now());
+    const b = await this.balance(device);
+    await this.ctx.storage.put('bal:' + device, b + plays);
+    const sales = (await this.ctx.storage.get('sales')) || [];
+    sales.unshift({ at: Date.now(), code: codeFor(device), plays, amountPence });
+    await this.ctx.storage.put('sales', sales.slice(0, 100));
+    return { credited: true, plays: b + plays };
+  }
+  async grant(device, plays) {
+    const b = await this.balance(device);
+    await this.ctx.storage.put('bal:' + device, b + plays);
+    return b + plays;
+  }
+  async registerCode(device) {
+    const code = codeFor(device);
+    await this.ctx.storage.put('code:' + code, device);
+    return code;
+  }
+  async deviceForCode(code) {
+    return (await this.ctx.storage.get('code:' + String(code).toUpperCase())) || null;
+  }
+  async getPending() { return (await this.ctx.storage.get('pending')) || []; }
+  async setPending(list) { await this.ctx.storage.put('pending', list); }
+  async bumpTrack(t) {
+    const top = (await this.ctx.storage.get('top')) || {};
+    const e = top[t.uri] || { name: t.name, artist: t.artist, count: 0 };
+    e.count += 1;
+    top[t.uri] = e;
+    const keep = Object.entries(top).sort((a, b) => b[1].count - a[1].count).slice(0, 300);
+    await this.ctx.storage.put('top', Object.fromEntries(keep));
+  }
+  async top(n = 10) {
+    const top = (await this.ctx.storage.get('top')) || {};
+    return Object.values(top).sort((a, b) => b.count - a.count).slice(0, n);
+  }
+  async sales() { return (await this.ctx.storage.get('sales')) || []; }
+}
+
+function codeFor(device) {
+  // Short code shown on the guest's phone so staff can find them.
+  let h = 0;
+  for (const ch of String(device)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h.toString(36).toUpperCase().padStart(5, '0').slice(-5);
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+const enc = new TextEncoder();
+async function hmacHex(secret, msg) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(msg));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function safeEqual(a, b) {
+  a = String(a); b = String(b);
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+async function makeToken(env, windowIndex) {
+  return windowIndex + '.' + (await hmacHex(env.SESSION_SECRET, 'session:' + windowIndex)).slice(0, 32);
+}
+async function tokenValid(env, token) {
+  if (!token) return false;
+  const now = Math.floor(Date.now() / SESSION_WINDOW_MS);
+  for (const w of [now, now - 1]) {
+    if (safeEqual(token, await makeToken(env, w))) return true;
+  }
+  return false;
+}
+
+let spotifyToken = { value: null, exp: 0 };
+async function getAccessToken(env) {
+  if (spotifyToken.value && Date.now() < spotifyToken.exp) return spotifyToken.value;
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Basic ' + btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: env.SPOTIFY_REFRESH_TOKEN }),
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Spotify token refresh failed');
+  spotifyToken = { value: data.access_token, exp: Date.now() + (data.expires_in - 60) * 1000 };
+  return data.access_token;
+}
+async function spotify(env, path, init = {}) {
+  const token = await getAccessToken(env);
+  return fetch('https://api.spotify.com/v1' + path, {
+    ...init,
+    headers: { Authorization: 'Bearer ' + token, ...(init.headers || {}) },
+  });
+}
+function trackShape(t) {
+  return {
+    uri: t.uri,
+    id: t.id,
+    name: t.name,
+    artist: (t.artists || []).map(a => a.name).join(', '),
+    image: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '',
+    duration: t.duration_ms,
+    explicit: !!t.explicit,
+  };
+}
+
+// ── STATE: now playing + our paid queue ──────────────────────
+async function readState(env, ledger) {
+  const [cur, q] = await Promise.all([
+    spotify(env, '/me/player/currently-playing'),
+    spotify(env, '/me/player/queue'),
+  ]);
+  const curData = cur.status === 200 ? await cur.json() : null;
+  const qData = q.status === 200 ? await q.json() : { queue: [] };
+  const item = curData?.item || null;
+  const playing = !!(curData && curData.is_playing && item);
+
+  // Spotify's queue mixes paid requests with the background playlist.
+  // Our pending list says which ones were paid for: match them in order.
+  let pending = await ledger.getPending();
+  if (item && pending.length && pending[0].uri === item.uri) pending = pending.slice(1);
+  const up = [];
+  const queue = qData.queue || [];
+  for (let i = 0; i < pending.length && i < queue.length; i++) {
+    if (queue[i].uri !== pending[i].uri) break;
+    up.push(trackShape(queue[i]));
+  }
+  if (up.length !== pending.length) {
+    pending = pending.slice(0, up.length);
+  }
+  await ledger.setPending(pending);
+
+  return {
+    ts: Date.now(),
+    playing,
+    track: item ? { ...trackShape(item), progress: curData.progress_ms || 0 } : null,
+    queue: up,
+  };
+}
+async function cachedState(env, ctx, ledger) {
+  const cache = caches.default;
+  const key = new Request('https://state.internal/' + VENUE);
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  const state = await readState(env, ledger);
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(state), { headers: { 'Cache-Control': 'max-age=4' } })));
+  return state;
+}
+async function bustState() {
+  await caches.default.delete(new Request('https://state.internal/' + VENUE));
+}
+
+// ── STRIPE ───────────────────────────────────────────────────
+async function stripe(env, path, params) {
+  const res = await fetch('https://api.stripe.com/v1' + path, {
+    method: params ? 'POST' : 'GET',
+    headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params ? new URLSearchParams(params) : undefined,
+  });
+  return res.json();
+}
+async function verifyStripeSignature(env, body, header) {
+  if (!header) return false;
+  const parts = Object.fromEntries(header.split(',').map(p => p.split('=')));
+  if (!parts.t || !parts.v1) return false;
+  if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 300) return false;
+  const expected = await hmacHex(env.STRIPE_WEBHOOK_SECRET, parts.t + '.' + body);
+  return safeEqual(expected, parts.v1);
+}
+
+// ── WORKER ───────────────────────────────────────────────────
 export default {
-  async fetch(request, env) {
-    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
+  async fetch(request, env, ctx) {
+    const origin = env.SITE_URL || '*';
+    const CORS = {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Session, X-Display-Key, X-Staff-Pin',
+      Vary: 'Origin',
+    };
+    const json = (data, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+
     const url = new URL(request.url);
     const path = url.pathname;
-    async function getAccessToken() {
-      const credentials = btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`);
-      const res = await fetch('https://accounts.spotify.com/api/token', {method:'POST',headers:{'Authorization':`Basic ${credentials}`,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'refresh_token',refresh_token:env.SPOTIFY_REFRESH_TOKEN})});
-      const data = await res.json();
-      if (!data.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(data));
-      return data.access_token;
-    }
-    function json(data, status=200) { return new Response(JSON.stringify(data), {status, headers:{...CORS_HEADERS,'Content-Type':'application/json'}}); }
+    const ledger = env.LEDGER.get(env.LEDGER.idFromName(VENUE));
+    const needSession = async () => tokenValid(env, request.headers.get('X-Session'));
+    const isStaff = () => env.STAFF_PIN && safeEqual(request.headers.get('X-Staff-Pin') || '', env.STAFF_PIN);
+    const isDisplay = () => env.DISPLAY_KEY && safeEqual(request.headers.get('X-Display-Key') || '', env.DISPLAY_KEY);
+
     try {
-      if (path === '/search') {
-        const token  = await getAccessToken();
-        const track  = url.searchParams.get('track')  || '';
-        const artist = url.searchParams.get('artist') || '';
+      if (path === '/ping') return json({ ok: true, venue: VENUE });
 
-        async function trySearch(t, a) {
-          const qStr = a ? `track:${t} artist:${a}` : `track:${t}`;
-          const res  = await fetch(
-            `https://api.spotify.com/v1/search?q=${encodeURIComponent(qStr)}&type=track&limit=5`,
-            {headers:{'Authorization':`Bearer ${token}`}}
-          );
-          const data = await res.json();
-          const items = data.tracks?.items || [];
-          if (!items.length) return null;
-          const exact = items.find(i => i.name.toLowerCase() === t.toLowerCase());
-          return exact || items[0];
+      // Stripe webhook (no CORS/session: verified by signature)
+      if (path === '/stripe-webhook' && request.method === 'POST') {
+        const body = await request.text();
+        if (!(await verifyStripeSignature(env, body, request.headers.get('Stripe-Signature')))) {
+          return new Response('bad signature', { status: 400 });
         }
-
-        // Normalise artist — add spaces before capitals e.g. "Greenday" -> "Green Day"
-        // and strip common suffixes
-        const normArtist = artist
-          .replace(/([a-z])([A-Z])/g, '$1 $2')  // GreenDay -> Green Day
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        let item = null;
-
-        async function tryKeyword(t, a) {
-          // Broad keyword search — no field filters
-          const q = a ? `${t} ${a}` : t;
-          const res = await fetch(
-            `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`,
-            {headers:{'Authorization':`Bearer ${token}`}}
-          );
-          const data = await res.json();
-          const items = data.tracks?.items || [];
-          if (!items.length) return null;
-          // Prefer exact title + artist match
-          const exact = items.find(i =>
-            i.name.toLowerCase() === t.toLowerCase() &&
-            i.artists.some(ar => ar.name.toLowerCase().includes(a.toLowerCase().split(' ')[0]))
-          );
-          return exact || items.find(i => i.name.toLowerCase() === t.toLowerCase()) || items[0];
-        }
-
-        // Try progressively looser searches
-        // First try strict field filters, then fall back to keyword search
-        const searches = [
-          [track, artist],           // exact as typed
-          [track, normArtist],       // normalised artist
-          [track, ''],               // title only (strict)
-        ];
-
-        for (const [t, a] of searches) {
-          item = await trySearch(t, a);
-          if (item) break;
-        }
-
-        // If strict searches failed, try broad keyword searches
-        if (!item) {
-          const kwSearches = [
-            [track, normArtist],
-            [track, artist],
-            [track, ''],
-          ];
-          for (const [t, a] of kwSearches) {
-            item = await tryKeyword(t, a);
-            if (item) break;
+        const event = JSON.parse(body);
+        if (event.type === 'checkout.session.completed') {
+          const s = event.data.object;
+          const tier = TIERS[s.metadata?.tier];
+          if (s.metadata?.venue === VENUE && s.payment_status === 'paid' && tier && s.metadata.device_id) {
+            await ledger.creditSession(s.id, s.metadata.device_id, tier.plays, tier.amountPence);
           }
         }
+        return new Response('ok'); // other venues' events are ignored
+      }
 
-        if (!item) return json({error:'Track not found'},404);
-        return json({uri:item.uri,name:item.name,artist:item.artists[0].name,album:item.album.name,image:item.album.images[0]?.url||'',duration:item.duration_ms});
+      // Display: rotating QR token
+      if (path === '/session-token') {
+        if (!isDisplay()) return json({ error: 'Not allowed' }, 403);
+        const w = Math.floor(Date.now() / SESSION_WINDOW_MS);
+        return json({ token: await makeToken(env, w), expiresAt: (w + 1) * SESSION_WINDOW_MS });
       }
-      if (path === '/add' && request.method === 'POST') {
-        const {uri} = await request.json();
-        if (!uri) return json({error:'No URI'},400);
-        const token = await getAccessToken();
-        const res = await fetch(`https://api.spotify.com/v1/playlists/${env.SPOTIFY_PLAYLIST_ID}/tracks`,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({uris:[uri]})});
-        const data = await res.json();
-        return data.snapshot_id ? json({ok:true}) : json({error:data},400);
+      if (path === '/check-session') {
+        return json({ ok: await tokenValid(env, url.searchParams.get('s')) });
       }
-      if (path === '/remove' && request.method === 'POST') {
-        const {uri} = await request.json();
-        if (!uri) return json({error:'No URI'},400);
-        const token = await getAccessToken();
-        await fetch(`https://api.spotify.com/v1/playlists/${env.SPOTIFY_PLAYLIST_ID}/tracks`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({tracks:[{uri}]})});
-        return json({ok:true});
-      }
-      if (path === '/queue' && request.method === 'POST') {
-        const {uri} = await request.json();
-        if (!uri) return json({error:'No URI'},400);
-        const token = await getAccessToken();
-        const res = await fetch(`https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`,{method:'POST',headers:{'Authorization':`Bearer ${token}`}});
-        // Spotify returns 204 (no content) on success, but sometimes 200
-        if (res.status === 204 || res.status === 200) return json({ok:true});
-        const errData = await res.json().catch(()=>({status:res.status}));
-        return json({ok:false, status:res.status, error:errData, uri:uri});
-      }
-      if (path === '/nowplaying') {
-        const token = await getAccessToken();
-        const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing',{headers:{'Authorization':`Bearer ${token}`}});
-        if (res.status === 204) return json({playing:false});
-        const data = await res.json();
-        return json({playing:data.is_playing,uri:data.item?.uri,name:data.item?.name,artist:data.item?.artists?.[0]?.name,progress:data.progress_ms,duration:data.item?.duration_ms,image:data.item?.album?.images?.[0]?.url||''});
-      }
-      if (path === '/playlist') {
-        const token = await getAccessToken();
-        const res = await fetch(`https://api.spotify.com/v1/playlists/${env.SPOTIFY_PLAYLIST_ID}/tracks?limit=50`,{headers:{'Authorization':`Bearer ${token}`}});
-        const data = await res.json();
-        return json({tracks:(data.items||[]).map(i=>({uri:i.track?.uri,name:i.track?.name,artist:i.track?.artists?.[0]?.name}))});
-      }
-      if (path === '/ping') {
-        return json({ ok: true, hasApiKey: !!env.ANTHROPIC_API_KEY, ts: Date.now() });
-      }
-      if (path === '/ai-quotes' && request.method === 'POST') {
-        const body = await request.json();
-        const prompt = body.prompt || '';
-        if (!prompt) return json({error:'No prompt'},400);
-        if (!env.ANTHROPIC_API_KEY) return json({error:'No API key configured'},500);
 
+      // Public display data
+      if (path === '/state') return json(await cachedState(env, ctx, ledger));
+      if (path === '/top10') return json({ top: await ledger.top(10) });
+      if (path === '/fact') {
+        const name = (url.searchParams.get('name') || '').slice(0, 100);
+        const artist = (url.searchParams.get('artist') || '').slice(0, 100);
+        if (!name || !env.ANTHROPIC_API_KEY) return json({ fact: null });
+        const cache = caches.default;
+        const key = new Request('https://fact.internal/' + encodeURIComponent(name + '|' + artist));
+        const hit = await cache.match(key);
+        if (hit) return json(await hit.json());
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
-          headers: {
-            'Content-Type':      'application/json',
-            'x-api-key':         env.ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-          },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
           body: JSON.stringify({
-            model:      'claude-sonnet-4-6',
-            max_tokens: 800,
-            messages:   [{ role: 'user', content: prompt }],
+            model: env.AI_MODEL || 'claude-haiku-5-5',
+            max_tokens: 120,
+            messages: [{ role: 'user', content:
+              `Write ONE short, true, fun fact (max 25 words) about the song "${name}" by ${artist}, for a rock and metal pub screen. ` +
+              `Only state something you are certain is accurate. If you are not certain, reply with exactly NONE. No preamble, no quotes.` }],
           }),
         });
-
         const data = await res.json();
-        if (!res.ok) return json({error: data.error?.message || 'API error'}, res.status);
-        return json(data);
+        let fact = (data.content?.[0]?.text || '').trim();
+        if (!fact || /^none\b/i.test(fact)) fact = null;
+        const out = { fact };
+        ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), { headers: { 'Cache-Control': 'max-age=86400' } })));
+        return json(out);
       }
 
-      return json({error:'Unknown endpoint'},404);
-    } catch(e) { return json({error:e.message},500); }
-  }
+      // ── Guest endpoints (need the screen-QR session token) ──
+      if (path === '/search') {
+        if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
+        if (q.length < 2) return json({ items: [] });
+        const res = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=track&limit=8`);
+        const data = await res.json();
+        return json({ items: (data.tracks?.items || []).map(trackShape) });
+      }
+      if (path === '/balance') {
+        if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        const device = url.searchParams.get('device_id') || '';
+        if (!device) return json({ error: 'No device' }, 400);
+        return json({ plays: await ledger.balance(device), code: await ledger.registerCode(device) });
+      }
+      if (path === '/request' && request.method === 'POST') {
+        if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        const { device_id, uri } = await request.json();
+        if (!device_id || !TRACK_URI.test(uri || '')) return json({ error: 'Bad request' }, 400);
+        const pending = await ledger.getPending();
+        if (pending.some(p => p.uri === uri)) return json({ error: 'That track is already in the queue' }, 409);
+        const spend = await ledger.debit(device_id);
+        if (!spend.ok) return json({ error: 'No plays left', needPlays: true }, 402);
+        const tRes = await spotify(env, '/tracks/' + uri.split(':')[2]);
+        if (!tRes.ok) { await ledger.refund(device_id); return json({ error: 'Track not found' }, 404); }
+        const track = trackShape(await tRes.json());
+        const qRes = await spotify(env, '/me/player/queue?uri=' + encodeURIComponent(uri), { method: 'POST' });
+        if (qRes.status !== 204 && qRes.status !== 200) {
+          await ledger.refund(device_id);
+          return json({ error: "The jukebox isn't ready. Please tell the bar staff. You haven't been charged a play." }, 503);
+        }
+        await ledger.setPending([...pending, { uri, name: track.name, artist: track.artist, duration: track.duration }]);
+        await ledger.bumpTrack(track);
+        await bustState();
+        return json({ ok: true, plays: spend.left, track });
+      }
+      if (path === '/create-checkout' && request.method === 'POST') {
+        if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        const { device_id, tier } = await request.json();
+        const t = TIERS[tier];
+        if (!device_id || !t) return json({ error: 'Bad request' }, 400);
+        const site = env.SITE_URL;
+        const s = await stripe(env, '/checkout/sessions', {
+          mode: 'payment',
+          'line_items[0][quantity]': '1',
+          'line_items[0][price_data][currency]': 'gbp',
+          'line_items[0][price_data][unit_amount]': String(t.amountPence),
+          'line_items[0][price_data][product_data][name]': `Banshee Jukebox: ${t.plays} plays`,
+          'metadata[venue]': VENUE,
+          'metadata[device_id]': device_id,
+          'metadata[tier]': tier,
+          success_url: `${site}/?paid=1`,
+          cancel_url: `${site}/`,
+        });
+        if (!s.url) return json({ error: 'Could not start checkout' }, 502);
+        return json({ url: s.url });
+      }
+
+      // ── Staff endpoints (PIN checked here, never in the page) ──
+      if (path.startsWith('/staff/')) {
+        if (!isStaff()) return json({ error: 'Wrong PIN' }, 403);
+        if (path === '/staff/check') return json({ ok: true });
+        if (path === '/staff/overview') return json({ state: await readState(env, ledger), sales: await ledger.sales() });
+        if (path === '/staff/skip' && request.method === 'POST') {
+          await spotify(env, '/me/player/next', { method: 'POST' }); await bustState(); return json({ ok: true });
+        }
+        if (path === '/staff/pause' && request.method === 'POST') {
+          await spotify(env, '/me/player/pause', { method: 'PUT' }); await bustState(); return json({ ok: true });
+        }
+        if (path === '/staff/play' && request.method === 'POST') {
+          await spotify(env, '/me/player/play', { method: 'PUT' }); await bustState(); return json({ ok: true });
+        }
+        if (path === '/staff/grant' && request.method === 'POST') {
+          const { code, plays } = await request.json();
+          const device = await ledger.deviceForCode(code || '');
+          const n = Math.max(1, Math.min(20, parseInt(plays, 10) || 0));
+          if (!device) return json({ error: 'No guest with that code' }, 404);
+          return json({ ok: true, plays: await ledger.grant(device, n) });
+        }
+        if (path === '/staff/queue' && request.method === 'POST') {
+          const { uri } = await request.json();
+          if (!TRACK_URI.test(uri || '')) return json({ error: 'Bad request' }, 400);
+          const tRes = await spotify(env, '/tracks/' + uri.split(':')[2]);
+          if (!tRes.ok) return json({ error: 'Track not found' }, 404);
+          const track = trackShape(await tRes.json());
+          const qRes = await spotify(env, '/me/player/queue?uri=' + encodeURIComponent(uri), { method: 'POST' });
+          if (qRes.status !== 204 && qRes.status !== 200) return json({ error: 'Spotify is not ready' }, 503);
+          const pending = await ledger.getPending();
+          await ledger.setPending([...pending, { uri, name: track.name, artist: track.artist, duration: track.duration }]);
+          await bustState();
+          return json({ ok: true, track });
+        }
+        if (path === '/staff/search') {
+          const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
+          const res = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=track&limit=8`);
+          const data = await res.json();
+          return json({ items: (data.tracks?.items || []).map(trackShape) });
+        }
+      }
+
+      return json({ error: 'Unknown endpoint' }, 404);
+    } catch (e) {
+      return json({ error: e.message }, 500);
+    }
+  },
 };

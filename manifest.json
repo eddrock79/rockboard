@@ -1,14 +1,14 @@
 {
-  "name": "Rockboard Display",
-  "short_name": "Rockboard",
-  "start_url": "/rockboard/",
+  "name": "The Banshee Labyrinth Jukebox",
+  "short_name": "Banshee Jukebox",
+  "start_url": "/board.html",
   "display": "fullscreen",
-  "background_color": "#0a0a0a",
-  "theme_color": "#8B0000",
+  "background_color": "#050706",
+  "theme_color": "#050706",
   "icons": [
     {
-      "src": "assets/Black-Rose-Logo.png",
-      "sizes": "192x192",
+      "src": "assets/banshee-logo.png",
+      "sizes": "640x280",
       "type": "image/png"
     }
   ]
