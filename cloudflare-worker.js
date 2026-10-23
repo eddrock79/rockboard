@@ -212,6 +212,38 @@ async function verifyStripeSignature(env, body, header) {
   return safeEqual(expected, parts.v1);
 }
 
+// ── SEARCH (shared by guests and staff) ─────────────────────
+async function artistSearch(env, qRaw) {
+  const q = (qRaw || '').trim().slice(0, 100);
+  if (q.length < 2) return [];
+  const data = await (await spotify(env, `/search?q=${encodeURIComponent(q)}&type=artist&limit=8`)).json();
+  return (data.artists?.items || []).map(a => ({ id: a.id, name: a.name, image: a.images?.[2]?.url || a.images?.[0]?.url || '' }));
+}
+async function trackSearch(env, params) {
+  const q = (params.get('q') || '').trim().slice(0, 100).replace(/"/g, '');
+  const artistId = (params.get('artist_id') || '').slice(0, 40);
+  const artist = (params.get('artist') || '').trim().slice(0, 100).replace(/"/g, '');
+  const get = async (query, offset) => (await (await spotify(env, `/search?q=${encodeURIComponent(query)}&type=track&limit=10&offset=${offset}`)).json()).tracks?.items || [];
+  let raw = [];
+  if (artistId && artist) {
+    // By artist: this artist's tracks, most relevant first. Filtering by artist id drops covers and other bands.
+    const query = q.length >= 2 ? `track:"${q}" artist:"${artist}"` : `artist:"${artist}"`;
+    const pages = await Promise.all((q.length >= 2 ? [0, 10] : [0, 10, 20]).map(o => get(query, o)));
+    raw = pages.flat().filter(t => (t.artists || []).some(a => a.id === artistId));
+  } else {
+    if (q.length < 2) return [];
+    raw = await get(q, 0);
+  }
+  const seen = new Set(), items = [];
+  for (const t of raw) {
+    const sh = trackShape(t);
+    const key = sh.name.toLowerCase() + '|' + sh.artist.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key); items.push(sh);
+  }
+  return items.slice(0, 24);
+}
+
 // ── WORKER ───────────────────────────────────────────────────
 export default {
   async fetch(request, env, ctx) {
@@ -296,36 +328,11 @@ export default {
       // ── Guest endpoints (need the screen-QR session token) ──
       if (path === '/search-artists') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
-        const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
-        if (q.length < 2) return json({ items: [] });
-        const res = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=artist&limit=8`);
-        const data = await res.json();
-        return json({ items: (data.artists?.items || []).map(a => ({ id: a.id, name: a.name, image: a.images?.[2]?.url || a.images?.[0]?.url || '' })) });
+        return json({ items: await artistSearch(env, url.searchParams.get('q')) });
       }
       if (path === '/search') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
-        const q = (url.searchParams.get('q') || '').trim().slice(0, 100).replace(/"/g, '');
-        const artistId = (url.searchParams.get('artist_id') || '').slice(0, 40);
-        const artist = (url.searchParams.get('artist') || '').trim().slice(0, 100).replace(/"/g, '');
-        const get = async (query, offset) => (await (await spotify(env, `/search?q=${encodeURIComponent(query)}&type=track&limit=10&offset=${offset}`)).json()).tracks?.items || [];
-        let raw = [];
-        if (artistId && artist) {
-          // By artist: this artist's tracks (Spotify search, most relevant first). Filter by artist id so covers and other bands drop out.
-          const query = q.length >= 2 ? `track:"${q}" artist:"${artist}"` : `artist:"${artist}"`;
-          const pages = await Promise.all((q.length >= 2 ? [0, 10] : [0, 10, 20]).map(o => get(query, o)));
-          raw = pages.flat().filter(t => (t.artists || []).some(a => a.id === artistId));
-        } else {
-          if (q.length < 2) return json({ items: [] });
-          raw = await get(q, 0);
-        }
-        const seen = new Set(), items = [];
-        for (const t of raw) {
-          const sh = trackShape(t);
-          const key = sh.name.toLowerCase() + '|' + sh.artist.toLowerCase();
-          if (seen.has(key)) continue;
-          seen.add(key); items.push(sh);
-        }
-        return json({ items: items.slice(0, 24) });
+        return json({ items: await trackSearch(env, url.searchParams) });
       }
       if (path === '/balance') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
@@ -410,12 +417,8 @@ export default {
           await bustState();
           return json({ ok: true, track });
         }
-        if (path === '/staff/search') {
-          const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
-          const res = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=track&limit=8`);
-          const data = await res.json();
-          return json({ items: (data.tracks?.items || []).map(trackShape) });
-        }
+        if (path === '/staff/search-artists') return json({ items: await artistSearch(env, url.searchParams.get('q')) });
+        if (path === '/staff/search') return json({ items: await trackSearch(env, url.searchParams) });
       }
 
       return json({ error: 'Unknown endpoint' }, 404);
