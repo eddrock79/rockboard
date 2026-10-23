@@ -6,7 +6,7 @@
 window.BANSHEE = {
   venueName: "THE BANSHEE LABYRINTH",
   // Set this to your deployed worker URL after `wrangler deploy`
-  workerUrl: "https://banshee-jukebox.YOUR-SUBDOMAIN.workers.dev",
+  workerUrl: "https://banshee-jukebox.eddrock79.workers.dev",
   // Display only. The worker holds the real prices, keep these in sync with TIERS.
   tiers: [
     { id: "tier1", price: "£1", plays: 2 },
