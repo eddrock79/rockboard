@@ -129,11 +129,18 @@ async function spotify(env, path, init = {}) {
     headers: { Authorization: 'Bearer ' + token, ...(init.headers || {}) },
   });
 }
+function cleanName(n) {
+  return String(n || '').replace(/\s*(?:-|\u2013|\(|\[)\s*(?:\d{4}\s+)?(?:digital\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*[)\]]?\s*$/i, '').trim();
+}
+const sameTrack = (a, b) =>
+  !!a && !!b && (a.id === b.id || a.uri === b.uri ||
+    (cleanName(a.name).toLowerCase() === cleanName(b.name).toLowerCase() &&
+     String(a.artist || a.artists?.[0]?.name || '').toLowerCase() === String(b.artist || b.artists?.[0]?.name || '').toLowerCase()));
 function trackShape(t) {
   return {
     uri: t.uri,
     id: t.id,
-    name: t.name,
+    name: cleanName(t.name),
     artist: (t.artists || []).map(a => a.name).join(', '),
     image: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '',
     duration: t.duration_ms,
@@ -152,20 +159,20 @@ async function readState(env, ledger) {
   const item = curData?.item || null;
   const playing = !!(curData && curData.is_playing && item);
 
-  // Spotify's queue mixes paid requests with the background playlist.
-  // Our pending list says which ones were paid for: match them in order.
+  // Our own list is the source of truth for what was paid for. Spotify's queue
+  // is only used to tidy it up, because it can lag a few seconds behind and
+  // sometimes reports a different ID for the same song.
   let pending = await ledger.getPending();
-  if (item && pending.length && pending[0].uri === item.uri) pending = pending.slice(1);
-  const up = [];
-  const queue = qData.queue || [];
-  for (let i = 0; i < pending.length && i < queue.length; i++) {
-    if (queue[i].uri !== pending[i].uri) break;
-    up.push(trackShape(queue[i]));
+  const spotifyQueue = qData.queue || [];
+  const now = Date.now();
+  if (item) {
+    const k = pending.findIndex(p => sameTrack(p, trackShape(item)));
+    if (k >= 0) pending = pending.slice(k + 1); // it has started playing
   }
-  if (up.length !== pending.length) {
-    pending = pending.slice(0, up.length);
-  }
+  // Drop anything Spotify no longer has, but not within 45s of being added.
+  pending = pending.filter(p => (now - (p.addedAt || 0)) < 45000 || spotifyQueue.some(x => sameTrack(p, trackShape(x))));
   await ledger.setPending(pending);
+  const up = pending.map(p => ({ uri: p.uri, id: p.id, name: p.name, artist: p.artist, image: p.image || '', duration: p.duration }));
 
   return {
     ts: Date.now(),
@@ -317,7 +324,7 @@ export default {
           await ledger.refund(device_id);
           return json({ error: "The jukebox isn't ready. Please tell the bar staff. You haven't been charged a play." }, 503);
         }
-        await ledger.setPending([...pending, { uri, name: track.name, artist: track.artist, duration: track.duration }]);
+        await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]);
         await ledger.bumpTrack(track);
         await bustState();
         return json({ ok: true, plays: spend.left, track });
@@ -374,7 +381,7 @@ export default {
           const qRes = await spotify(env, '/me/player/queue?uri=' + encodeURIComponent(uri), { method: 'POST' });
           if (qRes.status !== 204 && qRes.status !== 200) return json({ error: 'Spotify is not ready' }, 503);
           const pending = await ledger.getPending();
-          await ledger.setPending([...pending, { uri, name: track.name, artist: track.artist, duration: track.duration }]);
+          await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]);
           await bustState();
           return json({ ok: true, track });
         }
