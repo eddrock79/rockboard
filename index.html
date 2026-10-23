@@ -24,7 +24,16 @@
   .btn.ghost { background:transparent; color:var(--ink); border:1px solid rgba(255,255,255,.3); }
   .btn:disabled { opacity:.5; }
   #q { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.18); border-radius:12px; padding:15px 16px; font:500 18px 'Oswald',sans-serif; outline:none; }
-  #q:focus { border-color:var(--g); }
+  #q:focus, .inp:focus { border-color:var(--g); }
+  .inp { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.18); border-radius:12px; padding:15px 16px; font:500 18px 'Oswald',sans-serif; outline:none; margin-bottom:8px; }
+  #modes { display:flex; gap:8px; margin-bottom:10px; }
+  .mode { flex:1; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:11px 8px; font-weight:600; font-size:15px; letter-spacing:.1em; }
+  .mode.on { background:rgba(110,240,160,.14); color:var(--g); border-color:var(--g); }
+  .pill { display:none; align-items:center; gap:10px; background:rgba(110,240,160,.1); border:1px solid var(--g); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .pill span { flex:1; font-weight:600; font-size:18px; }
+  .pill button { background:transparent; border:0; color:var(--ink); font-size:20px; padding:2px 8px; }
+  .lbl { margin:2px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
+  .item .ph.round, .item img.round { border-radius:50%; }
   h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
   .item { display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px; margin-bottom:8px; }
   .item img, .item .ph { width:54px; height:54px; border-radius:8px; object-fit:cover; background:#16201b; flex:none; }
@@ -92,12 +101,21 @@
   function shell() {
     $('app').innerHTML = `
       <div id="bal"><div class="n" id="plays">0</div><div class="l">PLAYS LEFT<small id="code"></small></div><button class="btn" id="buy">GET PLAYS</button></div>
-      <input id="q" type="search" placeholder="Search a song or artist" autocomplete="off" autocapitalize="off" enterkeyhint="search">
+      <div id="modes"><button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
+      <div id="artistBox">
+        <div id="artistStep"><input id="qa" class="inp" type="search" placeholder="Start typing an artist name" autocomplete="off" autocapitalize="off" enterkeyhint="search"><div id="artistList"></div></div>
+        <div id="artistPill" class="pill"><span id="pillName"></span><button id="pillX" aria-label="Choose a different artist">&#10005;</button></div>
+        <input id="qt" class="inp" type="search" placeholder="Pick from the list or type to search" autocomplete="off" autocapitalize="off" style="display:none">
+      </div>
+      <div id="songBox" style="display:none"><input id="qs" class="inp" type="search" placeholder="Start typing a song name" autocomplete="off" autocapitalize="off" enterkeyhint="search"></div>
       <div id="results"></div>
       <h3>UP NEXT ON THE SCREEN</h3>
       <div id="queue"></div>`;
     $('buy').onclick = openBuy;
-    let timer; $('q').oninput = () => { clearTimeout(timer); timer = setTimeout(search, 350); };
+    document.querySelectorAll('.mode').forEach(b => b.onclick = () => setMode(b.dataset.m));
+    const deb = (fn) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, 350); }; };
+    $('qa').oninput = deb(searchArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(searchSongs);
+    $('pillX').onclick = resetArtist;
     refreshBal(); pollState(); setInterval(pollState, 8000);
   }
   function paintBal() { $('plays').textContent = plays; $('code').innerHTML = code ? 'YOUR CODE: ' + esc(code) : ''; }
@@ -132,18 +150,58 @@
   }
 
   // ── search + request ──
-  async function search() {
-    const q = $('q').value.trim();
+  let mode = 'artist', artist = null;
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    $('artistBox').style.display = m === 'artist' ? '' : 'none';
+    $('songBox').style.display = m === 'song' ? '' : 'none';
+    resetArtist(); $('qs').value = ''; results = []; paintResults();
+  }
+  async function searchArtists() {
+    const q = $('qa').value.trim();
+    if (q.length < 2) { $('artistList').innerHTML = ''; return; }
+    const r = await api('/search-artists?q=' + encodeURIComponent(q));
+    if (r.status === 401) return gate();
+    const list = r.items || [];
+    $('artistList').innerHTML = list.length ? list.map((a, i) =>
+      `<button class="item" data-i="${i}">${a.image ? `<img class="round" src="${esc(a.image)}" alt="">` : '<div class="ph round"></div>'}<div class="nm"><div class="t">${esc(a.name)}</div></div></button>`).join('')
+      : '<div class="msg">No artists found. Try another spelling.</div>';
+    $('artistList').querySelectorAll('.item').forEach(b => b.onclick = () => pickArtist(list[b.dataset.i]));
+  }
+  function pickArtist(a) {
+    artist = a;
+    $('artistStep').style.display = 'none'; $('artistList').innerHTML = '';
+    $('artistPill').style.display = 'flex'; $('pillName').textContent = a.name;
+    $('qt').style.display = ''; $('qt').value = '';
+    loadTracks();
+  }
+  function resetArtist() {
+    artist = null;
+    $('artistStep').style.display = ''; $('qa').value = ''; $('artistList').innerHTML = '';
+    $('artistPill').style.display = 'none'; $('qt').style.display = 'none'; $('qt').value = '';
+    results = []; paintResults();
+  }
+  async function loadTracks() {
+    if (!artist) return;
+    const q = $('qt').value.trim();
+    $('results').innerHTML = '<div class="msg">Loading…</div>';
+    const r = await api('/search?artist_id=' + encodeURIComponent(artist.id) + '&artist=' + encodeURIComponent(artist.name) + (q.length >= 2 ? '&q=' + encodeURIComponent(q) : ''));
+    if (r.status === 401) return gate();
+    results = r.items || []; paintResults(q.length >= 2 ? 'search' : 'top');
+  }
+  async function searchSongs() {
+    const q = $('qs').value.trim();
     if (q.length < 2) { results = []; paintResults(); return; }
     const r = await api('/search?q=' + encodeURIComponent(q));
     if (r.status === 401) return gate();
-    results = r.items || []; paintResults(q);
+    results = r.items || []; paintResults('search');
   }
-  function paintResults(q) {
+  function paintResults(kind) {
     const el = $('results'); if (!el) return;
-    if (!results.length) { el.innerHTML = $('q').value.trim().length >= 2 && q ? '<div class="msg">No tracks found. Try another spelling.</div>' : ''; return; }
+    if (!results.length) { el.innerHTML = kind ? '<div class="msg">No tracks found. Try another spelling.</div>' : ''; return; }
     const w = waits(); const end = w ? w.end : null;
-    el.innerHTML = results.map((x, i) =>
+    el.innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : '') + results.map((x, i) =>
       `<button class="item" data-i="${i}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +
       `<div class="nm"><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div>` +
       (end !== null ? `<div class="w">PLAYS IN<b>~${mmss(end)}</b></div>` : '') + `</button>`).join('');
@@ -165,7 +223,7 @@
       closeSheet();
       if (r.ok) {
         plays = r.plays; paintBal(); mine.add(t.uri); ls.set('bb_mine', JSON.stringify([...mine].slice(-30)));
-        $('q').value = ''; results = []; paintResults();
+        setMode(mode);
         await pollState();
         const w2 = waits(); toast(`Queued! "${t.name}" plays in about ${w2 && w2.map[t.uri] !== undefined ? mmss(w2.map[t.uri]) : 'a few minutes'}.`);
       } else if (r.needPlays) { plays = 0; paintBal(); openBuy(); }

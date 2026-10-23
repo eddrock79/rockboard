@@ -294,13 +294,38 @@ export default {
       }
 
       // ── Guest endpoints (need the screen-QR session token) ──
-      if (path === '/search') {
+      if (path === '/search-artists') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
         const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
         if (q.length < 2) return json({ items: [] });
-        const res = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=track&limit=8`);
+        const res = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=artist&limit=8`);
         const data = await res.json();
-        return json({ items: (data.tracks?.items || []).map(trackShape) });
+        return json({ items: (data.artists?.items || []).map(a => ({ id: a.id, name: a.name, image: a.images?.[2]?.url || a.images?.[0]?.url || '' })) });
+      }
+      if (path === '/search') {
+        if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        const q = (url.searchParams.get('q') || '').trim().slice(0, 100).replace(/"/g, '');
+        const artistId = (url.searchParams.get('artist_id') || '').slice(0, 40);
+        const artist = (url.searchParams.get('artist') || '').trim().slice(0, 100).replace(/"/g, '');
+        const get = async (query, offset) => (await (await spotify(env, `/search?q=${encodeURIComponent(query)}&type=track&limit=10&offset=${offset}`)).json()).tracks?.items || [];
+        let raw = [];
+        if (artistId && artist) {
+          // By artist: this artist's tracks (Spotify search, most relevant first). Filter by artist id so covers and other bands drop out.
+          const query = q.length >= 2 ? `track:"${q}" artist:"${artist}"` : `artist:"${artist}"`;
+          const pages = await Promise.all((q.length >= 2 ? [0, 10] : [0, 10, 20]).map(o => get(query, o)));
+          raw = pages.flat().filter(t => (t.artists || []).some(a => a.id === artistId));
+        } else {
+          if (q.length < 2) return json({ items: [] });
+          raw = await get(q, 0);
+        }
+        const seen = new Set(), items = [];
+        for (const t of raw) {
+          const sh = trackShape(t);
+          const key = sh.name.toLowerCase() + '|' + sh.artist.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key); items.push(sh);
+        }
+        return json({ items: items.slice(0, 24) });
       }
       if (path === '/balance') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
