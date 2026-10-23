@@ -66,6 +66,20 @@ export class Ledger extends DurableObject {
     const keep = Object.entries(top).sort((a, b) => b[1].count - a[1].count).slice(0, 300);
     await this.ctx.storage.put('top', Object.fromEntries(keep));
   }
+  async bumpArtists(list) {
+    const m = (await this.ctx.storage.get('artistsPlayed')) || {};
+    for (const a of list || []) {
+      if (!a.id) continue;
+      const e = m[a.id] || { name: a.name, count: 0 };
+      e.count += 1; e.name = a.name; m[a.id] = e;
+    }
+    const keep = Object.entries(m).sort((x, y) => y[1].count - x[1].count).slice(0, 600);
+    await this.ctx.storage.put('artistsPlayed', Object.fromEntries(keep));
+  }
+  async artistsPlayed(n = 50) {
+    const m = (await this.ctx.storage.get('artistsPlayed')) || {};
+    return Object.entries(m).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.count - a.count).slice(0, n);
+  }
   async top(n = 10) {
     const top = (await this.ctx.storage.get('top')) || {};
     return Object.values(top).sort((a, b) => b.count - a.count).slice(0, n);
@@ -142,6 +156,7 @@ function trackShape(t) {
     id: t.id,
     name: cleanName(t.name),
     artist: (t.artists || []).map(a => a.name).join(', '),
+    artists: (t.artists || []).map(a => ({ id: a.id, name: a.name })),
     image: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '',
     duration: t.duration_ms,
     explicit: !!t.explicit,
@@ -358,6 +373,7 @@ export default {
         }
         await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]);
         await ledger.bumpTrack(track);
+        await ledger.bumpArtists(track.artists);
         await bustState();
         return json({ ok: true, plays: spend.left, track });
       }
@@ -417,6 +433,7 @@ export default {
           await bustState();
           return json({ ok: true, track });
         }
+        if (path === '/staff/artists') return json({ artists: await ledger.artistsPlayed(60) });
         if (path === '/staff/search-artists') return json({ items: await artistSearch(env, url.searchParams.get('q')) });
         if (path === '/staff/search') return json({ items: await trackSearch(env, url.searchParams) });
       }
