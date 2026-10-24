@@ -10,8 +10,31 @@ const rawFile = path.join(__dirname, 'raw-scan.json');
 if (!fs.existsSync(rawFile)) { console.error('Run scan-library.js first.'); process.exit(1); }
 const raw = JSON.parse(fs.readFileSync(rawFile, 'utf8'));
 const rulesFile = path.join(__dirname, 'catalogue-rules.json');
-const rules = fs.existsSync(rulesFile) ? JSON.parse(fs.readFileSync(rulesFile, 'utf8')) : {};
-const MIN_SECONDS = rules.minSeconds ?? 45;
+const userRules = fs.existsSync(rulesFile) ? JSON.parse(fs.readFileSync(rulesFile, 'utf8')) : {};
+const DEFAULTS = {
+  minSeconds: 45,
+  maxSeconds: 1500, // 25 minutes: keeps full-album files off the jukebox
+  hideTitleContains: ['(Full Album)'],
+  hideArtists: [],
+  hideFolders: [],
+  folderArtists: { 'CD 1. Tenacious D': 'Tenacious D' }, // files with no tags: take the artist from the folder name
+  renameArtists: { "Guns N' Roses": "Guns N' Roses", 'Simon & Garfunkel': 'Simon & Garfunkel', 'The Weather Girls': 'The Weather Girls' },
+};
+const rules = { ...DEFAULTS, ...userRules,
+  hideTitleContains: [...DEFAULTS.hideTitleContains, ...(userRules.hideTitleContains || [])],
+  folderArtists: { ...DEFAULTS.folderArtists, ...(userRules.folderArtists || {}) },
+  renameArtists: { ...DEFAULTS.renameArtists, ...(userRules.renameArtists || {}) } };
+const MIN_SECONDS = rules.minSeconds;
+const MAX_SECONDS = rules.maxSeconds;
+// Some old tags carry stray Chinese/Korean characters on the end of an English name (a text-encoding fault). Strip them.
+let repaired = 0;
+function fixText(s) {
+  s = String(s || '');
+  if (/[\u3400-\u9fff\uac00-\ud7af\ua000-\ua4cf]/.test(s) && /[A-Za-z]/.test(s)) { repaired++; return s.replace(/[\u3400-\u9fff\uac00-\ud7af\ua000-\ua4cf]+/g, '').replace(/\s+/g, ' ').trim(); }
+  return s;
+}
+const folderArtists = Object.fromEntries(Object.entries(rules.folderArtists).map(([k, v]) => [k.toLowerCase(), v]));
+const hideTitles = rules.hideTitleContains.map(x => x.toLowerCase());
 const hideArtists = new Set((rules.hideArtists || []).map(a => artistKey(a)));
 const hideFolders = (rules.hideFolders || []).map(f => f.toLowerCase());
 const renameArtists = Object.fromEntries(Object.entries(rules.renameArtists || {}).map(([k, v]) => [artistKey(k), v]));
@@ -27,11 +50,18 @@ const hash = (s, n) => crypto.createHash('sha1').update(s).digest('hex').slice(0
 const extRank = { '.mp3': 3, '.m4a': 2, '.flac': 3, '.wma': 1 };
 
 // 1. Drop unusable rows
-const removed = { noArtist: [], short: [], hidden: [] };
+const removed = { noArtist: [], short: [], long: [], hidden: [] };
 let rows = [];
 for (const t of raw) {
+  t.artist = fixText(t.artist); t.title = fixText(t.title); t.album = fixText(t.album);
+  if (!t.artist) {
+    const hit = t.path.split('/').slice(0, -1).map(seg => folderArtists[seg.toLowerCase()]).find(Boolean);
+    if (hit) t.artist = hit;
+  }
   if (!t.artist || !t.title) { removed.noArtist.push(t.path); continue; }
   if (t.seconds && t.seconds < MIN_SECONDS) { removed.short.push(t.path); continue; }
+  if (t.seconds && t.seconds > MAX_SECONDS) { removed.long.push(t.path); continue; }
+  if (hideTitles.some(x => t.title.toLowerCase().includes(x))) { removed.hidden.push(t.path); continue; }
   const k = artistKey(t.artist);
   if (hideArtists.has(k) || hideFolders.some(f => t.path.toLowerCase().startsWith(f))) { removed.hidden.push(t.path); continue; }
   rows.push(t);
@@ -78,7 +108,8 @@ const L = [];
 const artists = {}; out.forEach(t => artists[t.artist] = (artists[t.artist] || 0) + 1);
 L.push('CATALOGUE REPORT  (' + new Date().toLocaleString('en-GB') + ')');
 L.push('Scanned files: ' + raw.length + '   In catalogue: ' + out.length + '   Artists: ' + Object.keys(artists).length);
-L.push('Left out: ' + removed.noArtist.length + ' with no artist, ' + removed.short.length + ' under ' + MIN_SECONDS + 's, ' + removed.hidden.length + ' hidden by rules, ' + dupes.length + ' duplicates merged');
+L.push('Left out: ' + removed.noArtist.length + ' with no artist, ' + removed.short.length + ' under ' + MIN_SECONDS + 's, ' + removed.long.length + ' over ' + Math.round(MAX_SECONDS / 60) + ' min, ' + removed.hidden.length + ' hidden by rules, ' + dupes.length + ' duplicates merged');
+L.push('Names repaired (stray characters removed): ' + repaired);
 L.push('Playing time in catalogue: ' + Math.round(out.reduce((s, t) => s + t.seconds, 0) / 3600) + ' hours');
 const long = out.filter(t => t.seconds > 900);
 L.push('Over 15 minutes (check they are real songs): ' + long.length);
@@ -86,10 +117,11 @@ long.slice(0, 15).forEach(t => L.push('   ' + Math.round(t.seconds / 60) + 'min 
 L.push('\nTOP 30 ARTISTS:'); Object.entries(artists).sort((a, b) => b[1] - a[1]).slice(0, 30).forEach(([n, c]) => L.push('  ' + n + ' (' + c + ')'));
 L.push('\nSPELLINGS MERGED (first 25):');
 Object.entries(groups).filter(([k, n]) => new Set(n).size > 1).slice(0, 25).forEach(([k, n]) => L.push('  ' + [...new Set(n)].join(' | ') + '  ->  ' + display[k]));
+L.push('\nLEFT OUT: too long:'); removed.long.concat(removed.hidden).slice(0, 20).forEach(p => L.push('  ' + p));
 L.push('\nLEFT OUT: no artist (first 20):'); removed.noArtist.slice(0, 20).forEach(p => L.push('  ' + p));
 L.push('\nSample of duplicates merged (first 15):'); dupes.slice(0, 15).forEach(p => L.push('  ' + p));
 fs.writeFileSync(path.join(__dirname, 'catalogue-report.txt'), L.join('\n'));
 console.log(L.slice(0, 5).join('\n') + '\n\nFull report: catalogue-report.txt   Catalogue: catalogue.json');
 
-// OPTIONAL catalogue-rules.json, e.g.:
+// Built-in defaults are at the top. OPTIONAL catalogue-rules.json adds to / overrides them, e.g.:
 // { "minSeconds": 60, "hideArtists": ["Mozart","Tenacious D"], "hideFolders": ["Cheryls music/Kids"], "renameArtists": {"AC": "AC/DC"} }
