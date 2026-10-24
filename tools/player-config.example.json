@@ -1,0 +1,7 @@
+{
+  "workerUrl": "https://banshee-local-test.eddrock79.workers.dev",
+  "playerKey": "PUT-THE-PLAYER-KEY-HERE",
+  "musicRoot": "\\\\eddrock79Nas\\Music",
+  "mpvPath": "mpv",
+  "houseArtists": []
+}

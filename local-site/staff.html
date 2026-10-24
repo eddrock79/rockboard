@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Banshee Jukebox · Staff</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#aab6af; --card:#0e1512; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#050706; color:var(--ink); font-family:'Oswald',sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:16px 16px 60px; }
+  h1 { font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:36px; margin:6px 0 14px; color:var(--g); letter-spacing:.04em; }
+  h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
+  .card { background:var(--card); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
+  .card .t { font-weight:600; font-size:18px; } .card .a { color:var(--mute); font-size:14px; }
+  input { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:13px 14px; font:500 17px 'Oswald',sans-serif; outline:none; margin-bottom:8px; }
+  button { font-family:inherit; cursor:pointer; background:var(--g); color:#04110a; border:0; border-radius:10px; padding:12px 16px; font-weight:700; font-size:15px; letter-spacing:.08em; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid rgba(255,255,255,.3); }
+  .row { display:flex; gap:8px; } .row > * { flex:1; }
+  .res { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .res button { flex:none; padding:8px 12px; }
+  .modes { display:flex; gap:8px; margin-bottom:8px; }
+  .modes button { flex:1; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); }
+  .modes button.on { background:rgba(110,240,160,.14); color:var(--g); border-color:var(--g); }
+  .pill { display:none; align-items:center; gap:10px; background:rgba(110,240,160,.1); border:1px solid var(--g); border-radius:10px; padding:8px 12px; margin-bottom:8px; }
+  .pill span { flex:1; font-weight:600; font-size:17px; }
+  .pill button { background:transparent; color:var(--ink); padding:2px 8px; font-size:18px; }
+  .lbl { margin:4px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
+  #msg { min-height:22px; color:var(--g); font-size:15px; margin:8px 2px; }
+  .sale { display:flex; justify-content:space-between; font-size:15px; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.08); color:var(--mute); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BANSHEE JUKEBOX · STAFF</h1>
+  <div id="login">
+    <input id="pin" type="password" inputmode="numeric" placeholder="Staff PIN" autocomplete="off">
+    <button id="go" style="width:100%">UNLOCK</button>
+  </div>
+  <div id="panel" style="display:none">
+    <div id="msg"></div>
+    <h3>NOW PLAYING</h3><div id="now" class="card">…</div>
+    <div class="row"><button id="skip">SKIP</button><button class="ghost" id="pause">PAUSE</button><button class="ghost" id="play">PLAY</button></div>
+    <h3>QUEUE</h3><div id="queue"></div>
+    <h3>ADD A TRACK (FREE)</h3>
+    <div class="modes"><button class="on" id="mArtist">BY ARTIST</button><button id="mSong">BY SONG</button></div>
+    <div id="aBox">
+      <div id="aStep"><input id="qa" type="search" placeholder="Start typing an artist name" autocomplete="off"><div id="aList"></div></div>
+      <div id="aPill" class="pill"><span id="aName"></span><button id="aX" aria-label="Choose a different artist">&#10005;</button></div>
+      <input id="qt" type="search" placeholder="Pick from the list or type to search" autocomplete="off" style="display:none">
+    </div>
+    <div id="sBox" style="display:none"><input id="qs" type="search" placeholder="Start typing a song name" autocomplete="off"></div>
+    <div id="sres"></div>
+    <h3>GIVE A GUEST PLAYS</h3>
+    <div class="row"><input id="gcode" placeholder="Guest code" autocapitalize="characters"><input id="gn" type="number" min="1" max="20" value="1"></div>
+    <button id="grant" style="width:100%">GIVE PLAYS</button>
+    <h3>ARTISTS PLAYED SO FAR</h3><div id="artists"></div>
+    <h3>RECENT SALES</h3><div id="sales"></div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script>
+(function () {
+  const W = window.BANSHEE.workerUrl, $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  const mmss = ms => { ms = Math.max(0, Math.round(ms / 1000)); return Math.floor(ms / 60) + ':' + String(ms % 60).padStart(2, '0'); };
+  let pin = ''; try { pin = sessionStorage.getItem('bb_pin') || ''; } catch (e) {}
+  const say = m => { $('msg').textContent = m; setTimeout(() => { if ($('msg').textContent === m) $('msg').textContent = ''; }, 5000); };
+  async function api(path, opts = {}) {
+    const r = await fetch(W + path, { ...opts, headers: { 'Content-Type': 'application/json', 'X-Staff-Pin': pin } });
+    return { status: r.status, ...(await r.json().catch(() => ({}))) };
+  }
+  async function unlock() {
+    const r = await api('/staff/check');
+    if (r.ok) { try { sessionStorage.setItem('bb_pin', pin); } catch (e) {} $('login').style.display = 'none'; $('panel').style.display = 'block'; refresh(); setInterval(refresh, 10000); }
+    else { $('pin').value = ''; $('pin').placeholder = 'Wrong PIN'; }
+  }
+  $('go').onclick = () => { pin = $('pin').value; unlock(); };
+  async function refresh() {
+    const r = await api('/staff/overview'); if (!r.state) return;
+    const s = r.state, t = s.track;
+    $('now').innerHTML = t ? `<div class="t">${esc(t.name)}</div><div class="a">${esc(t.artist)} · ${s.playing ? 'playing' : 'paused'}</div>` : 'Nothing playing';
+    let acc = t ? t.duration - t.progress : 0;
+    $('queue').innerHTML = s.queue.length ? s.queue.map(x => { const w = acc; acc += x.duration; return `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><div class="a">in ${mmss(w)}</div>${s.canRemove ? `<button class="ghost rm" data-uri="${esc(x.uri)}">REMOVE</button>` : ''}</div>`; }).join('') : '<div class="card a">Queue is empty</div>';
+    $('queue').querySelectorAll('.rm').forEach(b => b.onclick = async () => { const q = await api('/staff/remove', { method: 'POST', body: JSON.stringify({ uri: b.dataset.uri }) }); say(q.ok ? 'Removed from the queue' : (q.error || 'Failed')); refresh(); });
+    const ar = await api('/staff/artists');
+    $('artists').innerHTML = (ar.artists || []).length ? '<div class="card" style="font-size:15px;line-height:1.7">' + ar.artists.map(a => `${esc(a.name)} <span style="color:var(--g)">${a.count}</span>`).join(' &nbsp;·&nbsp; ') + '</div>' : '<div class="card a">None yet. This fills up as guests request songs.</div>';
+    $('sales').innerHTML = (r.sales || []).slice(0, 15).map(x => `<div class="sale"><span>${new Date(x.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · code ${esc(x.code)}</span><span>£${(x.amountPence / 100).toFixed(2)} · ${x.plays} plays</span></div>`).join('') || '<div class="sale">No sales yet</div>';
+  }
+  for (const [id, path, text] of [['skip', 'skip', 'Skipped'], ['pause', 'pause', 'Paused'], ['play', 'play', 'Playing']])
+    $(id).onclick = async () => { await api('/staff/' + path, { method: 'POST' }); say(text); setTimeout(refresh, 800); };
+  let mode = 'artist', artist = null, items = [];
+  const deb = fn => { let t; return () => { clearTimeout(t); t = setTimeout(fn, 350); }; };
+  function setMode(m) {
+    mode = m; $('mArtist').classList.toggle('on', m === 'artist'); $('mSong').classList.toggle('on', m === 'song');
+    $('aBox').style.display = m === 'artist' ? '' : 'none'; $('sBox').style.display = m === 'song' ? '' : 'none';
+    resetArtist(); $('qs').value = ''; items = []; paint();
+  }
+  $('mArtist').onclick = () => setMode('artist'); $('mSong').onclick = () => setMode('song');
+  async function findArtists() {
+    const q = $('qa').value.trim(); if (q.length < 2) { $('aList').innerHTML = ''; return; }
+    const r = await api('/staff/search-artists?q=' + encodeURIComponent(q)); const list = r.items || [];
+    $('aList').innerHTML = list.length ? list.map((a, i) => `<div class="card res"><div class="t">${esc(a.name)}</div><button data-i="${i}">PICK</button></div>`).join('') : '<div class="card a">No artists found</div>';
+    $('aList').querySelectorAll('button').forEach(b => b.onclick = () => pickArtist(list[b.dataset.i]));
+  }
+  function pickArtist(a) {
+    artist = a; $('aStep').style.display = 'none'; $('aList').innerHTML = '';
+    $('aPill').style.display = 'flex'; $('aName').textContent = a.name; $('qt').style.display = ''; $('qt').value = ''; loadTracks();
+  }
+  function resetArtist() {
+    artist = null; $('aStep').style.display = ''; $('qa').value = ''; $('aList').innerHTML = '';
+    $('aPill').style.display = 'none'; $('qt').style.display = 'none'; $('qt').value = ''; items = []; paint();
+  }
+  async function loadTracks() {
+    if (!artist) return; const q = $('qt').value.trim();
+    const r = await api('/staff/search?artist_id=' + encodeURIComponent(artist.id) + '&artist=' + encodeURIComponent(artist.name) + (q.length >= 2 ? '&q=' + encodeURIComponent(q) : ''));
+    items = r.items || []; paint(q.length >= 2 ? 'search' : 'top');
+  }
+  async function findSongs() {
+    const q = $('qs').value.trim(); if (q.length < 2) { items = []; paint(); return; }
+    const r = await api('/staff/search?q=' + encodeURIComponent(q)); items = r.items || []; paint('search');
+  }
+  function paint(kind) {
+    if (!items.length) { $('sres').innerHTML = kind ? '<div class="card a">No tracks found</div>' : ''; return; }
+    $('sres').innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : '') +
+      items.map((x, i) => `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><button data-i="${i}">ADD</button></div>`).join('');
+    $('sres').querySelectorAll('button').forEach(b => b.onclick = async () => {
+      const x = items[b.dataset.i]; const q2 = await api('/staff/queue', { method: 'POST', body: JSON.stringify({ uri: x.uri }) });
+      say(q2.ok ? `Added "${x.name}"` : (q2.error || 'Failed')); if (q2.ok) { setMode(mode); refresh(); }
+    });
+  }
+  $('qa').oninput = deb(findArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(findSongs); $('aX').onclick = resetArtist;
+  $('grant').onclick = async () => {
+    const r = await api('/staff/grant', { method: 'POST', body: JSON.stringify({ code: $('gcode').value.trim(), plays: $('gn').value }) });
+    say(r.ok ? `Done. Guest now has ${r.plays} plays` : (r.error || 'Failed'));
+  };
+  if (pin) unlock();
+})();
+</script>
+</body>
+</html>

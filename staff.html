@@ -83,7 +83,8 @@
     const s = r.state, t = s.track;
     $('now').innerHTML = t ? `<div class="t">${esc(t.name)}</div><div class="a">${esc(t.artist)} · ${s.playing ? 'playing' : 'paused'}</div>` : 'Nothing playing';
     let acc = t ? t.duration - t.progress : 0;
-    $('queue').innerHTML = s.queue.length ? s.queue.map(x => { const w = acc; acc += x.duration; return `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><div class="a">in ${mmss(w)}</div></div>`; }).join('') : '<div class="card a">Queue is empty</div>';
+    $('queue').innerHTML = s.queue.length ? s.queue.map(x => { const w = acc; acc += x.duration; return `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><div class="a">in ${mmss(w)}</div>${s.canRemove ? `<button class="ghost rm" data-uri="${esc(x.uri)}">REMOVE</button>` : ''}</div>`; }).join('') : '<div class="card a">Queue is empty</div>';
+    $('queue').querySelectorAll('.rm').forEach(b => b.onclick = async () => { const q = await api('/staff/remove', { method: 'POST', body: JSON.stringify({ uri: b.dataset.uri }) }); say(q.ok ? 'Removed from the queue' : (q.error || 'Failed')); refresh(); });
     const ar = await api('/staff/artists');
     $('artists').innerHTML = (ar.artists || []).length ? '<div class="card" style="font-size:15px;line-height:1.7">' + ar.artists.map(a => `${esc(a.name)} <span style="color:var(--g)">${a.count}</span>`).join(' &nbsp;·&nbsp; ') + '</div>' : '<div class="card a">None yet. This fills up as guests request songs.</div>';
     $('sales').innerHTML = (r.sales || []).slice(0, 15).map(x => `<div class="sale"><span>${new Date(x.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · code ${esc(x.code)}</span><span>£${(x.amountPence / 100).toFixed(2)} · ${x.plays} plays</span></div>`).join('') || '<div class="sale">No sales yet</div>';

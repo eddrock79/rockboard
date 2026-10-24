@@ -1,0 +1,411 @@
+// ============================================================
+//  BANSHEE JUKEBOX — LOCAL MUSIC EDITION (Cloudflare Worker)
+//  Same pages, same payments and balances as the Spotify version,
+//  but the music is your own MP3 library, played by a small player
+//  program on the jukebox PC (tools/player.js) reading from the NAS.
+//  The worker never touches your files: it only holds a searchable
+//  catalogue (artist, title, length) and the queue.
+// ============================================================
+import { DurableObject } from 'cloudflare:workers';
+
+const TIERS = {
+  tier1: { amountPence: 100, plays: 2, label: '£1' },
+  tier2: { amountPence: 200, plays: 5, label: '£2' },
+};
+const VENUE = 'banshee';
+const SESSION_WINDOW_MS = 2 * 60 * 60 * 1000;
+const TRACK_URI = /^local:[0-9a-f]{10}$/;
+const PLAYER_STALE_MS = 30000; // no report for this long = player offline
+
+const norm = s => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+const artistKey = s => norm(s).replace(/^the /, '');
+const tokens = q => norm(q).split(' ').filter(Boolean).slice(0, 6);
+
+function shape(r) {
+  return {
+    uri: 'local:' + r.id, id: r.id, name: r.title, artist: r.artist,
+    artists: [{ id: r.artist_id, name: r.artist }],
+    image: '', duration: Math.round((r.seconds || 0) * 1000), explicit: false,
+  };
+}
+
+// ── LEDGER (Durable Object, SQLite-backed) ───────────────────
+export class Ledger extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS tracks (
+      id TEXT PRIMARY KEY, path TEXT, artist TEXT, artist_id TEXT, artist_key TEXT,
+      title TEXT, title_key TEXT, all_key TEXT, album TEXT, seconds INTEGER)`);
+    this.sql.exec('CREATE INDEX IF NOT EXISTS tracks_artist ON tracks(artist_id)');
+  }
+
+  // balances (identical to the Spotify edition)
+  async balance(device) { return (await this.ctx.storage.get('bal:' + device)) || 0; }
+  async debit(device) {
+    const b = await this.balance(device);
+    if (b < 1) return { ok: false, left: b };
+    await this.ctx.storage.put('bal:' + device, b - 1);
+    return { ok: true, left: b - 1 };
+  }
+  async refund(device) { const b = await this.balance(device); await this.ctx.storage.put('bal:' + device, b + 1); return b + 1; }
+  async creditSession(sessionId, device, plays, amountPence) {
+    if (await this.ctx.storage.get('sess:' + sessionId)) return { credited: false };
+    await this.ctx.storage.put('sess:' + sessionId, Date.now());
+    const b = await this.balance(device);
+    await this.ctx.storage.put('bal:' + device, b + plays);
+    const sales = (await this.ctx.storage.get('sales')) || [];
+    sales.unshift({ at: Date.now(), code: codeFor(device), plays, amountPence });
+    await this.ctx.storage.put('sales', sales.slice(0, 100));
+    return { credited: true, plays: b + plays };
+  }
+  async grant(device, plays) { const b = await this.balance(device); await this.ctx.storage.put('bal:' + device, b + plays); return b + plays; }
+  async registerCode(device) { const code = codeFor(device); await this.ctx.storage.put('code:' + code, device); return code; }
+  async deviceForCode(code) { return (await this.ctx.storage.get('code:' + String(code).toUpperCase())) || null; }
+  async bumpTrack(t) {
+    const top = (await this.ctx.storage.get('top')) || {};
+    const e = top[t.uri] || { name: t.name, artist: t.artist, count: 0 };
+    e.count += 1; top[t.uri] = e;
+    const keep = Object.entries(top).sort((a, b) => b[1].count - a[1].count).slice(0, 300);
+    await this.ctx.storage.put('top', Object.fromEntries(keep));
+  }
+  async bumpArtists(list) {
+    const m = (await this.ctx.storage.get('artistsPlayed')) || {};
+    for (const a of list || []) {
+      if (!a.id) continue;
+      const e = m[a.id] || { name: a.name, count: 0 };
+      e.count += 1; e.name = a.name; m[a.id] = e;
+    }
+    const keep = Object.entries(m).sort((x, y) => y[1].count - x[1].count).slice(0, 600);
+    await this.ctx.storage.put('artistsPlayed', Object.fromEntries(keep));
+  }
+  async artistsPlayed(n = 50) {
+    const m = (await this.ctx.storage.get('artistsPlayed')) || {};
+    return Object.entries(m).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.count - a.count).slice(0, n);
+  }
+  async top(n = 10) {
+    const top = (await this.ctx.storage.get('top')) || {};
+    return Object.values(top).sort((a, b) => b.count - a.count).slice(0, n);
+  }
+  async sales() { return (await this.ctx.storage.get('sales')) || []; }
+
+  // catalogue
+  async catReset() { this.sql.exec('DELETE FROM tracks'); return true; }
+  async catAdd(rows) {
+    this.ctx.storage.transactionSync(() => {
+      for (const r of rows) {
+        this.sql.exec('INSERT OR REPLACE INTO tracks VALUES (?,?,?,?,?,?,?,?,?,?)',
+          r.id, r.path, r.artist, r.artistId, artistKey(r.artist), r.title, norm(r.title),
+          norm(r.artist + ' ' + r.title), r.album || '', Math.max(0, Math.round(r.seconds || 0)));
+      }
+    });
+    return this.catCount();
+  }
+  async catCount() { return this.sql.exec('SELECT COUNT(*) n FROM tracks').one().n; }
+  async trackById(id) { return this.sql.exec('SELECT * FROM tracks WHERE id=?', id).toArray()[0] || null; }
+  async searchArtists(q) {
+    const t = tokens(q).map(x => x.replace(/^the$/, ''));
+    const toks = t.filter(Boolean);
+    if (!toks.length) return [];
+    const where = toks.map(() => 'artist_key LIKE ?').join(' AND ');
+    const binds = toks.map(x => '%' + x + '%');
+    const first = toks[0] + '%';
+    return this.sql.exec(
+      `SELECT artist_id id, artist name, COUNT(*) c FROM tracks WHERE ${where}
+       GROUP BY artist_id ORDER BY (artist_key LIKE ?) DESC, c DESC LIMIT 8`, ...binds, first).toArray()
+      .map(r => ({ id: r.id, name: r.name, image: '' }));
+  }
+  async searchTracks({ q, artistId }) {
+    const toks = tokens(q);
+    if (artistId) {
+      const where = ['artist_id=?'].concat(toks.map(() => 'title_key LIKE ?')).join(' AND ');
+      const rows = this.sql.exec(`SELECT * FROM tracks WHERE ${where} LIMIT 300`, artistId, ...toks.map(x => '%' + x + '%')).toArray();
+      const top = (await this.ctx.storage.get('top')) || {};
+      rows.sort((a, b) => ((top['local:' + b.id]?.count || 0) - (top['local:' + a.id]?.count || 0)) || a.title.localeCompare(b.title));
+      return rows.slice(0, toks.length ? 24 : 40).map(shape);
+    }
+    if (!toks.length) return [];
+    const where = toks.map(() => 'all_key LIKE ?').join(' AND ');
+    const rows = this.sql.exec(`SELECT * FROM tracks WHERE ${where} ORDER BY (title_key LIKE ?) DESC, title LIMIT 24`,
+      ...toks.map(x => '%' + x + '%'), toks.join(' ') + '%').toArray();
+    return rows.map(shape);
+  }
+
+  // queue + player
+  async getPending() { return (await this.ctx.storage.get('pending')) || []; }
+  async setPending(list) { await this.ctx.storage.put('pending', list); }
+  async getNow() { return (await this.ctx.storage.get('now')) || null; }
+  async setNow(n) { await this.ctx.storage.put('now', n); }
+  async pushCmd(c) { const l = (await this.ctx.storage.get('cmds')) || []; l.push(c); await this.ctx.storage.put('cmds', l.slice(-10)); }
+  async takeCmds() { const l = (await this.ctx.storage.get('cmds')) || []; if (l.length) await this.ctx.storage.put('cmds', []); return l; }
+  // Player asks for the next paid track. Returns it (with its file path) and removes it from the queue.
+  async nextRequest() {
+    const p = await this.getPending();
+    if (!p.length) return null;
+    const first = p.shift();
+    await this.setPending(p);
+    const row = await this.trackById(first.id);
+    if (!row) return this.nextRequest(); // vanished from the catalogue: skip it
+    return { ...shape(row), path: row.path };
+  }
+}
+
+function codeFor(device) {
+  let h = 0;
+  for (const ch of String(device)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h.toString(36).toUpperCase().padStart(5, '0').slice(-5);
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+const enc = new TextEncoder();
+async function hmacHex(secret, msg) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(msg));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function safeEqual(a, b) {
+  a = String(a); b = String(b);
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+async function makeToken(env, w) { return w + '.' + (await hmacHex(env.SESSION_SECRET, 'session:' + w)).slice(0, 32); }
+async function tokenValid(env, token) {
+  if (!token) return false;
+  const now = Math.floor(Date.now() / SESSION_WINDOW_MS);
+  for (const w of [now, now - 1]) if (safeEqual(token, await makeToken(env, w))) return true;
+  return false;
+}
+
+async function readState(ledger) {
+  const [now, pending] = await Promise.all([ledger.getNow(), ledger.getPending()]);
+  const online = !!now && (Date.now() - now.reportedAt) < PLAYER_STALE_MS;
+  const playing = online && !!now.playing && !!now.track;
+  let track = null;
+  if (now && now.track && online) {
+    const elapsed = playing ? Date.now() - now.reportedAt : 0;
+    track = { ...now.track, progress: Math.min(now.track.duration, (now.progress || 0) + elapsed) };
+  }
+  return {
+    ts: Date.now(), playing, offline: !online, canRemove: true, track,
+    queue: pending.map(p => ({ uri: p.uri, id: p.id, name: p.name, artist: p.artist, image: '', duration: p.duration })),
+  };
+}
+async function cachedState(ctx, ledger) {
+  const cache = caches.default;
+  const key = new Request('https://state.internal/' + VENUE);
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  const state = await readState(ledger);
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(state), { headers: { 'Cache-Control': 'max-age=3' } })));
+  return state;
+}
+async function bustState() { await caches.default.delete(new Request('https://state.internal/' + VENUE)); }
+
+async function stripe(env, path, params) {
+  const res = await fetch('https://api.stripe.com/v1' + path, {
+    method: params ? 'POST' : 'GET',
+    headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params ? new URLSearchParams(params) : undefined,
+  });
+  return res.json();
+}
+async function verifyStripeSignature(env, body, header) {
+  if (!header || !env.STRIPE_WEBHOOK_SECRET) return false;
+  const parts = Object.fromEntries(header.split(',').map(p => p.split('=')));
+  if (!parts.t || !parts.v1) return false;
+  if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 300) return false;
+  return safeEqual(await hmacHex(env.STRIPE_WEBHOOK_SECRET, parts.t + '.' + body), parts.v1);
+}
+
+// Add a catalogue track to the paid queue (shared by guests and staff).
+async function enqueue(ledger, uri) {
+  if (!TRACK_URI.test(uri || '')) return { error: 'Bad request', status: 400 };
+  const id = uri.slice(6);
+  const [row, pending, now] = await Promise.all([ledger.trackById(id), ledger.getPending(), ledger.getNow()]);
+  if (!row) return { error: 'Track not found', status: 404 };
+  if (pending.some(p => p.id === id) || (now && now.track && now.track.id === id && (Date.now() - now.reportedAt) < PLAYER_STALE_MS))
+    return { error: 'That track is already in the queue', status: 409 };
+  const track = shape(row);
+  return { track, commit: async () => { await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]); await ledger.bumpTrack(track); await ledger.bumpArtists(track.artists); await bustState(); } };
+}
+
+// ── WORKER ───────────────────────────────────────────────────
+export default {
+  async fetch(request, env, ctx) {
+    const origin = env.SITE_URL || '*';
+    const CORS = {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Session, X-Display-Key, X-Staff-Pin',
+      Vary: 'Origin',
+    };
+    const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const ledger = env.LEDGER.get(env.LEDGER.idFromName(VENUE));
+    const needSession = async () => tokenValid(env, request.headers.get('X-Session'));
+    const isStaff = () => env.STAFF_PIN && safeEqual(request.headers.get('X-Staff-Pin') || '', env.STAFF_PIN);
+    const isDisplay = () => env.DISPLAY_KEY && safeEqual(request.headers.get('X-Display-Key') || '', env.DISPLAY_KEY);
+    const isPlayer = () => env.PLAYER_KEY && safeEqual(request.headers.get('X-Player-Key') || '', env.PLAYER_KEY);
+    const NOSESSION = { error: 'Scan the QR code on the screen to start' };
+
+    try {
+      if (path === '/ping') return json({ ok: true, venue: VENUE, edition: 'local-music' });
+
+      if (path === '/stripe-webhook' && request.method === 'POST') {
+        const body = await request.text();
+        if (!(await verifyStripeSignature(env, body, request.headers.get('Stripe-Signature')))) return new Response('bad signature', { status: 400 });
+        const event = JSON.parse(body);
+        if (event.type === 'checkout.session.completed') {
+          const s = event.data.object, tier = TIERS[s.metadata?.tier];
+          if (s.metadata?.venue === VENUE && s.payment_status === 'paid' && tier && s.metadata.device_id)
+            await ledger.creditSession(s.id, s.metadata.device_id, tier.plays, tier.amountPence);
+        }
+        return new Response('ok');
+      }
+
+      if (path === '/session-token') {
+        if (!isDisplay()) return json({ error: 'Not allowed' }, 403);
+        const w = Math.floor(Date.now() / SESSION_WINDOW_MS);
+        return json({ token: await makeToken(env, w), expiresAt: (w + 1) * SESSION_WINDOW_MS });
+      }
+      if (path === '/check-session') return json({ ok: await tokenValid(env, url.searchParams.get('s')) });
+      if (path === '/state') return json(await cachedState(ctx, ledger));
+      if (path === '/top10') return json({ top: await ledger.top(10) });
+      if (path === '/fact') {
+        const name = (url.searchParams.get('name') || '').slice(0, 100);
+        const artist = (url.searchParams.get('artist') || '').slice(0, 100);
+        if (!name || !env.ANTHROPIC_API_KEY) return json({ fact: null });
+        const cache = caches.default;
+        const key = new Request('https://fact.internal/' + encodeURIComponent(name + '|' + artist));
+        const hit = await cache.match(key);
+        if (hit) return json(await hit.json());
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: env.AI_MODEL || 'claude-haiku-5-5', max_tokens: 120, messages: [{ role: 'user', content:
+            `Write ONE short, true, fun fact (max 25 words) about the song "${name}" by ${artist}, for a rock and metal pub screen. ` +
+            `Only state something you are certain is accurate. If you are not certain, reply with exactly NONE. No preamble, no quotes.` }] }),
+        });
+        const data = await res.json();
+        let fact = (data.content?.[0]?.text || '').trim();
+        if (!fact || /^none\b/i.test(fact)) fact = null;
+        const out = { fact };
+        ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), { headers: { 'Cache-Control': 'max-age=86400' } })));
+        return json(out);
+      }
+
+      // ── Player program (on the jukebox PC) ──
+      if (path.startsWith('/player/')) {
+        if (!isPlayer()) return json({ error: 'Not allowed' }, 403);
+        if (path === '/player/ping') return json({ ok: true, tracks: await ledger.catCount() });
+        if (path === '/player/catalogue' && request.method === 'POST') {
+          const { reset, rows } = await request.json();
+          if (reset) await ledger.catReset();
+          const good = (rows || []).filter(r => r && /^[0-9a-f]{10}$/.test(r.id) && r.path && r.artist && r.title && r.artistId).slice(0, 600)
+            .map(r => ({ id: r.id, path: String(r.path).slice(0, 400), artist: String(r.artist).slice(0, 120), artistId: String(r.artistId).slice(0, 16),
+              title: String(r.title).slice(0, 160), album: String(r.album || '').slice(0, 160), seconds: r.seconds }));
+          return json({ ok: true, added: good.length, total: await ledger.catAdd(good) });
+        }
+        if (path === '/player/next' && request.method === 'POST') {
+          const t = await ledger.nextRequest();
+          if (t) await ledger.setNow({ track: { uri: t.uri, id: t.id, name: t.name, artist: t.artist, artists: t.artists, image: '', duration: t.duration, explicit: false }, progress: 0, playing: true, reportedAt: Date.now(), kind: 'request' });
+          await bustState();
+          return json({ track: t });
+        }
+        if (path === '/player/report' && request.method === 'POST') {
+          const { id, progress, playing, kind } = await request.json();
+          let track = null;
+          if (id) { const row = await ledger.trackById(String(id)); if (row) track = shape(row); }
+          await ledger.setNow({ track, progress: Math.max(0, Number(progress) || 0), playing: !!playing, reportedAt: Date.now(), kind: kind === 'request' ? 'request' : 'house' });
+          return json({ ok: true, cmds: await ledger.takeCmds() });
+        }
+      }
+
+      // ── Guest endpoints ──
+      if (path === '/search-artists') {
+        if (!(await needSession())) return json(NOSESSION, 401);
+        return json({ items: await ledger.searchArtists(url.searchParams.get('q')) });
+      }
+      if (path === '/search') {
+        if (!(await needSession())) return json(NOSESSION, 401);
+        return json({ items: await ledger.searchTracks({ q: url.searchParams.get('q') || '', artistId: (url.searchParams.get('artist_id') || '').slice(0, 16) }) });
+      }
+      if (path === '/balance') {
+        if (!(await needSession())) return json(NOSESSION, 401);
+        const device = url.searchParams.get('device_id') || '';
+        if (!device) return json({ error: 'No device' }, 400);
+        return json({ plays: await ledger.balance(device), code: await ledger.registerCode(device) });
+      }
+      if (path === '/request' && request.method === 'POST') {
+        if (!(await needSession())) return json(NOSESSION, 401);
+        const { device_id, uri } = await request.json();
+        if (!device_id) return json({ error: 'Bad request' }, 400);
+        const e = await enqueue(ledger, uri);
+        if (e.error) return json({ error: e.error }, e.status);
+        const spend = await ledger.debit(device_id);
+        if (!spend.ok) return json({ error: 'No plays left', needPlays: true }, 402);
+        await e.commit();
+        return json({ ok: true, plays: spend.left, track: e.track });
+      }
+      if (path === '/create-checkout' && request.method === 'POST') {
+        if (!(await needSession())) return json(NOSESSION, 401);
+        if (!env.STRIPE_SECRET_KEY) return json({ error: 'Payments are not switched on for this jukebox yet. Ask the bar staff.' }, 503);
+        const { device_id, tier } = await request.json();
+        const t = TIERS[tier];
+        if (!device_id || !t) return json({ error: 'Bad request' }, 400);
+        const s = await stripe(env, '/checkout/sessions', {
+          mode: 'payment', 'line_items[0][quantity]': '1', 'line_items[0][price_data][currency]': 'gbp',
+          'line_items[0][price_data][unit_amount]': String(t.amountPence),
+          'line_items[0][price_data][product_data][name]': `Banshee Jukebox: ${t.plays} plays`,
+          'metadata[venue]': VENUE, 'metadata[device_id]': device_id, 'metadata[tier]': tier,
+          success_url: `${env.SITE_URL}/?paid=1`, cancel_url: `${env.SITE_URL}/`,
+        });
+        if (!s.url) return json({ error: 'Could not start checkout' }, 502);
+        return json({ url: s.url });
+      }
+
+      // ── Staff endpoints ──
+      if (path.startsWith('/staff/')) {
+        if (!isStaff()) return json({ error: 'Wrong PIN' }, 403);
+        if (path === '/staff/check') return json({ ok: true });
+        if (path === '/staff/overview') return json({ state: await readState(ledger), sales: await ledger.sales() });
+        for (const [p, cmd] of [['skip', 'skip'], ['pause', 'pause'], ['play', 'play']])
+          if (path === '/staff/' + p && request.method === 'POST') { await ledger.pushCmd(cmd); await bustState(); return json({ ok: true }); }
+        if (path === '/staff/grant' && request.method === 'POST') {
+          const { code, plays } = await request.json();
+          const device = await ledger.deviceForCode(code || '');
+          const n = Math.max(1, Math.min(20, parseInt(plays, 10) || 0));
+          if (!device) return json({ error: 'No guest with that code' }, 404);
+          return json({ ok: true, plays: await ledger.grant(device, n) });
+        }
+        if (path === '/staff/queue' && request.method === 'POST') {
+          const { uri } = await request.json();
+          const e = await enqueue(ledger, uri);
+          if (e.error) return json({ error: e.error }, e.status);
+          await e.commit();
+          return json({ ok: true, track: e.track });
+        }
+        if (path === '/staff/remove' && request.method === 'POST') {
+          const { uri } = await request.json();
+          const pending = await ledger.getPending();
+          const left = pending.filter(p => p.uri !== uri);
+          if (left.length === pending.length) return json({ error: 'Not in the queue' }, 404);
+          await ledger.setPending(left); await bustState();
+          return json({ ok: true });
+        }
+        if (path === '/staff/artists') return json({ artists: await ledger.artistsPlayed(60) });
+        if (path === '/staff/search-artists') return json({ items: await ledger.searchArtists(url.searchParams.get('q')) });
+        if (path === '/staff/search') return json({ items: await ledger.searchTracks({ q: url.searchParams.get('q') || '', artistId: (url.searchParams.get('artist_id') || '').slice(0, 16) }) });
+      }
+
+      return json({ error: 'Unknown endpoint' }, 404);
+    } catch (e) {
+      return json({ error: e.message }, 500);
+    }
+  },
+};

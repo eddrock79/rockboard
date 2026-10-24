@@ -1,6 +1,6 @@
 // Banshee jukebox: music library scanner (READ ONLY - never changes your files).
 // Usage:  node scan-library.js "\\eddrock79Nas\Music"
-// Writes catalogue.json (the library) and library-report.txt (how good the tags are) next to this script.
+// Writes raw-scan.json (everything found) and library-report.txt (how good the tags are) next to this script.
 const fs = require('fs');
 const path = require('path');
 
@@ -46,7 +46,8 @@ const norm = s => clean(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const meta = await mm.parseFile(file, { duration: true, skipCovers: true });
         tag = meta.common || {}; duration = meta.format.duration || 0; codec = meta.format.codec || meta.format.container || '';
       } catch (e) { bad.push(file + '  (' + clean(e.message).slice(0, 80) + ')'); }
-      const tArtist = clean(tag.artist || tag.albumartist);
+      // Some tag readers split "AC/DC" into AC + DC, so stitch the pieces back together.
+      const tArtist = clean((tag.artists && tag.artists.length > 1 ? tag.artists.join('/') : '') || tag.artist || tag.albumartist);
       const tTitle = clean(tag.title);
       const artist = tArtist || fn.artist;
       const title = tTitle || fn.title;
@@ -63,7 +64,7 @@ const norm = s => clean(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   await Promise.all(Array.from({ length: 8 }, worker));
   out.sort((a, b) => a.path.localeCompare(b.path)); out.forEach((t, i) => t.id = i);
 
-  fs.writeFileSync(path.join(__dirname, 'catalogue.json'), JSON.stringify(out));
+  fs.writeFileSync(path.join(__dirname, 'raw-scan.json'), JSON.stringify(out));
 
   // ---- report ----
   const L = [];
@@ -99,5 +100,5 @@ const norm = s => clean(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   dur.slice(0, 15).forEach(t => L.push('  ' + t.seconds + 's  ' + t.path));
   if (bad.length) { L.push('\nFILES THAT COULD NOT BE READ (first 30):'); bad.slice(0, 30).forEach(b => L.push('  ' + b)); }
   fs.writeFileSync(path.join(__dirname, 'library-report.txt'), L.join('\n'));
-  console.log('\nDone. Open library-report.txt (next to this script) and paste its contents back into the chat.');
+  console.log('\nDone. Next run:  node build-catalogue.js');
 })();

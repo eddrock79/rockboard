@@ -1,0 +1,15 @@
+{
+  "name": "The Banshee Labyrinth Jukebox",
+  "short_name": "Banshee Jukebox",
+  "start_url": "/board.html",
+  "display": "fullscreen",
+  "background_color": "#050706",
+  "theme_color": "#050706",
+  "icons": [
+    {
+      "src": "assets/banshee-logo.png",
+      "sizes": "640x280",
+      "type": "image/png"
+    }
+  ]
+}
