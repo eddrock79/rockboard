@@ -1,6 +1,6 @@
 # Edd & Cheryl Jukebox: one-go setup (download, deploy, secrets, config). Safe to re-run? Run it once.
 $ErrorActionPreference = 'Stop'
-$sha  = 'SHAHERE'
+$sha  = '9f3a598a36e36469fc0d2d2a51fa6c0b8d7c7075'
 $root = "$HOME\rockboard-home"
 $old  = "$HOME\rockboard-local-music\tools"
 if (-not (Test-Path "$old\catalogue.json")) { throw "Can't find $old\catalogue.json (your local-music folder)." }
