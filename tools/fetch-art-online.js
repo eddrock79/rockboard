@@ -54,7 +54,7 @@ async function getJson(url) {
 const stripParens = s => norm(String(s || '').replace(/[\(\[][^\)\]]*[\)\]]/g, ' '));
 async function findBySong(w) {
   for (const title of w.titles) {
-    const q = `${BASE}/search/track?q=${encodeURIComponent(`artist:"${w.artist}" track:"${title}"`)}&limit=8`;
+    const q = `${BASE}/search/track?q=${encodeURIComponent(w.artist + ' ' + title)}&limit=15`;
     const j = await getJson(q); await sleep(PACE);
     const hit = ((j && j.data) || []).find(c => c.artist && artistKey(c.artist.name) === artistKey(w.artist) && c.album && stripParens(c.title) === stripParens(title));
     if (hit) return { c: { title: hit.album.title, artist: hit.artist, cover_big: hit.album.cover_big, cover_medium: hit.album.cover_medium }, s: 1, by: 'song "' + title + '"' };
@@ -62,9 +62,8 @@ async function findBySong(w) {
   return null;
 }
 async function findByAlbum(w) {
-  const q1 = `${BASE}/search/album?q=${encodeURIComponent(`artist:"${w.artist}" album:"${w.album}"`)}&limit=6`;
-  const q2 = `${BASE}/search/album?q=${encodeURIComponent(w.artist + ' ' + w.album)}&limit=6`;
-  for (const url of [q1, q2]) {
+  const q2 = `${BASE}/search/album?q=${encodeURIComponent(w.artist + ' ' + w.album)}&limit=10`;
+  for (const url of [q2]) {
     const j = await getJson(url); await sleep(PACE);
     const hits = ((j && j.data) || []).filter(c => artistKey(c.artist && c.artist.name) === artistKey(w.artist))
       .map(c => ({ c, s: similarity(c.title, w.album) })).sort((a, b) => b.s - a.s);
@@ -80,7 +79,7 @@ async function find(w) {
 (async () => {
   const sharp = SAMPLE ? null : require('sharp');
   let list = [...wanted.values()];
-  if (SAMPLE) { const t0 = await getJson(BASE + '/search/track?q=' + encodeURIComponent('artist:"Slayer" track:"Raining Blood"') + '&limit=2'); console.log('Connection test: ' + (t0 && t0.data && t0.data.length ? 'OK (got ' + t0.data[0].artist.name + ' - ' + t0.data[0].title + ')' : 'FAILED ' + (stats.lastError || 'no results'))); }
+  if (SAMPLE) { const t0 = await getJson(BASE + '/search/track?q=' + encodeURIComponent('Slayer Raining Blood') + '&limit=2'); console.log('Connection test: ' + (t0 && t0.data && t0.data.length ? 'OK (got ' + t0.data[0].artist.name + ' - ' + t0.data[0].title + ')' : 'FAILED ' + (stats.lastError || 'no results'))); }
   console.log('Albums without artwork: ' + wanted.size + '   worth looking up: ' + list.length);
   if (SAMPLE) { list = list.sort(() => Math.random() - 0.5).slice(0, SAMPLE); console.log('SAMPLE of ' + list.length + ' (nothing will be saved):\n'); }
   let ok = 0, miss = 0, i = 0; const log = [];
