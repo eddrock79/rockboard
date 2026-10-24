@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Banshee Labyrinth · Jukebox</title>
-<link rel="icon" href="assets/banshee-logo.png">
+<title>Edd &amp; Cheryl Jukebox</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=EB+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
@@ -22,7 +21,9 @@
   .rule { flex:none; height:2px; background:var(--g); opacity:.7; }
   /* header */
   #logo { flex:none; height:320px; display:flex; justify-content:center; }
-  #logo img { height:320px; width:auto; display:block; }
+  #logo { align-items:center; flex-direction:column; justify-content:center; font-family:'Bebas Neue',sans-serif; color:var(--g); text-align:center; line-height:.9; text-shadow:0 0 50px rgba(110,240,160,.5); }
+  #logo b { font-weight:400; font-size:170px; letter-spacing:.05em; }
+  #logo span { font-size:80px; letter-spacing:.4em; color:var(--ink); margin-top:6px; }
   #sub { flex:none; margin-top:8px; height:44px; display:flex; align-items:center; gap:24px; }
   #sub i { flex:1; height:2px; background:var(--g); opacity:.8; }
   #sub b { font-weight:500; font-size:24px; letter-spacing:.42em; color:var(--g); }
@@ -106,11 +107,11 @@
 <body>
 <div id="stage">
   <div id="offline">RECONNECTING…</div>
-  <div id="logo"><img src="assets/banshee-logo.png" alt="The Banshee Labyrinth"></div>
-  <div id="sub"><i></i><b>THE UNDERGROUND JUKEBOX</b><i></i></div>
+  <div id="logo"><b>EDD &amp; CHERYL</b><span>JUKEBOX</span></div>
+  <div id="sub"><i></i><b>HOME SWEET HOME</b><i></i></div>
 
   <div id="np">
-    <div id="glow"><div id="rec"><div class="sheen"></div><div class="label">THE<br>BANSHEE</div><div class="hole"></div></div></div>
+    <div id="glow"><div id="rec"><div class="sheen"></div><div class="label">EDD &amp;<br>CHERYL</div><div class="hole"></div></div></div>
     <div id="npText">
       <div id="npHead"><b>NOW PLAYING</b><div id="eq"><i></i><i></i><i></i><i></i><i></i></div></div>
       <div id="title">Waiting for music</div>
@@ -142,7 +143,7 @@
   <div id="topHead">ALL-TIME TOP 10</div>
   <div id="topGrid"></div>
 
-  <div id="tick"><b>FROM THE VAULTS</b><div id="tickWrap"><span id="tickText"></span></div></div>
+  <div id="tick"><b>FROM THE HOUSE</b><div id="tickWrap"><span id="tickText"></span></div></div>
 </div>
 
 <script src="config.js"></script>
@@ -163,9 +164,7 @@
   addEventListener('resize', fit); fit();
 
   // Price cards
-  $('tiers').innerHTML = CFG.tiers.map(t =>
-    `<div class="tier${t.best ? ' best' : ''}"><span class="pr">${esc(t.price)}</span><span class="eqs">=</span>` +
-    `<span class="n">${t.plays}</span><span class="pl">PLAYS</span>${t.best ? '<span class="badge">BEST<br>VALUE</span>' : ''}</div>`).join('');
+  $('tiers').innerHTML = `<div class="tier best"><span class="pr">FREE</span><span class="eqs">=</span><span class="pl">PLAY AS MUCH AS YOU LIKE</span></div>`;
 
   const mmss = ms => { ms = Math.max(0, Math.round(ms / 1000)); return Math.floor(ms / 60) + ':' + String(ms % 60).padStart(2, '0'); };
 
@@ -260,11 +259,11 @@
 
   // ── Ticker: venue lines + an AI fun fact for the current track ──
   const QUIPS = [
-    'Even the ghosts have good taste.',
-    'Scotland’s most haunted bar, with a jukebox to match.',
-    'Down here, nobody can hear you skip.',
-    'The vaults have heard worse. Probably.',
-  ];
+    'Edd and Cheryl’s house, Edd and Cheryl’s rules.',
+    'Somebody has to choose the next one. Why not you?',
+    'No coins required.',
+    'Turn it up. The neighbours are used to it.',
+];
   let fact = '';
   function setTicker() {
     const line = (fact ? fact + '     •     ' : '') + QUIPS.join('     •     ');

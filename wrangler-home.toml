@@ -1,0 +1,21 @@
+name = "edd-cheryl-jukebox"
+main = "cloudflare-worker-home.js"
+compatibility_date = "2025-04-01"
+
+[vars]
+# This worker also serves the pages (board, phone page, admin) from ./home-site
+SITE_URL = "https://edd-cheryl-jukebox.eddrock79.workers.dev"
+
+[assets]
+directory = "./home-site"
+
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ledger"]
+
+# Secrets (npx wrangler secret put NAME -c wrangler-home.toml):
+#   SESSION_SECRET, DISPLAY_KEY, STAFF_PIN, PLAYER_KEY

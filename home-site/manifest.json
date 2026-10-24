@@ -1,0 +1,8 @@
+{
+  "name": "Edd & Cheryl Jukebox",
+  "short_name": "Edd & Cheryl Jukebox",
+  "start_url": "/board.html",
+  "display": "fullscreen",
+  "background_color": "#050706",
+  "theme_color": "#050706"
+}

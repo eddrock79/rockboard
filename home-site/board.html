@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edd &amp; Cheryl Jukebox</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=EB+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#cfd8d2; }
+  html,body { margin:0; height:100%; background:#000; overflow:hidden; cursor:none; }
+  #stage {
+    position:absolute; left:0; top:0; width:1080px; height:1920px; transform-origin:0 0;
+    box-sizing:border-box; overflow:hidden; padding:28px 64px 0; display:flex; flex-direction:column;
+    color:var(--ink); font-family:'Oswald',sans-serif;
+    background:
+      radial-gradient(60% 40% at 0% 50%, rgba(20,90,50,.55), transparent 70%),
+      radial-gradient(60% 40% at 100% 50%, rgba(20,90,50,.55), transparent 70%),
+      radial-gradient(80% 25% at 50% 100%, rgba(20,90,50,.35), transparent 70%), #050706;
+  }
+  .rule { flex:none; height:2px; background:var(--g); opacity:.7; }
+  /* header */
+  #logo { flex:none; height:320px; display:flex; justify-content:center; }
+  #logo { align-items:center; flex-direction:column; justify-content:center; font-family:'Bebas Neue',sans-serif; color:var(--g); text-align:center; line-height:.9; text-shadow:0 0 50px rgba(110,240,160,.5); }
+  #logo b { font-weight:400; font-size:170px; letter-spacing:.05em; }
+  #logo span { font-size:80px; letter-spacing:.4em; color:var(--ink); margin-top:6px; }
+  #sub { flex:none; margin-top:8px; height:44px; display:flex; align-items:center; gap:24px; }
+  #sub i { flex:1; height:2px; background:var(--g); opacity:.8; }
+  #sub b { font-weight:500; font-size:24px; letter-spacing:.42em; color:var(--g); }
+  /* now playing */
+  #np { flex:none; margin-top:30px; height:300px; display:flex; align-items:center; gap:40px; }
+  #glow { flex:none; width:280px; height:280px; border-radius:50%; animation:pulse 4s ease-in-out infinite; }
+  #rec { position:relative; width:280px; height:280px; border-radius:50%; animation:spin 9s linear infinite; animation-play-state:paused;
+         background:repeating-radial-gradient(circle at center,#030403 0,#030403 3px,#121a15 3px,#121a15 6px); }
+  #rec.on { animation-play-state:running; }
+  #rec .sheen { position:absolute; inset:0; border-radius:50%;
+         background:conic-gradient(from 20deg,transparent 0%,rgba(255,255,255,.15) 6%,transparent 12%,transparent 50%,rgba(255,255,255,.1) 56%,transparent 62%,transparent 100%); }
+  #rec .label { position:absolute; top:50%; left:50%; width:104px; height:104px; margin:-52px 0 0 -52px; border-radius:50%; box-sizing:border-box;
+         border:2px solid var(--g); background:radial-gradient(circle,#1f6b43,#0b2a1a); display:flex; align-items:center; justify-content:center; text-align:center;
+         font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; letter-spacing:.06em; }
+  #rec .label.art { width:150px; height:150px; margin:-75px 0 0 -75px; background-size:cover; background-position:center; color:transparent; }
+  #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:#030403; }
+  #npText { flex:1; min-width:0; display:flex; flex-direction:column; }
+  #npHead { display:flex; align-items:flex-end; justify-content:space-between; }
+  #npHead b { font-weight:600; font-size:26px; letter-spacing:.4em; color:var(--g); }
+  #eq { display:flex; align-items:flex-end; gap:6px; height:52px; }
+  #eq i { width:8px; height:14px; border-radius:3px; background:var(--g); }
+  #eq.on i { animation:eq 1.1s ease-in-out infinite; }
+  #eq.on i:nth-child(2){animation-delay:.2s} #eq.on i:nth-child(3){animation-delay:.45s}
+  #eq.on i:nth-child(4){animation-delay:.1s} #eq.on i:nth-child(5){animation-delay:.35s}
+  #title { margin-top:4px; font-family:'Bebas Neue',sans-serif; font-size:118px; line-height:.98; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #artist { font-weight:500; font-size:36px; letter-spacing:.3em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #bar { margin-top:16px; height:12px; border-radius:6px; background:rgba(255,255,255,.1); overflow:hidden; }
+  #bar i { display:block; width:0; height:100%; border-radius:6px; background:var(--g); box-shadow:0 0 14px var(--g); transition:width 1s linear; }
+  #times { margin-top:6px; display:flex; justify-content:space-between; font-weight:500; font-size:24px; letter-spacing:.12em; color:var(--mute); }
+  /* pick + qr */
+  #pick { flex:none; margin-top:28px; height:330px; display:flex; gap:40px; }
+  #pickL { flex:1; min-width:0; display:flex; flex-direction:column; }
+  #pickL h2 { margin:0; font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:70px; line-height:1; color:var(--g); }
+  #pickL p { margin:4px 0 0; font-weight:500; font-size:32px; letter-spacing:.24em; }
+  #tiers { margin-top:18px; display:flex; flex-direction:column; gap:12px; }
+  .tier { height:84px; box-sizing:border-box; padding:0 28px; display:flex; align-items:center; gap:18px; border-radius:14px; border:2px solid var(--g); background:rgba(110,240,160,.06); font-family:'Bebas Neue',sans-serif; }
+  .tier.best { background:rgba(110,240,160,.12); }
+  .tier .pr { font-size:66px; line-height:1; color:var(--g); }
+  .tier .eqs { font-size:50px; }
+  .tier .n { font-size:66px; line-height:1; }
+  .tier .pl { font-size:46px; letter-spacing:.04em; }
+  .tier .badge { margin-left:auto; padding:4px 14px; border-radius:8px; background:var(--g); color:#04110a; font-family:'Oswald',sans-serif; font-weight:700; font-size:20px; line-height:1.1; letter-spacing:.1em; text-align:center; }
+  #fcfp { margin-top:auto; font-weight:500; font-size:22px; letter-spacing:.34em; color:var(--mute); }
+  #qrBox { flex:none; width:330px; height:330px; box-sizing:border-box; padding:24px; border-radius:6px; background:#fff; position:relative; }
+  #qr { width:282px; height:282px; }
+  #qr img, #qr canvas { width:282px !important; height:282px !important; display:block; }
+  #qrMsg { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; padding:28px; box-sizing:border-box; background:#fff; color:#111; font-weight:600; font-size:24px; line-height:1.3; }
+  /* queue */
+  #qHead { margin-top:18px; height:46px; display:flex; align-items:center; justify-content:space-between; }
+  #qHead b { font-weight:600; font-size:28px; letter-spacing:.4em; color:var(--g); }
+  #qHead span { font-weight:500; font-size:20px; letter-spacing:.2em; color:var(--mute); }
+  .row { height:78px; display:flex; align-items:center; gap:22px; border-bottom:1px solid rgba(255,255,255,.14); }
+  .row:last-child { border-bottom:0; }
+  .row .no { flex:none; width:54px; font-weight:500; font-size:32px; color:var(--g); }
+  .row .nm { flex:1; min-width:0; }
+  .row .t { font-weight:600; font-size:38px; line-height:1.08; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .a { font-weight:400; font-size:24px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .w { flex:none; display:flex; align-items:baseline; gap:14px; }
+  .row .w span { font-weight:500; font-size:20px; letter-spacing:.16em; color:var(--g); }
+  .row .w b { font-weight:600; font-size:40px; min-width:100px; text-align:right; }
+  #qEmpty { height:156px; display:flex; align-items:center; font-family:'EB Garamond',serif; font-style:italic; font-size:34px; color:var(--mute); }
+  /* top 10 */
+  #topHead { margin-top:16px; height:44px; display:flex; align-items:center; font-weight:600; font-size:28px; letter-spacing:.4em; color:var(--g); }
+  #topGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:44px; font-weight:400; font-size:28px; }
+  .tr { height:42px; display:flex; align-items:center; gap:16px; }
+  .tr span { flex:none; width:40px; color:var(--g); }
+  .tr em { font-style:normal; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ticker */
+  #tick { flex:none; margin-top:auto; margin-bottom:36px; height:64px; box-sizing:border-box; display:flex; align-items:center; border-top:2px solid var(--g); border-bottom:2px solid rgba(110,240,160,.3); }
+  #tick b { flex:none; padding-right:22px; font-weight:600; font-size:22px; letter-spacing:.3em; color:var(--g); }
+  #tickWrap { flex:1; min-width:0; overflow:hidden; white-space:nowrap; }
+  #tickText { display:inline-block; padding-left:20px; font-family:'EB Garamond',serif; font-style:italic; font-size:30px; animation:marq 30s linear infinite; }
+  #offline { position:absolute; top:8px; right:14px; font-size:18px; letter-spacing:.2em; color:#ff9b9b; display:none; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes eq { 0%,100% { height:12px; } 50% { height:50px; } }
+  @keyframes marq { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+  @keyframes pulse { 0%,100% { box-shadow:0 0 0 3px #0e1a14,0 0 40px rgba(110,240,160,.35); } 50% { box-shadow:0 0 0 3px #0e1a14,0 0 64px rgba(110,240,160,.6); } }
+  @media (prefers-reduced-motion:reduce) { #rec, #glow, #eq i, #tickText { animation:none !important; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="offline">RECONNECTING…</div>
+  <div id="logo"><b>EDD &amp; CHERYL</b><span>JUKEBOX</span></div>
+  <div id="sub"><i></i><b>HOME SWEET HOME</b><i></i></div>
+
+  <div id="np">
+    <div id="glow"><div id="rec"><div class="sheen"></div><div class="label">EDD &amp;<br>CHERYL</div><div class="hole"></div></div></div>
+    <div id="npText">
+      <div id="npHead"><b>NOW PLAYING</b><div id="eq"><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div id="title">Waiting for music</div>
+      <div id="artist">&nbsp;</div>
+      <div id="bar"><i></i></div>
+      <div id="times"><span id="tPos">0:00</span><span id="tLeft"></span></div>
+    </div>
+  </div>
+
+  <div class="rule" style="margin-top:26px"></div>
+
+  <div id="pick">
+    <div id="pickL">
+      <h2>Pick the next track</h2>
+      <p>Scan. Choose. Play.</p>
+      <div id="tiers"></div>
+      <div id="fcfp">FIRST COME, FIRST PLAYED.</div>
+    </div>
+    <div id="qrBox"><div id="qr"></div><div id="qrMsg"></div></div>
+  </div>
+
+  <div class="rule" style="margin-top:28px"></div>
+
+  <div id="qHead"><b>UP NEXT</b><span id="qCount"></span></div>
+  <div id="queue"></div>
+
+  <div class="rule" style="margin-top:16px"></div>
+
+  <div id="topHead">ALL-TIME TOP 10</div>
+  <div id="topGrid"></div>
+
+  <div id="tick"><b>FROM THE HOUSE</b><div id="tickWrap"><span id="tickText"></span></div></div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  const CFG = window.BANSHEE;
+  const stage = document.getElementById('stage');
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+  // Fit the 1080x1920 stage to whatever the screen is (TV, laptop, preview).
+  function fit() {
+    const s = Math.min(innerWidth / 1080, innerHeight / 1920);
+    stage.style.transform = `scale(${s})`;
+    stage.style.left = (innerWidth - 1080 * s) / 2 + 'px';
+    stage.style.top = (innerHeight - 1920 * s) / 2 + 'px';
+  }
+  addEventListener('resize', fit); fit();
+
+  // Price cards
+  $('tiers').innerHTML = `<div class="tier best"><span class="pr">FREE</span><span class="eqs">=</span><span class="pl">PLAY AS MUCH AS YOU LIKE</span></div>`;
+
+  const mmss = ms => { ms = Math.max(0, Math.round(ms / 1000)); return Math.floor(ms / 60) + ':' + String(ms % 60).padStart(2, '0'); };
+
+  // ── Now playing + queue ──
+  let state = null, offlineCount = 0, lastTrackId = null;
+  async function pollState() {
+    try {
+      const r = await fetch(CFG.workerUrl + '/state');
+      state = await r.json();
+      state.recvAt = Date.now();
+      offlineCount = 0; $('offline').style.display = 'none';
+      render(); onTrackChange();
+    } catch (e) {
+      if (++offlineCount >= 3) $('offline').style.display = 'block';
+    }
+  }
+  function nowProgress() {
+    if (!state || !state.track) return 0;
+    return state.track.progress + (state.playing ? Date.now() - state.recvAt : 0);
+  }
+  function render() {
+    const s = state, t = s && s.track;
+    const on = !!(s && s.playing);
+    $('rec').classList.toggle('on', on);
+    $('eq').classList.toggle('on', on);
+    fitTitle(t ? t.name : 'Waiting for music');
+    const lab = document.querySelector('#rec .label'), art = t && t.image ? (t.image.charAt(0) === '/' ? CFG.workerUrl + t.image : t.image) : '';
+    if (lab.dataset.art !== art) { lab.dataset.art = art; lab.style.backgroundImage = art ? 'url("' + art + '")' : ''; lab.classList.toggle('art', !!art); }
+    if (!t) {
+      $('title').textContent = 'Waiting for music';
+      $('artist').innerHTML = '&nbsp;';
+      $('tPos').textContent = '0:00'; $('tLeft').textContent = '';
+      $('bar').firstElementChild.style.width = '0';
+    } else {
+      $('artist').textContent = t.artist;
+      tickProgress();
+    }
+    // Queue with wait times
+    const q = (s && s.queue) || [];
+    const remaining = t ? Math.max(0, t.duration - nowProgress()) : 0;
+    $('qCount').textContent = q.length ? (q.length === 1 ? '1 TRACK WAITING' : q.length + ' TRACKS WAITING') : '';
+    if (!q.length) {
+      $('queue').innerHTML = '<div id="qEmpty">The queue is empty. Scan the code and pick the next track.</div>';
+    } else {
+      let acc = remaining;
+      $('queue').innerHTML = q.slice(0, 4).map((x, i) => {
+        const when = acc; acc += x.duration;
+        return `<div class="row"><div class="no">${String(i + 1).padStart(2, '0')}</div>` +
+               `<div class="nm"><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div>` +
+               `<div class="w"><span>PLAYS IN</span><b data-wait="${when}">${mmss(when)}</b></div></div>`;
+      }).join('');
+      state.qBase = { at: Date.now(), remaining };
+    }
+  }
+  // Long titles shrink to fit on one line instead of being cut off.
+  function fitTitle(text) {
+    const el = $('title');
+    if (el.dataset.text === text) return;
+    el.dataset.text = text; el.textContent = text;
+    let size = 118; el.style.fontSize = size + 'px';
+    while (el.scrollWidth > el.clientWidth && size > 52) { size -= 4; el.style.fontSize = size + 'px'; }
+  }
+  function tickProgress() {
+    if (!state || !state.track) return;
+    const t = state.track, pos = Math.min(t.duration, nowProgress());
+    $('bar').firstElementChild.style.width = (pos / t.duration * 100).toFixed(1) + '%';
+    $('tPos').textContent = mmss(pos);
+    $('tLeft').textContent = mmss(t.duration - pos) + ' REMAINING';
+    // keep the wait times counting down between polls
+    if (state.qBase && state.playing) {
+      const elapsed = Date.now() - state.qBase.at;
+      document.querySelectorAll('#queue [data-wait]').forEach(el => {
+        el.textContent = mmss(Number(el.dataset.wait) - elapsed);
+      });
+    }
+  }
+  setInterval(tickProgress, 1000);
+  pollState(); setInterval(pollState, 5000);
+
+  // ── Top 10 ──
+  async function loadTop() {
+    try {
+      const { top } = await (await fetch(CFG.workerUrl + '/top10')).json();
+      const rows = Array.from({ length: 10 }, (_, i) => top[i]);
+      const cell = (x, i) => `<div class="tr"><span>${String(i + 1).padStart(2, '0')}</span><em>${x ? esc(x.name) : '—'}</em></div>`;
+      $('topGrid').innerHTML =
+        `<div>${rows.slice(0, 5).map((x, i) => cell(x, i)).join('')}</div>` +
+        `<div>${rows.slice(5).map((x, i) => cell(x, i + 5)).join('')}</div>`;
+    } catch (e) {}
+  }
+  loadTop(); setInterval(loadTop, 120000);
+
+  // ── Ticker: venue lines + an AI fun fact for the current track ──
+  const QUIPS = [
+    'Edd and Cheryl’s house, Edd and Cheryl’s rules.',
+    'Somebody has to choose the next one. Why not you?',
+    'No coins required.',
+    'Turn it up. The neighbours are used to it.',
+];
+  let fact = '';
+  function setTicker() {
+    const line = (fact ? fact + '     •     ' : '') + QUIPS.join('     •     ');
+    const unit = line + '          ';
+    $('tickText').innerHTML = esc(unit) + esc(unit);
+    $('tickText').style.animationDuration = Math.max(25, unit.length * 0.2) + 's';
+  }
+  setTicker();
+  async function onTrackChange() {
+    const t = state && state.track;
+    const id = t ? t.id : null;
+    if (id === lastTrackId) return;
+    lastTrackId = id; fact = ''; setTicker();
+    if (!t) return;
+    try {
+      const r = await (await fetch(`${CFG.workerUrl}/fact?name=${encodeURIComponent(t.name)}&artist=${encodeURIComponent(t.artist)}`)).json();
+      if (r.fact && lastTrackId === id) { fact = r.fact; setTicker(); }
+    } catch (e) {}
+  }
+
+  // ── QR code: carries the rotating session token ──
+  // Open this page once as board.html?key=YOUR_DISPLAY_KEY on the TV PC.
+  const keyParam = new URLSearchParams(location.search).get('key');
+  try { if (keyParam) { localStorage.setItem('bb_display_key', keyParam); history.replaceState(null, '', location.pathname); } } catch (e) {}
+  let displayKey = ''; try { displayKey = localStorage.getItem('bb_display_key') || ''; } catch (e) {}
+  let qrToken = null, qrObj = null;
+  function showQrMsg(msg) { const m = $('qrMsg'); m.textContent = msg; m.style.display = msg ? 'flex' : 'none'; }
+  async function refreshQr() {
+    if (!displayKey) { showQrMsg('Display key missing. Open this page once with ?key=YOUR_KEY'); return; }
+    try {
+      const r = await fetch(CFG.workerUrl + '/session-token', { headers: { 'X-Display-Key': displayKey } });
+      if (!r.ok) { showQrMsg('Display key not accepted'); return; }
+      const { token } = await r.json();
+      showQrMsg('');
+      if (token === qrToken) return;
+      qrToken = token;
+      const link = new URL('./', location.href).href + '?s=' + encodeURIComponent(token);
+      $('qr').innerHTML = '';
+      qrObj = new QRCode($('qr'), { text: link, width: 564, height: 564, correctLevel: QRCode.CorrectLevel.M });
+    } catch (e) { /* keep showing the current code */ }
+  }
+  refreshQr(); setInterval(refreshQr, 10 * 60 * 1000);
+
+  // Gentle nightly refresh at 03:30 so the page never goes stale.
+  setInterval(() => { const d = new Date(); if (d.getHours() === 3 && d.getMinutes() === 30 && d.getSeconds() < 30) location.reload(); }, 30000);
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Banshee Jukebox · Staff</title>
+<title>Edd &amp; Cheryl Jukebox · Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#aab6af; --card:#0e1512; }
@@ -34,7 +34,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>BANSHEE JUKEBOX · STAFF</h1>
+  <h1>EDD &amp; CHERYL JUKEBOX · ADMIN</h1>
   <div id="login">
     <input id="pin" type="password" inputmode="numeric" placeholder="Staff PIN" autocomplete="off">
     <button id="go" style="width:100%">UNLOCK</button>
@@ -53,11 +53,7 @@
     </div>
     <div id="sBox" style="display:none"><input id="qs" type="search" placeholder="Start typing a song name" autocomplete="off"></div>
     <div id="sres"></div>
-    <h3>GIVE A GUEST PLAYS</h3>
-    <div class="row"><input id="gcode" placeholder="Guest code" autocapitalize="characters"><input id="gn" type="number" min="1" max="20" value="1"></div>
-    <button id="grant" style="width:100%">GIVE PLAYS</button>
     <h3>ARTISTS PLAYED SO FAR</h3><div id="artists"></div>
-    <h3>RECENT SALES</h3><div id="sales"></div>
   </div>
 </div>
 <script src="config.js"></script>
@@ -87,7 +83,6 @@
     $('queue').querySelectorAll('.rm').forEach(b => b.onclick = async () => { const q = await api('/staff/remove', { method: 'POST', body: JSON.stringify({ uri: b.dataset.uri }) }); say(q.ok ? 'Removed from the queue' : (q.error || 'Failed')); refresh(); });
     const ar = await api('/staff/artists');
     $('artists').innerHTML = (ar.artists || []).length ? '<div class="card" style="font-size:15px;line-height:1.7">' + ar.artists.map(a => `${esc(a.name)} <span style="color:var(--g)">${a.count}</span>`).join(' &nbsp;·&nbsp; ') + '</div>' : '<div class="card a">None yet. This fills up as guests request songs.</div>';
-    $('sales').innerHTML = (r.sales || []).slice(0, 15).map(x => `<div class="sale"><span>${new Date(x.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · code ${esc(x.code)}</span><span>£${(x.amountPence / 100).toFixed(2)} · ${x.plays} plays</span></div>`).join('') || '<div class="sale">No sales yet</div>';
   }
   for (const [id, path, text] of [['skip', 'skip', 'Skipped'], ['pause', 'pause', 'Paused'], ['play', 'play', 'Playing']])
     $(id).onclick = async () => { await api('/staff/' + path, { method: 'POST' }); say(text); setTimeout(refresh, 800); };
@@ -132,10 +127,6 @@
     });
   }
   $('qa').oninput = deb(findArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(findSongs); $('aX').onclick = resetArtist;
-  $('grant').onclick = async () => {
-    const r = await api('/staff/grant', { method: 'POST', body: JSON.stringify({ code: $('gcode').value.trim(), plays: $('gn').value }) });
-    say(r.ok ? `Done. Guest now has ${r.plays} plays` : (r.error || 'Failed'));
-  };
   if (pin) unlock();
 })();
 </script>

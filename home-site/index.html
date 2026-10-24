@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050706">
+<title>Edd &amp; Cheryl Jukebox · Pick a Track</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#aab6af; --bg:#050706; --card:#0e1512; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Oswald',sans-serif; min-height:100vh;
+         background-image:radial-gradient(70% 30% at 0 40%,rgba(20,90,50,.5),transparent 70%),radial-gradient(70% 30% at 100% 70%,rgba(20,90,50,.4),transparent 70%); }
+  .wrap { max-width:520px; margin:0 auto; padding:16px 16px 120px; }
+  .brand { text-align:center; font-family:'Bebas Neue',sans-serif; color:var(--g); line-height:.95; text-shadow:0 0 28px rgba(110,240,160,.45); }
+  .brand b { display:block; font-weight:400; font-size:58px; letter-spacing:.06em; }
+  .brand span { display:block; font-size:30px; letter-spacing:.3em; color:var(--ink); }
+  header img { display:block; height:104px; width:auto; margin:0 auto; }
+  header p { margin:4px 0 0; text-align:center; font-size:13px; letter-spacing:.38em; color:var(--g); font-weight:500; }
+  #bal { margin:16px 0 14px; display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid rgba(110,240,160,.35); border-radius:14px; padding:12px 14px; }
+  #bal .n { font-family:'Bebas Neue',sans-serif; font-size:52px; line-height:1; color:var(--g); min-width:42px; text-align:center; }
+  #bal .l { flex:1; font-size:14px; letter-spacing:.12em; color:var(--mute); line-height:1.3; }
+  #bal .l small { display:block; font-size:11px; letter-spacing:.14em; opacity:.8; }
+  button { font-family:inherit; cursor:pointer; }
+  .btn { background:var(--g); color:#04110a; border:0; border-radius:10px; padding:12px 16px; font-weight:700; font-size:15px; letter-spacing:.1em; }
+  .btn.ghost { background:transparent; color:var(--ink); border:1px solid rgba(255,255,255,.3); }
+  .btn:disabled { opacity:.5; }
+  #q { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.18); border-radius:12px; padding:15px 16px; font:500 18px 'Oswald',sans-serif; outline:none; }
+  #q:focus, .inp:focus { border-color:var(--g); }
+  .inp { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.18); border-radius:12px; padding:15px 16px; font:500 18px 'Oswald',sans-serif; outline:none; margin-bottom:8px; }
+  #modes { display:flex; gap:8px; margin-bottom:10px; }
+  .mode { flex:1; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:11px 8px; font-weight:600; font-size:15px; letter-spacing:.1em; }
+  .mode.on { background:rgba(110,240,160,.14); color:var(--g); border-color:var(--g); }
+  .pill { display:none; align-items:center; gap:10px; background:rgba(110,240,160,.1); border:1px solid var(--g); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .pill span { flex:1; font-weight:600; font-size:18px; }
+  .pill button { background:transparent; border:0; color:var(--ink); font-size:20px; padding:2px 8px; }
+  .mode { font-size:14px; letter-spacing:.06em; }
+  #bnav { display:flex; gap:8px; margin-bottom:8px; }
+  #bnav button { flex:1; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:8px; font-weight:600; font-size:13px; letter-spacing:.14em; }
+  #bnav button.on { color:var(--g); border-color:var(--g); background:rgba(110,240,160,.1); }
+  #letters { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
+  #letters::-webkit-scrollbar, #carousel::-webkit-scrollbar { display:none; }
+  .lt { flex:none; min-width:38px; height:38px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:var(--ink); font-weight:600; font-size:16px; }
+  .lt.on { background:var(--g); color:#04110a; border-color:var(--g); }
+  .lt:disabled { opacity:.22; }
+  #carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px; }
+  #carousel .msg { padding:20px 0; width:100%; }
+  .card { flex:none; align-self:flex-start; display:block; width:132px; scroll-snap-align:start; background:none; border:0; color:var(--ink); text-align:left; padding:0; }
+  .card img, .card .ph { width:132px; height:132px; border-radius:10px; object-fit:cover; background:#16201b; display:block; border:2px solid transparent; }
+  .card img.round, .card .ph.round { border-radius:50%; }
+  .card.sel img, .card.sel .ph { border-color:var(--g); }
+  .card .t { margin-top:7px; font-weight:600; font-size:15px; line-height:1.15; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card .a { font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lbl { margin:2px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
+  .item .ph.round, .item img.round { border-radius:50%; }
+  h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
+  .item { display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px; margin-bottom:8px; }
+  .item img, .item .ph { width:54px; height:54px; border-radius:8px; object-fit:cover; background:#16201b; flex:none; }
+  .item .t { font-weight:600; font-size:18px; line-height:1.15; }
+  .item .a { font-size:14px; color:var(--mute); }
+  .item .nm { min-width:0; flex:1; }
+  .item .nm div { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .w { flex:none; text-align:right; font-size:11px; letter-spacing:.12em; color:var(--g); }
+  .item .w b { display:block; font-size:18px; color:var(--ink); letter-spacing:0; }
+  .item.mine { border-color:rgba(110,240,160,.5); }
+  .msg { text-align:center; color:var(--mute); padding:28px 12px; line-height:1.5; }
+  .gate { text-align:center; padding:48px 20px; }
+  .gate h2 { font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:44px; margin:0 0 8px; color:var(--g); }
+  .sheet-bg { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+  .sheet { width:100%; max-width:520px; background:#0b110e; border:1px solid rgba(110,240,160,.35); border-radius:18px 18px 0 0; padding:20px 18px calc(22px + env(safe-area-inset-bottom)); }
+  .sheet h2 { margin:0 0 4px; font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:34px; letter-spacing:.02em; }
+  .sheet p { margin:0 0 14px; color:var(--mute); font-size:15px; line-height:1.4; }
+  .row2 { display:flex; gap:10px; }
+  .row2 .btn { flex:1; }
+  .tier { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--card); color:var(--ink); border:2px solid var(--g); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+  .tier .p { font-family:'Bebas Neue',sans-serif; font-size:38px; color:var(--g); }
+  .tier .g { font-size:20px; font-weight:600; letter-spacing:.06em; }
+  .tier .b { font-size:11px; background:var(--g); color:#04110a; padding:2px 8px; border-radius:6px; font-weight:700; letter-spacing:.1em; margin-left:8px; }
+  #toast { position:fixed; left:50%; top:16px; transform:translateX(-50%); background:#0b110e; border:1px solid var(--g); border-radius:12px; padding:12px 16px; max-width:90%; font-size:15px; text-align:center; z-index:30; display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="brand"><b>EDD &amp; CHERYL</b><span>JUKEBOX</span></div><p>PICK A TUNE · IT’S ALL FREE</p></header>
+  <div id="app"></div>
+</div>
+<div id="toast"></div>
+<div class="sheet-bg" id="sheetBg"><div class="sheet" id="sheet"></div></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  const CFG = window.BANSHEE, W = CFG.workerUrl;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const mmss = ms => { ms = Math.max(0, Math.round(ms / 1000)); return Math.floor(ms / 60) + ':' + String(ms % 60).padStart(2, '0'); };
+
+  // ── session: arrives via the QR on the screen (?s=TOKEN) ──
+  const u = new URL(location.href);
+  const fromQr = u.searchParams.get('s');
+  if (fromQr) { ls.set('bb_session', fromQr); u.searchParams.delete('s'); history.replaceState(null, '', u.pathname + u.search); }
+  let session = ls.get('bb_session') || '';
+  let device = ls.get('bb_device');
+  if (!device) { device = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); ls.set('bb_device', device); }
+
+  async function api(path, opts = {}) {
+    const res = await fetch(W + path, { ...opts, headers: { 'Content-Type': 'application/json', 'X-Session': session, ...(opts.headers || {}) } });
+    let data = {}; try { data = await res.json(); } catch (e) {}
+    return { status: res.status, ...data };
+  }
+
+  let waiting = 0, maxQ = 5, plays = 0, code = '', state = null, results = [], lastKind = '';
+  const mine = new Set(JSON.parse(ls.get('bb_mine') || '[]'));
+  function toast(msg, ms = 4500) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
+  function gate(msg) {
+    $('app').innerHTML = `<div class="gate"><h2>Scan the screen</h2><div class="msg">${esc(msg || 'Scan the QR code on the jukebox screen to start picking tracks.')}</div></div>`;
+  }
+
+  function shell() {
+    $('app').innerHTML = `
+      <div id="bal"><div class="n" id="plays">0</div><div class="l">OF YOUR <span id="max">5</span> SONGS WAITING<small>FREE PLAYS · NO LIMIT OVERALL</small></div></div>
+      <div id="modes">${CFG.browse ? '<button class="mode" data-m="browse">BROWSE</button>' : ''}<button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
+      <div id="browseBox" style="display:none">
+        <div id="bnav"><button class="on" data-k="albums">ALBUMS A–Z</button><button data-k="artists">ARTISTS A–Z</button></div>
+        <div id="letters"></div>
+        <div id="bpill" class="pill"><span id="bpillName"></span><button id="bpillX" aria-label="Back to browsing">&#10005;</button></div>
+        <div id="carousel"></div>
+      </div>
+      <div id="artistBox">
+        <div id="artistStep"><input id="qa" class="inp" type="search" placeholder="Start typing an artist name" autocomplete="off" autocapitalize="off" enterkeyhint="search"><div id="artistList"></div></div>
+        <div id="artistPill" class="pill"><span id="pillName"></span><button id="pillX" aria-label="Choose a different artist">&#10005;</button></div>
+        <input id="qt" class="inp" type="search" placeholder="Pick from the list or type to search" autocomplete="off" autocapitalize="off" style="display:none">
+      </div>
+      <div id="songBox" style="display:none"><input id="qs" class="inp" type="search" placeholder="Start typing a song name" autocomplete="off" autocapitalize="off" enterkeyhint="search"></div>
+      <div id="results"></div>
+      <h3>UP NEXT ON THE SCREEN</h3>
+      <div id="queue"></div>`;
+    document.querySelectorAll('.mode').forEach(b => b.onclick = () => setMode(b.dataset.m));
+    const deb = (fn) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, 350); }; };
+    $('qa').oninput = deb(searchArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(searchSongs);
+    $('pillX').onclick = resetArtist;
+    document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => { bKind = b.dataset.k; bLetter = ''; bArtist = null; artist = null; results = []; paintResults(); loadLetters(); });
+    $('bpillX').onclick = () => { bArtist = null; artist = null; results = []; paintResults(); loadLetters(); };
+    refreshBal(); pollState(); setInterval(pollState, 8000); setInterval(refreshBal, 12000);
+    setMode(CFG.browse ? 'browse' : 'artist');
+  }
+  function paintBal() { $('plays').textContent = waiting; $('max').textContent = maxQ; }
+  async function refreshBal() {
+    const r = await api('/balance?device_id=' + encodeURIComponent(device));
+    if (r.status === 401) return gate();
+    if (r.free) { maxQ = r.max; waiting = r.waiting; paintBal(); }
+    return plays;
+  }
+
+  // ── wait time maths (same as the screen) ──
+  function waits() {
+    if (!state) return null;
+    const t = state.track;
+    let acc = t ? Math.max(0, t.duration - (t.progress + (state.playing ? Date.now() - state.recvAt : 0))) : 0;
+    const map = {};
+    (state.queue || []).forEach(x => { map[x.uri] = acc; acc += x.duration; });
+    return { map, end: acc };
+  }
+  async function pollState() {
+    try { state = await (await fetch(W + '/state')).json(); state.recvAt = Date.now(); } catch (e) { return; }
+    paintQueue(); paintResults();
+  }
+  function paintQueue() {
+    const w = waits(); if (!w || !$('queue')) return;
+    const q = state.queue || [];
+    $('queue').innerHTML = q.length ? q.map(x =>
+      `<div class="item${mine.has(x.uri) ? ' mine' : ''}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +
+      `<div class="nm"><div class="t">${esc(x.name)}${mine.has(x.uri) ? ' · YOURS' : ''}</div><div class="a">${esc(x.artist)}</div></div>` +
+      `<div class="w">PLAYS IN<b>${mmss(w.map[x.uri])}</b></div></div>`).join('')
+      : '<div class="msg">Nothing waiting. Pick the next track.</div>';
+  }
+
+  // ── search + request ──
+  let mode = 'artist', artist = null;
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    $('artistBox').style.display = m === 'artist' ? '' : 'none';
+    $('songBox').style.display = m === 'song' ? '' : 'none';
+    $('browseBox').style.display = m === 'browse' ? '' : 'none';
+    bArtist = null; albumCtx = null;
+    resetArtist(); $('qs').value = ''; results = []; paintResults();
+    if (m === 'browse') loadLetters();
+  }
+
+  // ── browse: swipeable covers, albums or artists A–Z ──
+  let bKind = 'albums', bLetter = '', bArtist = null, bLetters = {}, albumCtx = null;
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+  async function loadLetters() {
+    $('bpill').style.display = 'none'; $('bnav').style.display = ''; $('letters').style.display = '';
+    document.querySelectorAll('#bnav button').forEach(b => b.classList.toggle('on', b.dataset.k === bKind));
+    const r = await api('/browse/letters?kind=' + bKind);
+    if (r.status === 401) return gate();
+    bLetters = r.letters || {};
+    if (!bLetters[bLetter]) bLetter = LETTERS.find(l => bLetters[l]) || '';
+    paintLetters(); loadCards();
+  }
+  function paintLetters() {
+    $('letters').innerHTML = LETTERS.map(l => `<button class="lt${l === bLetter ? ' on' : ''}" data-l="${l}"${bLetters[l] ? '' : ' disabled'}>${l}</button>`).join('');
+    $('letters').querySelectorAll('.lt').forEach(b => b.onclick = () => { bLetter = b.dataset.l; albumCtx = null; results = []; paintResults(); paintLetters(); loadCards(); });
+    const on = $('letters').querySelector('.on'); if (on) $('letters').scrollLeft = Math.max(0, on.offsetLeft - 90);
+  }
+  async function loadCards() {
+    const box = $('carousel');
+    if (!bArtist && !bLetter) { box.innerHTML = '<div class="msg">Nothing to browse yet.</div>'; return; }
+    box.innerHTML = '<div class="msg">Loading…</div>';
+    const r = await api(bArtist ? '/browse/albums?artist_id=' + encodeURIComponent(bArtist.id) : '/browse/' + bKind + '?letter=' + encodeURIComponent(bLetter));
+    if (r.status === 401) return gate();
+    const items = r.items || [], isArtist = !bArtist && bKind === 'artists';
+    box.innerHTML = items.length ? items.map((x, i) =>
+      `<button class="card" data-i="${i}">${x.image ? `<img${isArtist ? ' class="round"' : ''} src="${esc(x.image)}" alt="" loading="lazy">` : `<div class="ph${isArtist ? ' round' : ''}"></div>`}` +
+      `<div class="t">${esc(x.name)}</div><div class="a">${esc(isArtist ? x.n + (x.n === 1 ? ' track' : ' tracks') : x.artist)}</div></button>`).join('')
+      : `<div class="msg">${bArtist ? 'No albums listed. Tracks are below.' : 'Nothing here.'}</div>`;
+    box.scrollLeft = 0;
+    box.querySelectorAll('.card').forEach(b => b.onclick = () => isArtist ? browseArtist(items[b.dataset.i]) : openAlbum(items[b.dataset.i], b));
+  }
+  async function openAlbum(a, btn) {
+    document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel')); btn.classList.add('sel');
+    albumCtx = a; $('results').innerHTML = '<div class="msg">Loading…</div>';
+    const r = await api('/search?album_id=' + encodeURIComponent(a.id));
+    if (r.status === 401) return gate();
+    results = r.items || []; paintResults('album');
+    $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function browseArtist(a) {
+    bArtist = a; artist = a; albumCtx = null; results = []; paintResults();
+    $('bnav').style.display = 'none'; $('letters').style.display = 'none';
+    $('bpill').style.display = 'flex'; $('bpillName').textContent = a.name;
+    await loadCards();
+    const r = await api('/search?artist_id=' + encodeURIComponent(a.id) + '&artist=' + encodeURIComponent(a.name));
+    results = r.items || []; paintResults('top');
+  }
+  async function searchArtists() {
+    const q = $('qa').value.trim();
+    if (q.length < 2) { $('artistList').innerHTML = ''; return; }
+    const r = await api('/search-artists?q=' + encodeURIComponent(q));
+    if (r.status === 401) return gate();
+    const list = r.items || [];
+    $('artistList').innerHTML = list.length ? list.map((a, i) =>
+      `<button class="item" data-i="${i}">${a.image ? `<img class="round" src="${esc(a.image)}" alt="">` : '<div class="ph round"></div>'}<div class="nm"><div class="t">${esc(a.name)}</div></div></button>`).join('')
+      : '<div class="msg">No artists found. Try another spelling.</div>';
+    $('artistList').querySelectorAll('.item').forEach(b => b.onclick = () => pickArtist(list[b.dataset.i]));
+  }
+  function pickArtist(a) {
+    artist = a;
+    $('artistStep').style.display = 'none'; $('artistList').innerHTML = '';
+    $('artistPill').style.display = 'flex'; $('pillName').textContent = a.name;
+    $('qt').style.display = ''; $('qt').value = '';
+    loadTracks();
+  }
+  function resetArtist() {
+    artist = null;
+    $('artistStep').style.display = ''; $('qa').value = ''; $('artistList').innerHTML = '';
+    $('artistPill').style.display = 'none'; $('qt').style.display = 'none'; $('qt').value = '';
+    results = []; paintResults();
+  }
+  async function loadTracks() {
+    if (!artist) return;
+    const q = $('qt').value.trim();
+    $('results').innerHTML = '<div class="msg">Loading…</div>';
+    const r = await api('/search?artist_id=' + encodeURIComponent(artist.id) + '&artist=' + encodeURIComponent(artist.name) + (q.length >= 2 ? '&q=' + encodeURIComponent(q) : ''));
+    if (r.status === 401) return gate();
+    results = r.items || []; paintResults(q.length >= 2 ? 'search' : 'top');
+  }
+  async function searchSongs() {
+    const q = $('qs').value.trim();
+    if (q.length < 2) { results = []; paintResults(); return; }
+    const r = await api('/search?q=' + encodeURIComponent(q));
+    if (r.status === 401) return gate();
+    results = r.items || []; paintResults('search');
+  }
+  function paintResults(kind) {
+    const el = $('results'); if (!el) return;
+    if (kind) lastKind = kind; else if (!results.length) lastKind = ''; kind = kind || lastKind;
+    if (!results.length) { el.innerHTML = kind ? '<div class="msg">No tracks found. Try another spelling.</div>' : ''; return; }
+    const w = waits(); const end = w ? w.end : null;
+    el.innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : '') +
+      (kind === 'album' && albumCtx ? `<div class="lbl">${esc((albumCtx.name + ' · ' + albumCtx.artist).toUpperCase())}</div>` : '') + results.map((x, i) =>
+      `<button class="item" data-i="${i}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +
+      `<div class="nm"><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div>` +
+      (end !== null ? `<div class="w">PLAYS IN<b>~${mmss(end)}</b></div>` : '') + `</button>`).join('');
+    el.querySelectorAll('.item').forEach(b => b.onclick = () => confirmTrack(results[b.dataset.i]));
+  }
+  function sheet(html) { $('sheet').innerHTML = html; $('sheetBg').style.display = 'flex'; }
+  function closeSheet() { $('sheetBg').style.display = 'none'; }
+  $('sheetBg').onclick = e => { if (e.target === $('sheetBg')) closeSheet(); };
+
+  function confirmTrack(t) {
+    if (waiting >= maxQ) return toast(`You already have ${maxQ} songs waiting. Let some play first.`);
+    const w = waits();
+    sheet(`<h2>${esc(t.name)}</h2><p>${esc(t.artist)}<br>Free to play.${w ? ` It should play in about ${mmss(w.end)}.` : ''}</p>
+      <div class="row2"><button class="btn ghost" id="no">CANCEL</button><button class="btn" id="yes">ADD TO QUEUE</button></div>`);
+    $('no').onclick = closeSheet;
+    $('yes').onclick = async () => {
+      $('yes').disabled = true;
+      const r = await api('/request', { method: 'POST', body: JSON.stringify({ device_id: device, uri: t.uri }) });
+      closeSheet();
+      if (r.ok) {
+        waiting = Math.min(maxQ, waiting + 1); paintBal(); mine.add(t.uri); ls.set('bb_mine', JSON.stringify([...mine].slice(-30)));
+        setMode(mode);
+        await pollState();
+        const w2 = waits(); toast(`Queued! "${t.name}" plays in about ${w2 && w2.map[t.uri] !== undefined ? mmss(w2.map[t.uri]) : 'a few minutes'}.`);
+      } else toast(r.error || 'Something went wrong. Try again.');
+    };
+  }
+
+  // ── buying plays ──
+  function openBuy() {
+    sheet(`<h2>Get plays</h2><p>Each play puts one track in the queue. Pay by card, Apple Pay or Google Pay.</p>` +
+      CFG.tiers.map(t => `<button class="tier" data-id="${t.id}"><span class="p">${esc(t.price)}</span><span class="g">${t.plays} PLAYS${t.best ? '<span class="b">BEST VALUE</span>' : ''}</span></button>`).join('') +
+      `<button class="btn ghost" id="close" style="width:100%">CLOSE</button>`);
+    $('close').onclick = closeSheet;
+    document.querySelectorAll('.tier').forEach(b => b.onclick = async () => {
+      document.querySelectorAll('.tier').forEach(x => x.disabled = true);
+      ls.set('bb_plays_before', String(plays));
+      const r = await api('/create-checkout', { method: 'POST', body: JSON.stringify({ device_id: device, tier: b.dataset.id }) });
+      if (r.url) { location.href = r.url; return; }
+      document.querySelectorAll('.tier').forEach(x => x.disabled = false);
+      toast(r.error || 'Could not start checkout. Try again.');
+    });
+  }
+  async function afterPayment() {
+    const before = Number(ls.get('bb_plays_before') || 0);
+    toast('Payment received. Adding your plays…', 8000);
+    for (let i = 0; i < 20; i++) {
+      await refreshBal();
+      if (plays > before) { toast(`You now have ${plays} plays. Pick a track!`); return; }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    toast(`Still adding your plays. If they don't appear, tell staff your code: ${code}`, 10000);
+  }
+
+  // ── start ──
+  (async function init() {
+    if (!session) return gate();
+    const ok = await (await fetch(W + '/check-session?s=' + encodeURIComponent(session))).json().catch(() => ({}));
+    if (!ok.ok) return gate('That code has expired. Scan the QR code on the screen again.');
+    shell();
+    if (u.searchParams.get('paid') === '1') { u.searchParams.delete('paid'); history.replaceState(null, '', u.pathname + u.search); afterPayment(); }
+  })();
+})();
+</script>
+</body>
+</html>

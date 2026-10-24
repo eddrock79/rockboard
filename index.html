@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050706">
-<title>The Banshee Labyrinth · Pick a Track</title>
-<link rel="icon" href="assets/banshee-logo.png">
+<title>Edd &amp; Cheryl Jukebox · Pick a Track</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#aab6af; --bg:#050706; --card:#0e1512; }
@@ -13,6 +12,9 @@
   body { margin:0; background:var(--bg); color:var(--ink); font-family:'Oswald',sans-serif; min-height:100vh;
          background-image:radial-gradient(70% 30% at 0 40%,rgba(20,90,50,.5),transparent 70%),radial-gradient(70% 30% at 100% 70%,rgba(20,90,50,.4),transparent 70%); }
   .wrap { max-width:520px; margin:0 auto; padding:16px 16px 120px; }
+  .brand { text-align:center; font-family:'Bebas Neue',sans-serif; color:var(--g); line-height:.95; text-shadow:0 0 28px rgba(110,240,160,.45); }
+  .brand b { display:block; font-weight:400; font-size:58px; letter-spacing:.06em; }
+  .brand span { display:block; font-size:30px; letter-spacing:.3em; color:var(--ink); }
   header img { display:block; height:104px; width:auto; margin:0 auto; }
   header p { margin:4px 0 0; text-align:center; font-size:13px; letter-spacing:.38em; color:var(--g); font-weight:500; }
   #bal { margin:16px 0 14px; display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid rgba(110,240,160,.35); border-radius:14px; padding:12px 14px; }
@@ -79,7 +81,7 @@
 </head>
 <body>
 <div class="wrap">
-  <header><img src="assets/banshee-logo.png" alt="The Banshee Labyrinth"><p>THE UNDERGROUND JUKEBOX</p></header>
+  <header><div class="brand"><b>EDD &amp; CHERYL</b><span>JUKEBOX</span></div><p>PICK A TUNE · IT’S ALL FREE</p></header>
   <div id="app"></div>
 </div>
 <div id="toast"></div>
@@ -108,7 +110,7 @@
     return { status: res.status, ...data };
   }
 
-  let plays = 0, code = '', state = null, results = [], lastKind = '';
+  let waiting = 0, maxQ = 5, plays = 0, code = '', state = null, results = [], lastKind = '';
   const mine = new Set(JSON.parse(ls.get('bb_mine') || '[]'));
   function toast(msg, ms = 4500) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
   function gate(msg) {
@@ -117,7 +119,7 @@
 
   function shell() {
     $('app').innerHTML = `
-      <div id="bal"><div class="n" id="plays">0</div><div class="l">PLAYS LEFT<small id="code"></small></div><button class="btn" id="buy">GET PLAYS</button></div>
+      <div id="bal"><div class="n" id="plays">0</div><div class="l">OF YOUR <span id="max">5</span> SONGS WAITING<small>FREE PLAYS · NO LIMIT OVERALL</small></div></div>
       <div id="modes">${CFG.browse ? '<button class="mode" data-m="browse">BROWSE</button>' : ''}<button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
       <div id="browseBox" style="display:none">
         <div id="bnav"><button class="on" data-k="albums">ALBUMS A–Z</button><button data-k="artists">ARTISTS A–Z</button></div>
@@ -134,21 +136,20 @@
       <div id="results"></div>
       <h3>UP NEXT ON THE SCREEN</h3>
       <div id="queue"></div>`;
-    $('buy').onclick = openBuy;
     document.querySelectorAll('.mode').forEach(b => b.onclick = () => setMode(b.dataset.m));
     const deb = (fn) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, 350); }; };
     $('qa').oninput = deb(searchArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(searchSongs);
     $('pillX').onclick = resetArtist;
     document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => { bKind = b.dataset.k; bLetter = ''; bArtist = null; artist = null; results = []; paintResults(); loadLetters(); });
     $('bpillX').onclick = () => { bArtist = null; artist = null; results = []; paintResults(); loadLetters(); };
-    refreshBal(); pollState(); setInterval(pollState, 8000);
+    refreshBal(); pollState(); setInterval(pollState, 8000); setInterval(refreshBal, 12000);
     setMode(CFG.browse ? 'browse' : 'artist');
   }
-  function paintBal() { $('plays').textContent = plays; $('code').innerHTML = code ? 'YOUR CODE: ' + esc(code) : ''; }
+  function paintBal() { $('plays').textContent = waiting; $('max').textContent = maxQ; }
   async function refreshBal() {
     const r = await api('/balance?device_id=' + encodeURIComponent(device));
     if (r.status === 401) return gate();
-    if (r.plays !== undefined) { plays = r.plays; code = r.code || ''; paintBal(); }
+    if (r.free) { maxQ = r.max; waiting = r.waiting; paintBal(); }
     return plays;
   }
 
@@ -291,22 +292,21 @@
   $('sheetBg').onclick = e => { if (e.target === $('sheetBg')) closeSheet(); };
 
   function confirmTrack(t) {
-    if (plays < 1) return openBuy();
+    if (waiting >= maxQ) return toast(`You already have ${maxQ} songs waiting. Let some play first.`);
     const w = waits();
-    sheet(`<h2>${esc(t.name)}</h2><p>${esc(t.artist)}<br>This uses 1 play (you have ${plays}).${w ? ` It should play in about ${mmss(w.end)}.` : ''}</p>
-      <div class="row2"><button class="btn ghost" id="no">CANCEL</button><button class="btn" id="yes">PLAY IT</button></div>`);
+    sheet(`<h2>${esc(t.name)}</h2><p>${esc(t.artist)}<br>Free to play.${w ? ` It should play in about ${mmss(w.end)}.` : ''}</p>
+      <div class="row2"><button class="btn ghost" id="no">CANCEL</button><button class="btn" id="yes">ADD TO QUEUE</button></div>`);
     $('no').onclick = closeSheet;
     $('yes').onclick = async () => {
       $('yes').disabled = true;
       const r = await api('/request', { method: 'POST', body: JSON.stringify({ device_id: device, uri: t.uri }) });
       closeSheet();
       if (r.ok) {
-        plays = r.plays; paintBal(); mine.add(t.uri); ls.set('bb_mine', JSON.stringify([...mine].slice(-30)));
+        waiting = Math.min(maxQ, waiting + 1); paintBal(); mine.add(t.uri); ls.set('bb_mine', JSON.stringify([...mine].slice(-30)));
         setMode(mode);
         await pollState();
         const w2 = waits(); toast(`Queued! "${t.name}" plays in about ${w2 && w2.map[t.uri] !== undefined ? mmss(w2.map[t.uri]) : 'a few minutes'}.`);
-      } else if (r.needPlays) { plays = 0; paintBal(); openBuy(); }
-      else toast(r.error || 'Something went wrong. Try again.');
+      } else toast(r.error || 'Something went wrong. Try again.');
     };
   }
 
