@@ -1,0 +1,8 @@
+{
+  "name": "banshee-jukebox-tools",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "music-metadata": "^10.6.0"
+  }
+}
