@@ -51,7 +51,7 @@ async function uploadArt() {
   let total = 0;
   for (let i = 0; i < files.length; i += 40) {
     const items = files.slice(i, i + 40).map(f => ({ id: f.slice(0, 10), data: fs.readFileSync(path.join(dir, f)).toString('base64') }));
-    total = (await api('/player/covers', { items })).total;
+    total = (await api('/player/covers', { items, reset: i === 0 })).total; // first batch clears old covers
     console.log('  ' + Math.min(i + 40, files.length) + ' / ' + files.length);
   }
   console.log('Done. The jukebox now holds ' + total + ' covers.');

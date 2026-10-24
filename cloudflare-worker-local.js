@@ -111,6 +111,7 @@ export class Ledger extends DurableObject {
     this.ctx.storage.transactionSync(() => { for (const c of items) this.sql.exec('INSERT OR REPLACE INTO covers (id, data) VALUES (?, ?)', c.id, c.bytes); });
     return this.sql.exec('SELECT COUNT(*) n FROM covers').one().n;
   }
+  async coversReset() { this.sql.exec('DELETE FROM covers'); return true; }
   async cover(id) { const r = this.sql.exec('SELECT data FROM covers WHERE id=?', id).toArray()[0]; return r ? r.data : null; }
   async searchArtists(q) {
     const t = tokens(q).map(x => x.replace(/^the$/, ''));
@@ -362,7 +363,8 @@ export default {
           return json({ ok: true, added: good.length, total: await ledger.catAdd(good) });
         }
         if (path === '/player/covers' && request.method === 'POST') {
-          const { items } = await request.json();
+          const { items, reset } = await request.json();
+          if (reset) await ledger.coversReset();
           const good = (items || []).slice(0, 60).filter(c => c && /^[0-9a-f]{10}$/.test(c.id) && typeof c.data === 'string' && c.data.length < 300000)
             .map(c => ({ id: c.id, bytes: Uint8Array.from(atob(c.data), ch => ch.charCodeAt(0)) }));
           return json({ ok: true, added: good.length, total: await ledger.addCovers(good) });
