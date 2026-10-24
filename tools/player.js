@@ -36,9 +36,11 @@ async function upload() {
   console.log('Uploading ' + rows.length + ' tracks...');
   let total = 0;
   for (let i = 0; i < rows.length; i += 500) {
-    const r = await api('/player/catalogue', { reset: i === 0, rows: rows.slice(i, i + 500) });
+    const r = await api('/player/catalogue', { rows: rows.slice(i, i + 500) });
     total = r.total; console.log('  ' + Math.min(i + 500, rows.length) + ' / ' + rows.length);
   }
+  const pr = await api('/player/catalogue', { prune: rows.map(r => r.id) }); // drop anything no longer in your library
+  total = pr.total; if (pr.removed) console.log('  removed ' + pr.removed + ' tracks no longer in the catalogue');
   console.log('Done. The jukebox now has ' + total + ' tracks.');
 }
 
@@ -50,11 +52,12 @@ async function uploadArt() {
   console.log('Uploading ' + files.length + ' album covers...');
   let total = 0;
   for (let i = 0; i < files.length; i += 40) {
-    const items = files.slice(i, i + 40).map(f => ({ id: f.slice(0, 10), data: fs.readFileSync(path.join(dir, f)).toString('base64') }));
-    total = (await api('/player/covers', { items, reset: i === 0 })).total; // first batch clears old covers
+    const items = files.slice(i, i + 40).map(f => { const b = fs.readFileSync(path.join(dir, f)); return { id: f.slice(0, 10), h: require('crypto').createHash('sha1').update(b).digest('hex'), data: b.toString('base64') }; });
+    total = (await api('/player/covers', { items })).total;
     console.log('  ' + Math.min(i + 40, files.length) + ' / ' + files.length);
   }
-  console.log('Done. The jukebox now holds ' + total + ' covers.');
+  const pr = await api('/player/covers', { prune: files.map(f => f.slice(0, 10)) }); // drop covers you no longer have
+  console.log('Done. Removed ' + pr.removed + ' old covers; the jukebox now holds ' + files.length + ' covers.');
 }
 
 // ── mpv control over its IPC pipe ────────────────────────────

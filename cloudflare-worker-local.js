@@ -41,6 +41,8 @@ export class Ledger extends DurableObject {
     try { this.sql.exec('ALTER TABLE tracks ADD COLUMN cover_id TEXT'); } catch (e) { /* already there */ }
     try { this.sql.exec('ALTER TABLE tracks ADD COLUMN album_key TEXT'); } catch (e) { /* already there */ }
     this.sql.exec('CREATE TABLE IF NOT EXISTS covers (id TEXT PRIMARY KEY, data BLOB)');
+    try { this.sql.exec('ALTER TABLE covers ADD COLUMN h TEXT'); } catch (e) { /* already there */ }
+    this.nowMem = undefined; // the 'now playing' report lives in memory: writing it every few seconds would use up the free daily write allowance
     this.sel = 'SELECT t.*, c.id AS has_cover FROM tracks t LEFT JOIN covers c ON c.id = t.cover_id';
   }
 
@@ -94,10 +96,22 @@ export class Ledger extends DurableObject {
   async sales() { return (await this.ctx.storage.get('sales')) || []; }
 
   // catalogue
-  async catReset() { this.sql.exec('DELETE FROM tracks'); return true; }
+  async catPrune(keep) { // remove tracks that are no longer in the catalogue
+    const want = new Set(keep); let gone = 0;
+    for (const r of this.sql.exec('SELECT id FROM tracks').toArray()) if (!want.has(r.id)) { this.sql.exec('DELETE FROM tracks WHERE id=?', r.id); gone++; }
+    return gone;
+  }
+  async coversPrune(keep) {
+    const want = new Set(keep); let gone = 0;
+    for (const r of this.sql.exec('SELECT id FROM covers').toArray()) if (!want.has(r.id)) { this.sql.exec('DELETE FROM covers WHERE id=?', r.id); gone++; }
+    return gone;
+  }
   async catAdd(rows) {
     this.ctx.storage.transactionSync(() => {
       for (const r of rows) {
+        const old = this.sql.exec('SELECT path, artist, artist_id, title, album, seconds, cover_id FROM tracks WHERE id=?', r.id).toArray()[0];
+        if (old && old.path === r.path && old.artist === r.artist && old.artist_id === r.artistId && old.title === r.title && old.album === (r.album || '')
+            && old.seconds === Math.max(0, Math.round(r.seconds || 0)) && (old.cover_id || null) === (r.coverId || null)) continue; // unchanged: no write
         this.sql.exec('INSERT OR REPLACE INTO tracks (id, path, artist, artist_id, artist_key, title, title_key, all_key, album, seconds, cover_id, album_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
           r.id, r.path, r.artist, r.artistId, artistKey(r.artist), r.title, norm(r.title),
           norm(r.artist + ' ' + r.title), r.album || '', Math.max(0, Math.round(r.seconds || 0)), r.coverId || null, artistKey(r.album || ''));
@@ -108,10 +122,16 @@ export class Ledger extends DurableObject {
   async catCount() { return this.sql.exec('SELECT COUNT(*) n FROM tracks').one().n; }
   async trackById(id) { return this.sql.exec(this.sel + ' WHERE t.id=?', id).toArray()[0] || null; }
   async addCovers(items) {
-    this.ctx.storage.transactionSync(() => { for (const c of items) this.sql.exec('INSERT OR REPLACE INTO covers (id, data) VALUES (?, ?)', c.id, c.bytes); });
+    let wrote = 0;
+    this.ctx.storage.transactionSync(() => {
+      for (const c of items) {
+        const old = this.sql.exec('SELECT h FROM covers WHERE id=?', c.id).toArray()[0];
+        if (old && old.h && old.h === c.h) continue; // same picture already stored: no write
+        this.sql.exec('INSERT OR REPLACE INTO covers (id, data, h) VALUES (?, ?, ?)', c.id, c.bytes, c.h || null); wrote++;
+      }
+    });
     return this.sql.exec('SELECT COUNT(*) n FROM covers').one().n;
   }
-  async coversReset() { this.sql.exec('DELETE FROM covers'); return true; }
   async cover(id) { const r = this.sql.exec('SELECT data FROM covers WHERE id=?', id).toArray()[0]; return r ? r.data : null; }
   async searchArtists(q) {
     const t = tokens(q).map(x => x.replace(/^the$/, ''));
@@ -175,8 +195,13 @@ export class Ledger extends DurableObject {
   // queue + player
   async getPending() { return (await this.ctx.storage.get('pending')) || []; }
   async setPending(list) { await this.ctx.storage.put('pending', list); }
-  async getNow() { return (await this.ctx.storage.get('now')) || null; }
-  async setNow(n) { await this.ctx.storage.put('now', n); }
+  async getNow() { if (this.nowMem === undefined) this.nowMem = (await this.ctx.storage.get('now')) || null; return this.nowMem; }
+  async setNow(n) {
+    const prev = this.nowMem === undefined ? (await this.ctx.storage.get('now')) : this.nowMem;
+    this.nowMem = n;
+    // only touch storage when the song changes (once per song), not on every progress report
+    if (!prev || !prev.track || !n.track || prev.track.id !== n.track.id) await this.ctx.storage.put('now', n);
+  }
   async pushCmd(c) { const l = (await this.ctx.storage.get('cmds')) || []; l.push(c); await this.ctx.storage.put('cmds', l.slice(-10)); }
   async takeCmds() { const l = (await this.ctx.storage.get('cmds')) || []; if (l.length) await this.ctx.storage.put('cmds', []); return l; }
   // Player asks for the next paid track. Returns it (with its file path) and removes it from the queue.
@@ -354,8 +379,8 @@ export default {
         if (!isPlayer()) return json({ error: 'Not allowed' }, 403);
         if (path === '/player/ping') return json({ ok: true, tracks: await ledger.catCount() });
         if (path === '/player/catalogue' && request.method === 'POST') {
-          const { reset, rows } = await request.json();
-          if (reset) await ledger.catReset();
+          const { rows, prune } = await request.json();
+          if (Array.isArray(prune)) return json({ ok: true, removed: await ledger.catPrune(prune.filter(x => /^[0-9a-f]{10}$/.test(x))), total: await ledger.catCount() });
           const good = (rows || []).filter(r => r && /^[0-9a-f]{10}$/.test(r.id) && r.path && r.artist && r.title && r.artistId).slice(0, 600)
             .map(r => ({ id: r.id, path: String(r.path).slice(0, 400), artist: String(r.artist).slice(0, 120), artistId: String(r.artistId).slice(0, 16),
               title: String(r.title).slice(0, 160), album: String(r.album || '').slice(0, 160), seconds: r.seconds,
@@ -363,10 +388,10 @@ export default {
           return json({ ok: true, added: good.length, total: await ledger.catAdd(good) });
         }
         if (path === '/player/covers' && request.method === 'POST') {
-          const { items, reset } = await request.json();
-          if (reset) await ledger.coversReset();
+          const { items, prune } = await request.json();
+          if (Array.isArray(prune)) return json({ ok: true, removed: await ledger.coversPrune(prune.filter(x => /^[0-9a-f]{10}$/.test(x))) });
           const good = (items || []).slice(0, 60).filter(c => c && /^[0-9a-f]{10}$/.test(c.id) && typeof c.data === 'string' && c.data.length < 300000)
-            .map(c => ({ id: c.id, bytes: Uint8Array.from(atob(c.data), ch => ch.charCodeAt(0)) }));
+            .map(c => ({ id: c.id, h: String(c.h || '').slice(0, 40), bytes: Uint8Array.from(atob(c.data), ch => ch.charCodeAt(0)) }));
           return json({ ok: true, added: good.length, total: await ledger.addCovers(good) });
         }
         if (path === '/player/next' && request.method === 'POST') {
