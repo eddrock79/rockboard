@@ -23,6 +23,8 @@ function similarity(a, b) {
   return both / (A.size + B.size - both);
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const stats = { requests: 0, errors: 0, lastError: '', empty: 0 };
+const PACE = 220; // ms between requests: stays well under the free limit
 
 // one wanted album per coverId that has no picture yet
 const wanted = new Map();
@@ -36,12 +38,15 @@ for (const t of cat) {
 const junkAlbum = /^(unknown|untitled|various|greatest hits|best of|the best of|collection|compilation|soundtrack|singles|hits)$|all albums|greatest|jukebox|vh1|vol\.? ?\d|volume|disc ?\d|cd ?\d|halloween|now that|\bhits\b|best of/i;
 
 async function getJson(url) {
-  for (let i = 0; i < 4; i++) {
-    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
-    if (r.status === 429) { await sleep(3000); continue; }
-    if (!r.ok) return null;
+  for (let i = 0; i < 5; i++) {
+    stats.requests++;
+    let r;
+    try { r = await fetch(url, { signal: AbortSignal.timeout(12000) }); } catch (e) { stats.errors++; stats.lastError = 'network: ' + e.message; await sleep(2000); continue; }
+    if (r.status === 429) { stats.errors++; stats.lastError = 'HTTP 429 (too many requests)'; await sleep(4000); continue; }
+    if (!r.ok) { stats.errors++; stats.lastError = 'HTTP ' + r.status; return null; }
     const j = await r.json().catch(() => null);
-    if (j && j.error && j.error.code === 4) { await sleep(3000); continue; } // quota
+    if (j && j.error) { stats.errors++; stats.lastError = JSON.stringify(j.error).slice(0, 120); await sleep(4000); continue; } // quota etc: wait and retry
+    if (j && (!j.data || !j.data.length)) stats.empty++;
     return j;
   }
   return null;
@@ -50,7 +55,7 @@ const stripParens = s => norm(String(s || '').replace(/[\(\[][^\)\]]*[\)\]]/g, '
 async function findBySong(w) {
   for (const title of w.titles) {
     const q = `${BASE}/search/track?q=${encodeURIComponent(`artist:"${w.artist}" track:"${title}"`)}&limit=8`;
-    const j = await getJson(q); await sleep(130);
+    const j = await getJson(q); await sleep(PACE);
     const hit = ((j && j.data) || []).find(c => c.artist && artistKey(c.artist.name) === artistKey(w.artist) && c.album && stripParens(c.title) === stripParens(title));
     if (hit) return { c: { title: hit.album.title, artist: hit.artist, cover_big: hit.album.cover_big, cover_medium: hit.album.cover_medium }, s: 1, by: 'song "' + title + '"' };
   }
@@ -60,7 +65,7 @@ async function findByAlbum(w) {
   const q1 = `${BASE}/search/album?q=${encodeURIComponent(`artist:"${w.artist}" album:"${w.album}"`)}&limit=6`;
   const q2 = `${BASE}/search/album?q=${encodeURIComponent(w.artist + ' ' + w.album)}&limit=6`;
   for (const url of [q1, q2]) {
-    const j = await getJson(url); await sleep(130);
+    const j = await getJson(url); await sleep(PACE);
     const hits = ((j && j.data) || []).filter(c => artistKey(c.artist && c.artist.name) === artistKey(w.artist))
       .map(c => ({ c, s: similarity(c.title, w.album) })).sort((a, b) => b.s - a.s);
     if (hits.length && hits[0].s >= 0.6) return { ...hits[0], by: 'album' };
@@ -75,6 +80,7 @@ async function find(w) {
 (async () => {
   const sharp = SAMPLE ? null : require('sharp');
   let list = [...wanted.values()];
+  if (SAMPLE) { const t0 = await getJson(BASE + '/search/track?q=' + encodeURIComponent('artist:"Slayer" track:"Raining Blood"') + '&limit=2'); console.log('Connection test: ' + (t0 && t0.data && t0.data.length ? 'OK (got ' + t0.data[0].artist.name + ' - ' + t0.data[0].title + ')' : 'FAILED ' + (stats.lastError || 'no results'))); }
   console.log('Albums without artwork: ' + wanted.size + '   worth looking up: ' + list.length);
   if (SAMPLE) { list = list.sort(() => Math.random() - 0.5).slice(0, SAMPLE); console.log('SAMPLE of ' + list.length + ' (nothing will be saved):\n'); }
   let ok = 0, miss = 0, i = 0; const log = [];
@@ -97,5 +103,6 @@ async function find(w) {
     if (!SAMPLE && ++i % 100 === 0) console.log('  ' + i + ' / ' + list.length);
   }
   if (!SAMPLE) fs.writeFileSync(path.join(__dirname, 'art-online-log.txt'), log.join('\n'));
-  console.log('\n' + (SAMPLE ? 'In this sample: ' : 'Done. ') + ok + ' found, ' + miss + ' not found.' + (SAMPLE ? '' : '  Log: art-online-log.txt\nNext:  node player.js upload-art'));
+  console.log('\nRequests made: ' + stats.requests + '   refused/failed: ' + stats.errors + '   searches with no results: ' + stats.empty + (stats.lastError ? '\nLast problem seen: ' + stats.lastError : ''));
+  console.log((SAMPLE ? 'In this sample: ' : 'Done. ') + ok + ' found, ' + miss + ' not found.' + (SAMPLE ? '' : '  Log: art-online-log.txt\nNext:  node player.js upload-art'));
 })();
