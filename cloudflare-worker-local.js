@@ -39,6 +39,7 @@ export class Ledger extends DurableObject {
       title TEXT, title_key TEXT, all_key TEXT, album TEXT, seconds INTEGER)`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS tracks_artist ON tracks(artist_id)');
     try { this.sql.exec('ALTER TABLE tracks ADD COLUMN cover_id TEXT'); } catch (e) { /* already there */ }
+    try { this.sql.exec('ALTER TABLE tracks ADD COLUMN album_key TEXT'); } catch (e) { /* already there */ }
     this.sql.exec('CREATE TABLE IF NOT EXISTS covers (id TEXT PRIMARY KEY, data BLOB)');
     this.sel = 'SELECT t.*, c.id AS has_cover FROM tracks t LEFT JOIN covers c ON c.id = t.cover_id';
   }
@@ -97,9 +98,9 @@ export class Ledger extends DurableObject {
   async catAdd(rows) {
     this.ctx.storage.transactionSync(() => {
       for (const r of rows) {
-        this.sql.exec('INSERT OR REPLACE INTO tracks (id, path, artist, artist_id, artist_key, title, title_key, all_key, album, seconds, cover_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        this.sql.exec('INSERT OR REPLACE INTO tracks (id, path, artist, artist_id, artist_key, title, title_key, all_key, album, seconds, cover_id, album_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
           r.id, r.path, r.artist, r.artistId, artistKey(r.artist), r.title, norm(r.title),
-          norm(r.artist + ' ' + r.title), r.album || '', Math.max(0, Math.round(r.seconds || 0)), r.coverId || null);
+          norm(r.artist + ' ' + r.title), r.album || '', Math.max(0, Math.round(r.seconds || 0)), r.coverId || null, artistKey(r.album || ''));
       }
     });
     return this.catCount();
@@ -122,6 +123,37 @@ export class Ledger extends DurableObject {
       `SELECT artist_id id, artist name, COUNT(*) c FROM tracks WHERE ${where}
        GROUP BY artist_id ORDER BY (artist_key LIKE ?) DESC, c DESC LIMIT 8`, ...binds, first).toArray()
       .map(r => ({ id: r.id, name: r.name, image: '' }));
+  }
+  // Browse: which first letters have anything, then the cards for one letter (albums or artists)
+  async letters(kind) {
+    const rows = kind === 'artists'
+      ? this.sql.exec("SELECT UPPER(substr(artist_key,1,1)) l, COUNT(DISTINCT artist_id) n FROM tracks GROUP BY l").toArray()
+      : this.sql.exec("SELECT UPPER(substr(album_key,1,1)) l, COUNT(DISTINCT cover_id) n FROM tracks WHERE cover_id IS NOT NULL AND album_key != '' GROUP BY l").toArray();
+    const out = {};
+    for (const r of rows) { const k = /^[A-Z]$/.test(r.l) ? r.l : '#'; out[k] = (out[k] || 0) + r.n; }
+    return out;
+  }
+  async browseAlbums({ letter, artistId }) {
+    const cond = artistId ? 't.artist_id = ?' : (letter === '#' ? "t.album_key NOT GLOB '[a-z]*'" : "t.album_key GLOB ?");
+    const bind = artistId ? [artistId] : (letter === '#' ? [] : [letter.toLowerCase() + '*']);
+    return this.sql.exec(
+      `SELECT t.cover_id id, MIN(t.album) album, MIN(t.artist) artist, t.artist_id artistId, COUNT(*) n, MAX(c.id) cover
+       FROM tracks t LEFT JOIN covers c ON c.id = t.cover_id
+       WHERE t.cover_id IS NOT NULL AND t.album_key != '' AND ${cond}
+       GROUP BY t.cover_id ORDER BY MIN(t.album_key) LIMIT 300`, ...bind).toArray()
+      .map(r => ({ id: r.id, name: r.album, artist: r.artist, artistId: r.artistId, n: r.n, image: r.cover ? '/cover/' + r.cover : '' }));
+  }
+  async browseArtists({ letter }) {
+    const cond = letter === '#' ? "t.artist_key NOT GLOB '[a-z]*'" : 't.artist_key GLOB ?';
+    const bind = letter === '#' ? [] : [letter.toLowerCase() + '*'];
+    return this.sql.exec(
+      `SELECT t.artist_id id, MIN(t.artist) name, COUNT(*) n, MAX(CASE WHEN c.id IS NOT NULL THEN t.cover_id END) cover
+       FROM tracks t LEFT JOIN covers c ON c.id = t.cover_id
+       WHERE ${cond} GROUP BY t.artist_id ORDER BY MIN(t.artist_key) LIMIT 400`, ...bind).toArray()
+      .map(r => ({ id: r.id, name: r.name, n: r.n, image: r.cover ? '/cover/' + r.cover : '' }));
+  }
+  async albumTracks(coverId) {
+    return this.sql.exec(`${this.sel} WHERE t.cover_id = ? ORDER BY t.path LIMIT 80`, coverId).toArray().map(shape);
   }
   async searchTracks({ q, artistId }) {
     const toks = tokens(q);
@@ -355,8 +387,22 @@ export default {
         if (!(await needSession())) return json(NOSESSION, 401);
         return json({ items: await ledger.searchArtists(url.searchParams.get('q')) });
       }
+      if (path.startsWith('/browse/')) {
+        if (!(await needSession())) return json(NOSESSION, 401);
+        const letter = (url.searchParams.get('letter') || '').toUpperCase();
+        const okLetter = /^[A-Z#]$/.test(letter);
+        if (path === '/browse/letters') return json({ letters: await ledger.letters(url.searchParams.get('kind') === 'artists' ? 'artists' : 'albums') });
+        if (path === '/browse/albums') {
+          const artistId = (url.searchParams.get('artist_id') || '').slice(0, 16);
+          if (!artistId && !okLetter) return json({ items: [] });
+          return json({ items: await ledger.browseAlbums({ letter, artistId }) });
+        }
+        if (path === '/browse/artists') return json({ items: okLetter ? await ledger.browseArtists({ letter }) : [] });
+      }
       if (path === '/search') {
         if (!(await needSession())) return json(NOSESSION, 401);
+        const albumId = url.searchParams.get('album_id') || '';
+        if (/^[0-9a-f]{10}$/.test(albumId)) return json({ items: await ledger.albumTracks(albumId) });
         return json({ items: await ledger.searchTracks({ q: url.searchParams.get('q') || '', artistId: (url.searchParams.get('artist_id') || '').slice(0, 16) }) });
       }
       if (path === '/balance') {

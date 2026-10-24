@@ -32,6 +32,23 @@
   .pill { display:none; align-items:center; gap:10px; background:rgba(110,240,160,.1); border:1px solid var(--g); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
   .pill span { flex:1; font-weight:600; font-size:18px; }
   .pill button { background:transparent; border:0; color:var(--ink); font-size:20px; padding:2px 8px; }
+  .mode { font-size:14px; letter-spacing:.06em; }
+  #bnav { display:flex; gap:8px; margin-bottom:8px; }
+  #bnav button { flex:1; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:8px; font-weight:600; font-size:13px; letter-spacing:.14em; }
+  #bnav button.on { color:var(--g); border-color:var(--g); background:rgba(110,240,160,.1); }
+  #letters { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
+  #letters::-webkit-scrollbar, #carousel::-webkit-scrollbar { display:none; }
+  .lt { flex:none; min-width:38px; height:38px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:var(--ink); font-weight:600; font-size:16px; }
+  .lt.on { background:var(--g); color:#04110a; border-color:var(--g); }
+  .lt:disabled { opacity:.22; }
+  #carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px; }
+  #carousel .msg { padding:20px 0; width:100%; }
+  .card { flex:none; align-self:flex-start; display:block; width:132px; scroll-snap-align:start; background:none; border:0; color:var(--ink); text-align:left; padding:0; }
+  .card img, .card .ph { width:132px; height:132px; border-radius:10px; object-fit:cover; background:#16201b; display:block; border:2px solid transparent; }
+  .card img.round, .card .ph.round { border-radius:50%; }
+  .card.sel img, .card.sel .ph { border-color:var(--g); }
+  .card .t { margin-top:7px; font-weight:600; font-size:15px; line-height:1.15; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card .a { font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .lbl { margin:2px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
   .item .ph.round, .item img.round { border-radius:50%; }
   h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
@@ -91,7 +108,7 @@
     return { status: res.status, ...data };
   }
 
-  let plays = 0, code = '', state = null, results = [];
+  let plays = 0, code = '', state = null, results = [], lastKind = '';
   const mine = new Set(JSON.parse(ls.get('bb_mine') || '[]'));
   function toast(msg, ms = 4500) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
   function gate(msg) {
@@ -101,7 +118,13 @@
   function shell() {
     $('app').innerHTML = `
       <div id="bal"><div class="n" id="plays">0</div><div class="l">PLAYS LEFT<small id="code"></small></div><button class="btn" id="buy">GET PLAYS</button></div>
-      <div id="modes"><button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
+      <div id="modes">${CFG.browse ? '<button class="mode" data-m="browse">BROWSE</button>' : ''}<button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
+      <div id="browseBox" style="display:none">
+        <div id="bnav"><button class="on" data-k="albums">ALBUMS A–Z</button><button data-k="artists">ARTISTS A–Z</button></div>
+        <div id="letters"></div>
+        <div id="bpill" class="pill"><span id="bpillName"></span><button id="bpillX" aria-label="Back to browsing">&#10005;</button></div>
+        <div id="carousel"></div>
+      </div>
       <div id="artistBox">
         <div id="artistStep"><input id="qa" class="inp" type="search" placeholder="Start typing an artist name" autocomplete="off" autocapitalize="off" enterkeyhint="search"><div id="artistList"></div></div>
         <div id="artistPill" class="pill"><span id="pillName"></span><button id="pillX" aria-label="Choose a different artist">&#10005;</button></div>
@@ -116,7 +139,10 @@
     const deb = (fn) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, 350); }; };
     $('qa').oninput = deb(searchArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(searchSongs);
     $('pillX').onclick = resetArtist;
+    document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => { bKind = b.dataset.k; bLetter = ''; bArtist = null; artist = null; results = []; paintResults(); loadLetters(); });
+    $('bpillX').onclick = () => { bArtist = null; artist = null; results = []; paintResults(); loadLetters(); };
     refreshBal(); pollState(); setInterval(pollState, 8000);
+    setMode(CFG.browse ? 'browse' : 'artist');
   }
   function paintBal() { $('plays').textContent = plays; $('code').innerHTML = code ? 'YOUR CODE: ' + esc(code) : ''; }
   async function refreshBal() {
@@ -156,7 +182,58 @@
     document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.m === m));
     $('artistBox').style.display = m === 'artist' ? '' : 'none';
     $('songBox').style.display = m === 'song' ? '' : 'none';
+    $('browseBox').style.display = m === 'browse' ? '' : 'none';
+    bArtist = null; albumCtx = null;
     resetArtist(); $('qs').value = ''; results = []; paintResults();
+    if (m === 'browse') loadLetters();
+  }
+
+  // ── browse: swipeable covers, albums or artists A–Z ──
+  let bKind = 'albums', bLetter = '', bArtist = null, bLetters = {}, albumCtx = null;
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+  async function loadLetters() {
+    $('bpill').style.display = 'none'; $('bnav').style.display = ''; $('letters').style.display = '';
+    document.querySelectorAll('#bnav button').forEach(b => b.classList.toggle('on', b.dataset.k === bKind));
+    const r = await api('/browse/letters?kind=' + bKind);
+    if (r.status === 401) return gate();
+    bLetters = r.letters || {};
+    if (!bLetters[bLetter]) bLetter = LETTERS.find(l => bLetters[l]) || '';
+    paintLetters(); loadCards();
+  }
+  function paintLetters() {
+    $('letters').innerHTML = LETTERS.map(l => `<button class="lt${l === bLetter ? ' on' : ''}" data-l="${l}"${bLetters[l] ? '' : ' disabled'}>${l}</button>`).join('');
+    $('letters').querySelectorAll('.lt').forEach(b => b.onclick = () => { bLetter = b.dataset.l; albumCtx = null; results = []; paintResults(); paintLetters(); loadCards(); });
+    const on = $('letters').querySelector('.on'); if (on) $('letters').scrollLeft = Math.max(0, on.offsetLeft - 90);
+  }
+  async function loadCards() {
+    const box = $('carousel');
+    if (!bArtist && !bLetter) { box.innerHTML = '<div class="msg">Nothing to browse yet.</div>'; return; }
+    box.innerHTML = '<div class="msg">Loading…</div>';
+    const r = await api(bArtist ? '/browse/albums?artist_id=' + encodeURIComponent(bArtist.id) : '/browse/' + bKind + '?letter=' + encodeURIComponent(bLetter));
+    if (r.status === 401) return gate();
+    const items = r.items || [], isArtist = !bArtist && bKind === 'artists';
+    box.innerHTML = items.length ? items.map((x, i) =>
+      `<button class="card" data-i="${i}">${x.image ? `<img${isArtist ? ' class="round"' : ''} src="${esc(x.image)}" alt="" loading="lazy">` : `<div class="ph${isArtist ? ' round' : ''}"></div>`}` +
+      `<div class="t">${esc(x.name)}</div><div class="a">${esc(isArtist ? x.n + (x.n === 1 ? ' track' : ' tracks') : x.artist)}</div></button>`).join('')
+      : `<div class="msg">${bArtist ? 'No albums listed. Tracks are below.' : 'Nothing here.'}</div>`;
+    box.scrollLeft = 0;
+    box.querySelectorAll('.card').forEach(b => b.onclick = () => isArtist ? browseArtist(items[b.dataset.i]) : openAlbum(items[b.dataset.i], b));
+  }
+  async function openAlbum(a, btn) {
+    document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel')); btn.classList.add('sel');
+    albumCtx = a; $('results').innerHTML = '<div class="msg">Loading…</div>';
+    const r = await api('/search?album_id=' + encodeURIComponent(a.id));
+    if (r.status === 401) return gate();
+    results = r.items || []; paintResults('album');
+    $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function browseArtist(a) {
+    bArtist = a; artist = a; albumCtx = null; results = []; paintResults();
+    $('bnav').style.display = 'none'; $('letters').style.display = 'none';
+    $('bpill').style.display = 'flex'; $('bpillName').textContent = a.name;
+    await loadCards();
+    const r = await api('/search?artist_id=' + encodeURIComponent(a.id) + '&artist=' + encodeURIComponent(a.name));
+    results = r.items || []; paintResults('top');
   }
   async function searchArtists() {
     const q = $('qa').value.trim();
@@ -199,9 +276,11 @@
   }
   function paintResults(kind) {
     const el = $('results'); if (!el) return;
+    if (kind) lastKind = kind; else if (!results.length) lastKind = ''; kind = kind || lastKind;
     if (!results.length) { el.innerHTML = kind ? '<div class="msg">No tracks found. Try another spelling.</div>' : ''; return; }
     const w = waits(); const end = w ? w.end : null;
-    el.innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : '') + results.map((x, i) =>
+    el.innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : '') +
+      (kind === 'album' && albumCtx ? `<div class="lbl">${esc((albumCtx.name + ' · ' + albumCtx.artist).toUpperCase())}</div>` : '') + results.map((x, i) =>
       `<button class="item" data-i="${i}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +
       `<div class="nm"><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div>` +
       (end !== null ? `<div class="w">PLAYS IN<b>~${mmss(end)}</b></div>` : '') + `</button>`).join('');

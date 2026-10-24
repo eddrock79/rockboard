@@ -7,6 +7,7 @@ window.BANSHEE = {
   venueName: "THE BANSHEE LABYRINTH",
   // Set this to your deployed worker URL after `wrangler deploy`
   workerUrl: "",
+  browse: true, // swipeable albums / artists A-Z (local music edition)
   // Display only. The worker holds the real prices, keep these in sync with TIERS.
   tiers: [
     { id: "tier1", price: "£1", plays: 2 },
