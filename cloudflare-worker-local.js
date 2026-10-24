@@ -25,7 +25,7 @@ function shape(r) {
   return {
     uri: 'local:' + r.id, id: r.id, name: r.title, artist: r.artist,
     artists: [{ id: r.artist_id, name: r.artist }],
-    image: '', duration: Math.round((r.seconds || 0) * 1000), explicit: false,
+    image: r.has_cover ? '/cover/' + r.cover_id : '', duration: Math.round((r.seconds || 0) * 1000), explicit: false,
   };
 }
 
@@ -38,6 +38,9 @@ export class Ledger extends DurableObject {
       id TEXT PRIMARY KEY, path TEXT, artist TEXT, artist_id TEXT, artist_key TEXT,
       title TEXT, title_key TEXT, all_key TEXT, album TEXT, seconds INTEGER)`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS tracks_artist ON tracks(artist_id)');
+    try { this.sql.exec('ALTER TABLE tracks ADD COLUMN cover_id TEXT'); } catch (e) { /* already there */ }
+    this.sql.exec('CREATE TABLE IF NOT EXISTS covers (id TEXT PRIMARY KEY, data BLOB)');
+    this.sel = 'SELECT t.*, c.id AS has_cover FROM tracks t LEFT JOIN covers c ON c.id = t.cover_id';
   }
 
   // balances (identical to the Spotify edition)
@@ -94,15 +97,20 @@ export class Ledger extends DurableObject {
   async catAdd(rows) {
     this.ctx.storage.transactionSync(() => {
       for (const r of rows) {
-        this.sql.exec('INSERT OR REPLACE INTO tracks VALUES (?,?,?,?,?,?,?,?,?,?)',
+        this.sql.exec('INSERT OR REPLACE INTO tracks (id, path, artist, artist_id, artist_key, title, title_key, all_key, album, seconds, cover_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
           r.id, r.path, r.artist, r.artistId, artistKey(r.artist), r.title, norm(r.title),
-          norm(r.artist + ' ' + r.title), r.album || '', Math.max(0, Math.round(r.seconds || 0)));
+          norm(r.artist + ' ' + r.title), r.album || '', Math.max(0, Math.round(r.seconds || 0)), r.coverId || null);
       }
     });
     return this.catCount();
   }
   async catCount() { return this.sql.exec('SELECT COUNT(*) n FROM tracks').one().n; }
-  async trackById(id) { return this.sql.exec('SELECT * FROM tracks WHERE id=?', id).toArray()[0] || null; }
+  async trackById(id) { return this.sql.exec(this.sel + ' WHERE t.id=?', id).toArray()[0] || null; }
+  async addCovers(items) {
+    this.ctx.storage.transactionSync(() => { for (const c of items) this.sql.exec('INSERT OR REPLACE INTO covers (id, data) VALUES (?, ?)', c.id, c.bytes); });
+    return this.sql.exec('SELECT COUNT(*) n FROM covers').one().n;
+  }
+  async cover(id) { const r = this.sql.exec('SELECT data FROM covers WHERE id=?', id).toArray()[0]; return r ? r.data : null; }
   async searchArtists(q) {
     const t = tokens(q).map(x => x.replace(/^the$/, ''));
     const toks = t.filter(Boolean);
@@ -118,15 +126,15 @@ export class Ledger extends DurableObject {
   async searchTracks({ q, artistId }) {
     const toks = tokens(q);
     if (artistId) {
-      const where = ['artist_id=?'].concat(toks.map(() => 'title_key LIKE ?')).join(' AND ');
-      const rows = this.sql.exec(`SELECT * FROM tracks WHERE ${where} LIMIT 300`, artistId, ...toks.map(x => '%' + x + '%')).toArray();
+      const where = ['t.artist_id=?'].concat(toks.map(() => 't.title_key LIKE ?')).join(' AND ');
+      const rows = this.sql.exec(`${this.sel} WHERE ${where} LIMIT 300`, artistId, ...toks.map(x => '%' + x + '%')).toArray();
       const top = (await this.ctx.storage.get('top')) || {};
       rows.sort((a, b) => ((top['local:' + b.id]?.count || 0) - (top['local:' + a.id]?.count || 0)) || a.title.localeCompare(b.title));
       return rows.slice(0, toks.length ? 24 : 40).map(shape);
     }
     if (!toks.length) return [];
-    const where = toks.map(() => 'all_key LIKE ?').join(' AND ');
-    const rows = this.sql.exec(`SELECT * FROM tracks WHERE ${where} ORDER BY (title_key LIKE ?) DESC, title LIMIT 24`,
+    const where = toks.map(() => 't.all_key LIKE ?').join(' AND ');
+    const rows = this.sql.exec(`${this.sel} WHERE ${where} ORDER BY (t.title_key LIKE ?) DESC, t.title LIMIT 24`,
       ...toks.map(x => '%' + x + '%'), toks.join(' ') + '%').toArray();
     return rows.map(shape);
   }
@@ -189,7 +197,7 @@ async function readState(ledger) {
   }
   return {
     ts: Date.now(), playing, offline: !online, canRemove: true, track,
-    queue: pending.map(p => ({ uri: p.uri, id: p.id, name: p.name, artist: p.artist, image: '', duration: p.duration })),
+    queue: pending.map(p => ({ uri: p.uri, id: p.id, name: p.name, artist: p.artist, image: p.image || '', duration: p.duration })),
   };
 }
 async function cachedState(ctx, ledger) {
@@ -299,6 +307,15 @@ export default {
         return json(out);
       }
 
+      // Album art thumbnails (public; they are not sensitive and are cached hard)
+      if (path.startsWith('/cover/')) {
+        const id = path.slice(7);
+        if (!/^[0-9a-f]{10}$/.test(id)) return new Response('not found', { status: 404 });
+        const bytes = await ledger.cover(id);
+        if (!bytes) return new Response('not found', { status: 404 });
+        return new Response(bytes, { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' } });
+      }
+
       // ── Player program (on the jukebox PC) ──
       if (path.startsWith('/player/')) {
         if (!isPlayer()) return json({ error: 'Not allowed' }, 403);
@@ -308,12 +325,19 @@ export default {
           if (reset) await ledger.catReset();
           const good = (rows || []).filter(r => r && /^[0-9a-f]{10}$/.test(r.id) && r.path && r.artist && r.title && r.artistId).slice(0, 600)
             .map(r => ({ id: r.id, path: String(r.path).slice(0, 400), artist: String(r.artist).slice(0, 120), artistId: String(r.artistId).slice(0, 16),
-              title: String(r.title).slice(0, 160), album: String(r.album || '').slice(0, 160), seconds: r.seconds }));
+              title: String(r.title).slice(0, 160), album: String(r.album || '').slice(0, 160), seconds: r.seconds,
+              coverId: /^[0-9a-f]{10}$/.test(r.coverId || '') ? r.coverId : null }));
           return json({ ok: true, added: good.length, total: await ledger.catAdd(good) });
+        }
+        if (path === '/player/covers' && request.method === 'POST') {
+          const { items } = await request.json();
+          const good = (items || []).slice(0, 60).filter(c => c && /^[0-9a-f]{10}$/.test(c.id) && typeof c.data === 'string' && c.data.length < 300000)
+            .map(c => ({ id: c.id, bytes: Uint8Array.from(atob(c.data), ch => ch.charCodeAt(0)) }));
+          return json({ ok: true, added: good.length, total: await ledger.addCovers(good) });
         }
         if (path === '/player/next' && request.method === 'POST') {
           const t = await ledger.nextRequest();
-          if (t) await ledger.setNow({ track: { uri: t.uri, id: t.id, name: t.name, artist: t.artist, artists: t.artists, image: '', duration: t.duration, explicit: false }, progress: 0, playing: true, reportedAt: Date.now(), kind: 'request' });
+          if (t) await ledger.setNow({ track: { uri: t.uri, id: t.id, name: t.name, artist: t.artist, artists: t.artists, image: t.image || '', duration: t.duration, explicit: false }, progress: 0, playing: true, reportedAt: Date.now(), kind: 'request' });
           await bustState();
           return json({ track: t });
         }

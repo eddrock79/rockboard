@@ -37,6 +37,7 @@
   #rec .label { position:absolute; top:50%; left:50%; width:104px; height:104px; margin:-52px 0 0 -52px; border-radius:50%; box-sizing:border-box;
          border:2px solid var(--g); background:radial-gradient(circle,#1f6b43,#0b2a1a); display:flex; align-items:center; justify-content:center; text-align:center;
          font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; letter-spacing:.06em; }
+  #rec .label.art { width:150px; height:150px; margin:-75px 0 0 -75px; background-size:cover; background-position:center; color:transparent; }
   #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:#030403; }
   #npText { flex:1; min-width:0; display:flex; flex-direction:column; }
   #npHead { display:flex; align-items:flex-end; justify-content:space-between; }
@@ -191,6 +192,8 @@
     $('rec').classList.toggle('on', on);
     $('eq').classList.toggle('on', on);
     fitTitle(t ? t.name : 'Waiting for music');
+    const lab = document.querySelector('#rec .label'), art = t && t.image ? (t.image.charAt(0) === '/' ? CFG.workerUrl + t.image : t.image) : '';
+    if (lab.dataset.art !== art) { lab.dataset.art = art; lab.style.backgroundImage = art ? 'url("' + art + '")' : ''; lab.classList.toggle('art', !!art); }
     if (!t) {
       $('title').textContent = 'Waiting for music';
       $('artist').innerHTML = '&nbsp;';

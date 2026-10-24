@@ -99,6 +99,7 @@ const out = keep.map(t => {
     id: hash(t.path, 10), path: t.path,
     artist: display[k], artistId: hash(k, 8),
     title: cleanTitle(t.title), album: t.album || '', seconds: t.seconds || 0,
+    coverId: t.album ? hash((t.album + '|' + path.posix.dirname(t.path)).toLowerCase(), 10) : '',
   };
 }).sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title));
 fs.writeFileSync(path.join(__dirname, 'catalogue.json'), JSON.stringify(out));

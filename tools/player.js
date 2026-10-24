@@ -1,5 +1,6 @@
 // Banshee jukebox: the PLAYER. Runs on the jukebox PC and plays MP3s from the NAS.
 //   node player.js upload     send catalogue.json to the jukebox (run again whenever the library changes)
+//   node player.js upload-art send album artwork (after build-art.js)
 //   node player.js            play music (paid requests first, then house music), forever
 // Needs mpv installed (winget install mpv) and player-config.json next to this file.
 // It only READS your music files. Close it with Ctrl+C.
@@ -39,6 +40,21 @@ async function upload() {
     total = r.total; console.log('  ' + Math.min(i + 500, rows.length) + ' / ' + rows.length);
   }
   console.log('Done. The jukebox now has ' + total + ' tracks.');
+}
+
+// ── upload album artwork thumbnails ──────────────────────────
+async function uploadArt() {
+  const dir = path.join(__dirname, 'art');
+  if (!fs.existsSync(dir)) { console.error('Run build-art.js first.'); process.exit(1); }
+  const files = fs.readdirSync(dir).filter(f => /^[0-9a-f]{10}\.jpg$/.test(f));
+  console.log('Uploading ' + files.length + ' album covers...');
+  let total = 0;
+  for (let i = 0; i < files.length; i += 40) {
+    const items = files.slice(i, i + 40).map(f => ({ id: f.slice(0, 10), data: fs.readFileSync(path.join(dir, f)).toString('base64') }));
+    total = (await api('/player/covers', { items })).total;
+    console.log('  ' + Math.min(i + 40, files.length) + ' / ' + files.length);
+  }
+  console.log('Done. The jukebox now holds ' + total + ' covers.');
 }
 
 // ── mpv control over its IPC pipe ────────────────────────────
@@ -145,4 +161,4 @@ async function run() {
   }
 }
 
-(process.argv[2] === 'upload' ? upload() : run()).catch(e => { console.error(e); process.exit(1); });
+(process.argv[2] === 'upload' ? upload() : process.argv[2] === 'upload-art' ? uploadArt() : run()).catch(e => { console.error(e); process.exit(1); });
