@@ -28,9 +28,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const wanted = new Map();
 for (const t of cat) {
   if (!t.coverId || !t.album || fs.existsSync(path.join(artDir, t.coverId + '.jpg'))) continue;
-  if (!wanted.has(t.coverId)) wanted.set(t.coverId, { id: t.coverId, artist: t.artist, album: t.album });
+  const w = wanted.get(t.coverId) || { id: t.coverId, artist: t.artist, album: t.album, titles: [] };
+  if (w.titles.length < 3) w.titles.push(t.title);
+  wanted.set(t.coverId, w);
 }
-const generic = /^(unknown|untitled|various|greatest hits|best of|the best of|collection|compilation|soundtrack|singles|hits)$/i;
+// Album tags like "All albums", "VH1 100 Greatest...", "Dad's Jukebox Disc 3" are not real albums: search by song for those.
+const junkAlbum = /^(unknown|untitled|various|greatest hits|best of|the best of|collection|compilation|soundtrack|singles|hits)$|all albums|greatest|jukebox|vh1|vol\.? ?\d|volume|disc ?\d|cd ?\d|halloween|now that|\bhits\b|best of/i;
 
 async function getJson(url) {
   for (let i = 0; i < 4; i++) {
@@ -43,21 +46,35 @@ async function getJson(url) {
   }
   return null;
 }
-async function find(w) {
+const stripParens = s => norm(String(s || '').replace(/[\(\[][^\)\]]*[\)\]]/g, ' '));
+async function findBySong(w) {
+  for (const title of w.titles) {
+    const q = `${BASE}/search/track?q=${encodeURIComponent(`artist:"${w.artist}" track:"${title}"`)}&limit=8`;
+    const j = await getJson(q); await sleep(130);
+    const hit = ((j && j.data) || []).find(c => c.artist && artistKey(c.artist.name) === artistKey(w.artist) && c.album && stripParens(c.title) === stripParens(title));
+    if (hit) return { c: { title: hit.album.title, artist: hit.artist, cover_big: hit.album.cover_big, cover_medium: hit.album.cover_medium }, s: 1, by: 'song "' + title + '"' };
+  }
+  return null;
+}
+async function findByAlbum(w) {
   const q1 = `${BASE}/search/album?q=${encodeURIComponent(`artist:"${w.artist}" album:"${w.album}"`)}&limit=6`;
   const q2 = `${BASE}/search/album?q=${encodeURIComponent(w.artist + ' ' + w.album)}&limit=6`;
   for (const url of [q1, q2]) {
     const j = await getJson(url); await sleep(130);
     const hits = ((j && j.data) || []).filter(c => artistKey(c.artist && c.artist.name) === artistKey(w.artist))
       .map(c => ({ c, s: similarity(c.title, w.album) })).sort((a, b) => b.s - a.s);
-    if (hits.length && hits[0].s >= 0.6) return hits[0];
+    if (hits.length && hits[0].s >= 0.6) return { ...hits[0], by: 'album' };
   }
   return null;
+}
+async function find(w) {
+  const real = !junkAlbum.test(w.album.trim());
+  return (real && (await findByAlbum(w))) || (await findBySong(w));
 }
 
 (async () => {
   const sharp = SAMPLE ? null : require('sharp');
-  let list = [...wanted.values()].filter(w => !generic.test(w.album.trim()));
+  let list = [...wanted.values()];
   console.log('Albums without artwork: ' + wanted.size + '   worth looking up: ' + list.length);
   if (SAMPLE) { list = list.sort(() => Math.random() - 0.5).slice(0, SAMPLE); console.log('SAMPLE of ' + list.length + ' (nothing will be saved):\n'); }
   let ok = 0, miss = 0, i = 0; const log = [];
@@ -66,7 +83,7 @@ async function find(w) {
     try { m = await find(w); } catch (e) { /* network hiccup: counts as a miss */ }
     if (!m) { miss++; log.push('MISS   ' + w.artist + ' - ' + w.album); if (SAMPLE) console.log('MISS   ' + w.artist + ' - ' + w.album); }
     else {
-      const line = 'OK     ' + w.artist + ' - ' + w.album + '   ==>   ' + m.c.artist.name + ' - ' + m.c.title + '  (' + Math.round(m.s * 100) + '%)';
+      const line = 'OK     ' + w.artist + ' - ' + w.album + '   ==>   ' + m.c.artist.name + ' - ' + m.c.title + '  [' + m.by + ']';
       log.push(line); if (SAMPLE) console.log(line);
       if (!SAMPLE) {
         try {
