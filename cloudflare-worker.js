@@ -13,6 +13,8 @@ const TIERS = {
 const VENUE = 'banshee';
 const SESSION_WINDOW_MS = 2 * 60 * 60 * 1000; // screen QR token lasts 2-4 hours
 const TRACK_URI = /^spotify:track:[A-Za-z0-9]{22}$/;
+const MAX_TRACK_MS = 7 * 60 * 1000; // guests can't pick anything longer than 7 minutes
+const playable = t => !!t && (t.type === undefined || t.type === 'track') && !t.is_local && (t.duration_ms || 0) > 0 && t.duration_ms <= MAX_TRACK_MS;
 
 // ── LEDGER (Durable Object) ──────────────────────────────────
 // One instance holds every balance and the pending queue, so two
@@ -158,6 +160,7 @@ function trackShape(t) {
     artist: (t.artists || []).map(a => a.name).join(', '),
     artists: (t.artists || []).map(a => ({ id: a.id, name: a.name })),
     image: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '',
+    imageLarge: t.album?.images?.[0]?.url || '',
     duration: t.duration_ms,
     explicit: !!t.explicit,
   };
@@ -251,6 +254,7 @@ async function trackSearch(env, params) {
   }
   const seen = new Set(), items = [];
   for (const t of raw) {
+    if (!playable(t)) continue; // no tracks over 7 minutes, no local files
     const sh = trackShape(t);
     const key = sh.name.toLowerCase() + '|' + sh.artist.toLowerCase();
     if (seen.has(key)) continue;
@@ -365,7 +369,9 @@ export default {
         if (!spend.ok) return json({ error: 'No plays left', needPlays: true }, 402);
         const tRes = await spotify(env, '/tracks/' + uri.split(':')[2]);
         if (!tRes.ok) { await ledger.refund(device_id); return json({ error: 'Track not found' }, 404); }
-        const track = trackShape(await tRes.json());
+        const full = await tRes.json();
+        if (!playable(full)) { await ledger.refund(device_id); return json({ error: 'Sorry, tracks over 7 minutes can’t be requested. You haven’t been charged a play.' }, 422); }
+        const track = trackShape(full);
         const qRes = await spotify(env, '/me/player/queue?uri=' + encodeURIComponent(uri), { method: 'POST' });
         if (qRes.status !== 204 && qRes.status !== 200) {
           await ledger.refund(device_id);

@@ -37,6 +37,12 @@
   #rec .label { position:absolute; top:50%; left:50%; width:104px; height:104px; margin:-52px 0 0 -52px; border-radius:50%; box-sizing:border-box;
          border:2px solid var(--g); background:radial-gradient(circle,#1f6b43,#0b2a1a); display:flex; align-items:center; justify-content:center; text-align:center;
          font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; letter-spacing:.06em; }
+  #rec .label.art { width:100%; height:100%; margin:-140px 0 0 -140px; border:0; background-size:cover; background-position:center; color:transparent; }
+  #rec .sheen { z-index:2; } #rec .hole { z-index:3; }
+  @keyframes drift { 0% { transform:scale(1.18) translate(-4%,-3%) rotate(0deg); } 33% { transform:scale(1.3) translate(3.5%,-1%) rotate(1.2deg); } 66% { transform:scale(1.24) translate(2%,3.5%) rotate(-1deg); } 100% { transform:scale(1.18) translate(-4%,-3%) rotate(0deg); } }
+  #bgart { animation:drift 45s ease-in-out infinite; position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(12px) brightness(.5) saturate(1.25); opacity:0; transition:opacity 1.2s; z-index:0; }
+  #bgart.on { opacity:1; }
+  #stage > *:not(#bgart):not(#offline) { position:relative; z-index:1; }
   #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:#030403; }
   #npText { flex:1; min-width:0; display:flex; flex-direction:column; }
   #npHead { display:flex; align-items:flex-end; justify-content:space-between; }
@@ -104,6 +110,7 @@
 </head>
 <body>
 <div id="stage">
+  <div id="bgart"></div>
   <div id="offline">RECONNECTING…</div>
   <div id="logo"><img src="assets/banshee-logo.png" alt="The Banshee Labyrinth"></div>
   <div id="sub"><i></i><b>THE UNDERGROUND JUKEBOX</b><i></i></div>
@@ -191,6 +198,12 @@
     $('rec').classList.toggle('on', on);
     $('eq').classList.toggle('on', on);
     fitTitle(t ? t.name : 'Waiting for music');
+    // album artwork: fills the record and drifts slowly behind everything
+    const lab = document.querySelector('#rec .label'), src = t ? (t.imageLarge || t.image || '') : '';
+    if (lab.dataset.art !== src) {
+      lab.dataset.art = src; lab.classList.toggle('art', !!src); lab.style.backgroundImage = src ? 'url("' + src + '")' : '';
+      $('bgart').style.backgroundImage = src ? 'url("' + src + '")' : ''; $('bgart').classList.toggle('on', !!src);
+    }
     if (!t) {
       $('title').textContent = 'Waiting for music';
       $('artist').innerHTML = '&nbsp;';
