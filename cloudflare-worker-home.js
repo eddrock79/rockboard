@@ -204,6 +204,8 @@ export class Ledger extends DurableObject {
     // only touch storage when the song changes (once per song), not on every progress report
     if (!prev || !prev.track || !n.track || prev.track.id !== n.track.id) await this.ctx.storage.put('now', n);
   }
+  async getTheme() { if (this.themeMem === undefined) this.themeMem = (await this.ctx.storage.get('theme')) || 'classic'; return this.themeMem; }
+  async setTheme(t) { this.themeMem = t; await this.ctx.storage.put('theme', t); }
   async pushCmd(c) { const l = (await this.ctx.storage.get('cmds')) || []; l.push(c); await this.ctx.storage.put('cmds', l.slice(-10)); }
   async takeCmds() { const l = (await this.ctx.storage.get('cmds')) || []; if (l.length) await this.ctx.storage.put('cmds', []); return l; }
   // Player asks for the next paid track. Returns it (with its file path) and removes it from the queue.
@@ -247,7 +249,7 @@ async function tokenValid(env, token) {
 }
 
 async function readState(ledger) {
-  const [now, pending] = await Promise.all([ledger.getNow(), ledger.getPending()]);
+  const [now, pending, theme] = await Promise.all([ledger.getNow(), ledger.getPending(), ledger.getTheme()]);
   const online = !!now && (Date.now() - now.reportedAt) < PLAYER_STALE_MS;
   const playing = online && !!now.playing && !!now.track;
   let track = null;
@@ -256,7 +258,7 @@ async function readState(ledger) {
     track = { ...now.track, progress: Math.min(now.track.duration, (now.progress || 0) + elapsed) };
   }
   return {
-    ts: Date.now(), playing, offline: !online, canRemove: true, track,
+    ts: Date.now(), playing, offline: !online, canRemove: true, track, theme,
     queue: pending.map(p => ({ uri: p.uri, id: p.id, name: p.name, artist: p.artist, image: p.image || '', duration: p.duration })),
   };
 }
@@ -481,6 +483,11 @@ export default {
         if (path === '/staff/overview') return json({ state: await readState(ledger), sales: await ledger.sales() });
         for (const [p, cmd] of [['skip', 'skip'], ['pause', 'pause'], ['play', 'play']])
           if (path === '/staff/' + p && request.method === 'POST') { await ledger.pushCmd(cmd); await bustState(); return json({ ok: true }); }
+        if (path === '/staff/theme' && request.method === 'POST') {
+          const { theme } = await request.json();
+          if (!['classic', 'gothic'].includes(theme)) return json({ error: 'Unknown look' }, 400);
+          await ledger.setTheme(theme); await bustState(); return json({ ok: true, theme });
+        }
         if (path === '/staff/grant' && request.method === 'POST') {
           const { code, plays } = await request.json();
           const device = await ledger.deviceForCode(code || '');

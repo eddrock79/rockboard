@@ -5,26 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Edd &amp; Cheryl Jukebox · Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
   :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#aab6af; --card:#0e1512; }
   * { box-sizing:border-box; }
-  body { margin:0; background:#050706; color:var(--ink); font-family:'Oswald',sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--f2); }
   .wrap { max-width:560px; margin:0 auto; padding:16px 16px 60px; }
-  h1 { font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:36px; margin:6px 0 14px; color:var(--g); letter-spacing:.04em; }
+  h1 { font-family:var(--f1); font-weight:400; font-size:36px; margin:6px 0 14px; color:var(--g); letter-spacing:.04em; }
   h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
   .card { background:var(--card); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
   .card .t { font-weight:600; font-size:18px; } .card .a { color:var(--mute); font-size:14px; }
-  input { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:13px 14px; font:500 17px 'Oswald',sans-serif; outline:none; margin-bottom:8px; }
-  button { font-family:inherit; cursor:pointer; background:var(--g); color:#04110a; border:0; border-radius:10px; padding:12px 16px; font-weight:700; font-size:15px; letter-spacing:.08em; }
+  input { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:13px 14px; font:500 17px var(--f2); outline:none; margin-bottom:8px; }
+  button { font-family:inherit; cursor:pointer; background:var(--g); color:var(--onG); border:0; border-radius:10px; padding:12px 16px; font-weight:700; font-size:15px; letter-spacing:.08em; }
   button.ghost { background:transparent; color:var(--ink); border:1px solid rgba(255,255,255,.3); }
   .row { display:flex; gap:8px; } .row > * { flex:1; }
   .res { display:flex; justify-content:space-between; align-items:center; gap:10px; }
   .res button { flex:none; padding:8px 12px; }
   .modes { display:flex; gap:8px; margin-bottom:8px; }
   .modes button { flex:1; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); }
-  .modes button.on { background:rgba(110,240,160,.14); color:var(--g); border-color:var(--g); }
-  .pill { display:none; align-items:center; gap:10px; background:rgba(110,240,160,.1); border:1px solid var(--g); border-radius:10px; padding:8px 12px; margin-bottom:8px; }
+  .modes button.on { background:rgba(var(--gr),.14); color:var(--g); border-color:var(--g); }
+  .pill { display:none; align-items:center; gap:10px; background:rgba(var(--gr),.1); border:1px solid var(--g); border-radius:10px; padding:8px 12px; margin-bottom:8px; }
   .pill span { flex:1; font-weight:600; font-size:17px; }
   .pill button { background:transparent; color:var(--ink); padding:2px 8px; font-size:18px; }
   .lbl { margin:4px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
@@ -41,6 +42,7 @@
   </div>
   <div id="panel" style="display:none">
     <div id="msg"></div>
+    <h3>LOOK OF THE JUKEBOX</h3><div class="row" id="looks"></div>
     <h3>NOW PLAYING</h3><div id="now" class="card">…</div>
     <div class="row"><button id="skip">SKIP</button><button class="ghost" id="pause">PAUSE</button><button class="ghost" id="play">PLAY</button></div>
     <h3>QUEUE</h3><div id="queue"></div>
@@ -57,6 +59,7 @@
   </div>
 </div>
 <script src="config.js"></script>
+<script src="theme.js"></script>
 <script>
 (function () {
   const W = window.BANSHEE.workerUrl, $ = id => document.getElementById(id);
@@ -74,9 +77,15 @@
     else { $('pin').value = ''; $('pin').placeholder = 'Wrong PIN'; }
   }
   $('go').onclick = () => { pin = $('pin').value; unlock(); };
+  function paintLooks(cur) {
+    if (window.applyTheme && cur) window.applyTheme(cur);
+    $('looks').innerHTML = Object.entries(window.JTHEMES).map(([k, v]) => `<button class="${k === cur ? '' : 'ghost'}" data-k="${k}">${v.name.toUpperCase()}</button>`).join('');
+    $('looks').querySelectorAll('button').forEach(b => b.onclick = async () => { const q = await api('/staff/theme', { method: 'POST', body: JSON.stringify({ theme: b.dataset.k }) }); say(q.ok ? 'Look changed. Phones and the TV update within a few seconds.' : (q.error || 'Could not change it')); paintLooks(q.ok ? b.dataset.k : cur); });
+  }
   async function refresh() {
     const r = await api('/staff/overview'); if (!r.state) return;
     const s = r.state, t = s.track;
+    paintLooks(s.theme);
     $('now').innerHTML = t ? `<div class="t">${esc(t.name)}</div><div class="a">${esc(t.artist)} · ${s.playing ? 'playing' : 'paused'}</div>` : 'Nothing playing';
     let acc = t ? t.duration - t.progress : 0;
     $('queue').innerHTML = s.queue.length ? s.queue.map(x => { const w = acc; acc += x.duration; return `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><div class="a">in ${mmss(w)}</div>${s.canRemove ? `<button class="ghost rm" data-uri="${esc(x.uri)}">REMOVE</button>` : ''}</div>`; }).join('') : '<div class="card a">Queue is empty</div>';

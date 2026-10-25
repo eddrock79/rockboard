@@ -1,0 +1,27 @@
+/* Looks for the jukebox. Staff pick one; phones and the TV board follow. */
+:root {
+  --gr:110,240,160; --glow:20,90,50; --onG:#04110a; --lab1:#1f6b43; --lab2:#0b2a1a;
+  --groove1:#030403; --groove2:#121a15; --ring:#0e1a14; --ph:#16201b; --sheetbg:#0b110e; --bg:#050706;
+  --f1:'Bebas Neue',sans-serif; --f2:'Oswald',sans-serif; --f3:'EB Garamond',serif;
+}
+/* GOTHIC: bone and candle-gold on black, with a deep crimson glow */
+html[data-theme="gothic"] {
+  --g:#e2b560; --ink:#f2eadb; --mute:#b9a9bc; --card:#150b19; --bg:#08040b;
+  --gr:226,181,96; --glow:120,16,52; --onG:#1c1003; --lab1:#7a1636; --lab2:#1a0610;
+  --groove1:#050205; --groove2:#160a18; --ring:#1b0c1c; --ph:#241228; --sheetbg:#120914;
+  --f1:'Cinzel',Georgia,serif; --f2:'Cormorant Garamond',Georgia,serif; --f3:'Cormorant Garamond',Georgia,serif;
+}
+html[data-theme="gothic"] body { font-weight:600; }
+html[data-theme="gothic"] .brand b, html[data-theme="gothic"] #logo b { font-weight:700; letter-spacing:.06em; }
+html[data-theme="gothic"] #logo b { font-size:118px; }
+html[data-theme="gothic"] #logo span { font-size:56px; letter-spacing:.5em; }
+html[data-theme="gothic"] #logo { text-shadow:0 0 60px rgba(160,20,70,.75); }
+html[data-theme="gothic"] .brand b { font-size:40px; }
+html[data-theme="gothic"] #sub b { font-size:22px; letter-spacing:.3em; }
+html[data-theme="gothic"] #pickL h2 { font-size:56px; }
+html[data-theme="gothic"] .tier .pr { font-size:54px; } html[data-theme="gothic"] .tier .pl { font-size:26px; }
+html[data-theme="gothic"] #title { font-weight:700; }
+html[data-theme="gothic"] #npHead b, html[data-theme="gothic"] #qHead b, html[data-theme="gothic"] #topHead { letter-spacing:.28em; }
+html[data-theme="gothic"] #artist { letter-spacing:.2em; }
+html[data-theme="gothic"] #bar i { box-shadow:0 0 16px rgba(180,30,80,.9); }
+html[data-theme="gothic"] body { background-image:radial-gradient(90% 50% at 50% 0%, rgba(120,16,52,.35), transparent 70%); background-attachment:fixed; }

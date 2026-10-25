@@ -4,24 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Edd &amp; Cheryl Jukebox</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=EB+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=EB+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="theme.css">
 <style>
   :root { --g:#6ef0a0; --ink:#f3efe4; --mute:#cfd8d2; }
   html,body { margin:0; height:100%; background:#000; overflow:hidden; cursor:none; }
   #stage {
     position:absolute; left:0; top:0; width:1080px; height:1920px; transform-origin:0 0;
     box-sizing:border-box; overflow:hidden; padding:28px 64px 0; display:flex; flex-direction:column;
-    color:var(--ink); font-family:'Oswald',sans-serif;
+    color:var(--ink); font-family:var(--f2);
     background:
-      radial-gradient(60% 40% at 0% 50%, rgba(20,90,50,.55), transparent 70%),
-      radial-gradient(60% 40% at 100% 50%, rgba(20,90,50,.55), transparent 70%),
-      radial-gradient(80% 25% at 50% 100%, rgba(20,90,50,.35), transparent 70%), #050706;
+      radial-gradient(60% 40% at 0% 50%, rgba(var(--glow),.55), transparent 70%),
+      radial-gradient(60% 40% at 100% 50%, rgba(var(--glow),.55), transparent 70%),
+      radial-gradient(80% 25% at 50% 100%, rgba(var(--glow),.35), transparent 70%), var(--bg);
   }
   .rule { flex:none; height:2px; background:var(--g); opacity:.7; }
   /* header */
   #logo { flex:none; height:320px; display:flex; justify-content:center; }
-  #logo { align-items:center; flex-direction:column; justify-content:center; font-family:'Bebas Neue',sans-serif; color:var(--g); text-align:center; line-height:.9; text-shadow:0 0 50px rgba(110,240,160,.5); }
+  #logo { align-items:center; flex-direction:column; justify-content:center; font-family:var(--f1); color:var(--g); text-align:center; line-height:.9; text-shadow:0 0 50px rgba(var(--gr),.5); }
   #logo b { font-weight:400; font-size:170px; letter-spacing:.05em; }
   #logo span { font-size:80px; letter-spacing:.4em; color:var(--ink); margin-top:6px; }
   #sub { flex:none; margin-top:8px; height:44px; display:flex; align-items:center; gap:24px; }
@@ -31,16 +32,16 @@
   #np { flex:none; margin-top:30px; height:300px; display:flex; align-items:center; gap:40px; }
   #glow { flex:none; width:280px; height:280px; border-radius:50%; animation:pulse 4s ease-in-out infinite; }
   #rec { position:relative; width:280px; height:280px; border-radius:50%; animation:spin 9s linear infinite; animation-play-state:paused;
-         background:repeating-radial-gradient(circle at center,#030403 0,#030403 3px,#121a15 3px,#121a15 6px); }
+         background:repeating-radial-gradient(circle at center,var(--groove1) 0,var(--groove1) 3px,var(--groove2) 3px,var(--groove2) 6px); }
   #rec.on { animation-play-state:running; }
   #rec .sheen { position:absolute; inset:0; border-radius:50%;
          background:conic-gradient(from 20deg,transparent 0%,rgba(255,255,255,.15) 6%,transparent 12%,transparent 50%,rgba(255,255,255,.1) 56%,transparent 62%,transparent 100%); }
   #rec .label { position:absolute; top:50%; left:50%; width:104px; height:104px; margin:-52px 0 0 -52px; border-radius:50%; box-sizing:border-box;
-         border:2px solid var(--g); background:radial-gradient(circle,#1f6b43,#0b2a1a); display:flex; align-items:center; justify-content:center; text-align:center;
-         font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; letter-spacing:.06em; }
+         border:2px solid var(--g); background:radial-gradient(circle,var(--lab1),var(--lab2)); display:flex; align-items:center; justify-content:center; text-align:center;
+         font-family:var(--f1); font-size:22px; line-height:1; letter-spacing:.06em; }
   #rec .label.art { width:100%; height:100%; margin:-140px 0 0 -140px; border:0; background-size:cover; background-position:center; color:transparent; }
   #rec .sheen { z-index:2; } #rec .hole { z-index:3; }
-  #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:#030403; }
+  #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:var(--groove1); }
   @keyframes drift { 0% { transform:scale(1.12) translate(-2.5%,-1.5%) rotate(0deg); } 50% { transform:scale(1.22) translate(2.5%,2%) rotate(1.5deg); } 100% { transform:scale(1.12) translate(-2.5%,-1.5%) rotate(0deg); } }
   #bgart { animation:drift 38s ease-in-out infinite; position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(46px) brightness(.38) saturate(1.3); opacity:0; transition:opacity 1.2s; z-index:0; }
   #bgart.on { opacity:1; }
@@ -53,7 +54,7 @@
   #eq.on i { animation:eq 1.1s ease-in-out infinite; }
   #eq.on i:nth-child(2){animation-delay:.2s} #eq.on i:nth-child(3){animation-delay:.45s}
   #eq.on i:nth-child(4){animation-delay:.1s} #eq.on i:nth-child(5){animation-delay:.35s}
-  #title { margin-top:4px; font-family:'Bebas Neue',sans-serif; font-size:118px; line-height:.98; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #title { margin-top:4px; font-family:var(--f1); font-size:118px; line-height:.98; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #artist { font-weight:500; font-size:36px; letter-spacing:.3em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #bar { margin-top:16px; height:12px; border-radius:6px; background:rgba(255,255,255,.1); overflow:hidden; }
   #bar i { display:block; width:0; height:100%; border-radius:6px; background:var(--g); box-shadow:0 0 14px var(--g); transition:width 1s linear; }
@@ -61,16 +62,16 @@
   /* pick + qr */
   #pick { flex:none; margin-top:28px; height:330px; display:flex; gap:40px; }
   #pickL { flex:1; min-width:0; display:flex; flex-direction:column; }
-  #pickL h2 { margin:0; font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:70px; line-height:1; color:var(--g); }
+  #pickL h2 { margin:0; font-family:var(--f1); font-weight:400; font-size:70px; line-height:1; color:var(--g); }
   #pickL p { margin:4px 0 0; font-weight:500; font-size:32px; letter-spacing:.24em; }
   #tiers { margin-top:18px; display:flex; flex-direction:column; gap:12px; }
-  .tier { height:84px; box-sizing:border-box; padding:0 28px; display:flex; align-items:center; gap:18px; border-radius:14px; border:2px solid var(--g); background:rgba(110,240,160,.06); font-family:'Bebas Neue',sans-serif; }
-  .tier.best { background:rgba(110,240,160,.12); }
+  .tier { height:84px; box-sizing:border-box; padding:0 28px; display:flex; align-items:center; gap:18px; border-radius:14px; border:2px solid var(--g); background:rgba(var(--gr),.06); font-family:var(--f1); }
+  .tier.best { background:rgba(var(--gr),.12); }
   .tier .pr { font-size:66px; line-height:1; color:var(--g); }
   .tier .eqs { font-size:50px; }
   .tier .n { font-size:66px; line-height:1; }
   .tier .pl { font-size:34px; letter-spacing:.04em; white-space:nowrap; }
-  .tier .badge { margin-left:auto; padding:4px 14px; border-radius:8px; background:var(--g); color:#04110a; font-family:'Oswald',sans-serif; font-weight:700; font-size:20px; line-height:1.1; letter-spacing:.1em; text-align:center; }
+  .tier .badge { margin-left:auto; padding:4px 14px; border-radius:8px; background:var(--g); color:var(--onG); font-family:var(--f2); font-weight:700; font-size:20px; line-height:1.1; letter-spacing:.1em; text-align:center; }
   #fcfp { margin-top:auto; font-weight:500; font-size:22px; letter-spacing:.34em; color:var(--mute); }
   #qrBox { flex:none; width:330px; height:330px; box-sizing:border-box; padding:24px; border-radius:6px; background:#fff; position:relative; }
   #qr { width:282px; height:282px; }
@@ -89,7 +90,7 @@
   .row .w { flex:none; display:flex; align-items:baseline; gap:14px; }
   .row .w span { font-weight:500; font-size:20px; letter-spacing:.16em; color:var(--g); }
   .row .w b { font-weight:600; font-size:40px; min-width:100px; text-align:right; }
-  #qEmpty { height:156px; display:flex; align-items:center; font-family:'EB Garamond',serif; font-style:italic; font-size:34px; color:var(--mute); }
+  #qEmpty { height:156px; display:flex; align-items:center; font-family:var(--f3); font-style:italic; font-size:34px; color:var(--mute); }
   /* top 10 */
   #topHead { margin-top:16px; height:44px; display:flex; align-items:center; font-weight:600; font-size:28px; letter-spacing:.4em; color:var(--g); }
   #topGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:44px; font-weight:400; font-size:28px; }
@@ -97,15 +98,15 @@
   .tr span { flex:none; width:40px; color:var(--g); }
   .tr em { font-style:normal; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* ticker */
-  #tick { flex:none; margin-top:auto; margin-bottom:36px; height:64px; box-sizing:border-box; display:flex; align-items:center; border-top:2px solid var(--g); border-bottom:2px solid rgba(110,240,160,.3); }
+  #tick { flex:none; margin-top:auto; margin-bottom:36px; height:64px; box-sizing:border-box; display:flex; align-items:center; border-top:2px solid var(--g); border-bottom:2px solid rgba(var(--gr),.3); }
   #tick b { flex:none; padding-right:22px; font-weight:600; font-size:22px; letter-spacing:.3em; color:var(--g); }
   #tickWrap { flex:1; min-width:0; overflow:hidden; white-space:nowrap; }
-  #tickText { display:inline-block; padding-left:20px; font-family:'EB Garamond',serif; font-style:italic; font-size:30px; animation:marq 30s linear infinite; }
+  #tickText { display:inline-block; padding-left:20px; font-family:var(--f3); font-style:italic; font-size:30px; animation:marq 30s linear infinite; }
   #offline { position:absolute; top:8px; right:14px; font-size:18px; letter-spacing:.2em; color:#ff9b9b; display:none; }
   @keyframes spin { to { transform:rotate(360deg); } }
   @keyframes eq { 0%,100% { height:12px; } 50% { height:50px; } }
   @keyframes marq { from { transform:translateX(0); } to { transform:translateX(-50%); } }
-  @keyframes pulse { 0%,100% { box-shadow:0 0 0 3px #0e1a14,0 0 40px rgba(110,240,160,.35); } 50% { box-shadow:0 0 0 3px #0e1a14,0 0 64px rgba(110,240,160,.6); } }
+  @keyframes pulse { 0%,100% { box-shadow:0 0 0 3px var(--ring),0 0 40px rgba(var(--gr),.35); } 50% { box-shadow:0 0 0 3px var(--ring),0 0 64px rgba(var(--gr),.6); } }
   @media (prefers-reduced-motion:reduce) { #rec, #glow, #eq i, #tickText { animation:none !important; } }
 </style>
 </head>
@@ -113,8 +114,8 @@
 <div id="stage">
   <div id="bgart"></div>
   <div id="offline">RECONNECTING…</div>
-  <div id="logo"><b>EDD &amp; CHERYL</b><span>JUKEBOX</span></div>
-  <div id="sub"><i></i><b>HOME SWEET HOME</b><i></i></div>
+  <div id="logo"><b>EDD &amp; CHERYL</b><span data-tx="jb">JUKEBOX</span></div>
+  <div id="sub"><i></i><b data-tx="sub">HOME SWEET HOME</b><i></i></div>
 
   <div id="np">
     <div id="glow"><div id="rec"><div class="sheen"></div><div class="label">EDD &amp;<br>CHERYL</div><div class="hole"></div></div></div>
@@ -153,6 +154,7 @@
 </div>
 
 <script src="config.js"></script>
+<script src="theme.js"></script>
 <script>
 (function () {
   const CFG = window.BANSHEE;
@@ -182,7 +184,7 @@
       const ns = await r.json(); ns.recvAt = Date.now();
       if (ns.track) { lastGood = ns; lastGoodAt = Date.now(); }
       else if (lastGood && Date.now() - lastGoodAt < 12000) { offlineCount = 0; return; } // ignore brief 'nothing playing' blips
-      state = ns;
+      state = ns; if (window.applyTheme && ns.theme) window.applyTheme(ns.theme);
       offlineCount = 0; $('offline').style.display = 'none';
       render(); onTrackChange();
     } catch (e) {
