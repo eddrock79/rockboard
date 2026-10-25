@@ -43,7 +43,7 @@
   .lt { flex:none; min-width:38px; height:38px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:var(--ink); font-weight:600; font-size:16px; }
   .lt.on { background:var(--g); color:#04110a; border-color:var(--g); }
   .lt:disabled { opacity:.22; }
-  #carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px; }
+  #carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-padding-left:16px; padding:4px 2px 12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px; }
   #carousel .msg { padding:20px 0; width:100%; }
   .card { flex:0 0 calc((100% - 12px) / 2); align-self:flex-start; display:block; min-width:0; scroll-snap-align:start; background:none; border:0; color:var(--ink); text-align:left; padding:0; }
   .card img, .card .ph { width:100%; aspect-ratio:1/1; height:auto; box-sizing:border-box; border-radius:10px; object-fit:cover; background:#16201b; display:block; border:2px solid transparent; }
@@ -234,7 +234,7 @@
       tmr = setTimeout(() => { held = true; box.classList.add('hold'); raf = requestAnimationFrame(step); }, 250); };
     const end = () => { clearTimeout(tmr); cancelAnimationFrame(raf);
       if (held) { box.classList.remove('hold'); const w = box.querySelector('.card'); if (w) { const u = w.offsetWidth + 12; box.scrollTo({ left: Math.round(box.scrollLeft / u) * u, behavior: 'smooth' }); } }
-      else if (t0) box.scrollBy({ left: dir * (box.clientWidth - 12), behavior: 'smooth' });
+      else if (t0) { const c = box.querySelector('.card'); const u = c ? c.offsetWidth + 12 : box.clientWidth; box.scrollBy({ left: dir * 2 * u, behavior: 'smooth' }); }
       held = false; t0 = 0; };
     btn.addEventListener('pointerdown', start); btn.addEventListener('pointerup', end);
     btn.addEventListener('pointercancel', () => { clearTimeout(tmr); cancelAnimationFrame(raf); box.classList.remove('hold'); t0 = 0; });
