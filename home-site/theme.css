@@ -4,24 +4,179 @@
   --groove1:#030403; --groove2:#121a15; --ring:#0e1a14; --ph:#16201b; --sheetbg:#0b110e; --bg:#050706;
   --f1:'Bebas Neue',sans-serif; --f2:'Oswald',sans-serif; --f3:'EB Garamond',serif;
 }
-/* GOTHIC: bone and candle-gold on black, with a deep crimson glow */
+/* Hidden in Classic, including after switching back from the Cathedral. */
+.ritual-identity { display:none; }
+
+/* GHOST / THE HOME RITUAL. Scoped to the existing gothic option. */
 html[data-theme="gothic"] {
-  --g:#e2b560; --ink:#f2eadb; --mute:#b9a9bc; --card:#150b19; --bg:#08040b;
-  --gr:226,181,96; --glow:120,16,52; --onG:#1c1003; --lab1:#7a1636; --lab2:#1a0610;
-  --groove1:#050205; --groove2:#160a18; --ring:#1b0c1c; --ph:#241228; --sheetbg:#120914;
-  --f1:'Cinzel',Georgia,serif; --f2:'Cormorant Garamond',Georgia,serif; --f3:'Cormorant Garamond',Georgia,serif;
+  color-scheme:dark;
+  --g:#d8b878; --ink:#f2ebde; --mute:#bbb0a2; --card:#171316; --bg:#08040b;
+  --gr:216,184,120; --glow:98,16,35; --onG:#160e08; --lab1:#7c2035; --lab2:#1c0a10;
+  --groove1:#090709; --groove2:#221b20; --ring:#5e4533; --ph:#241b21; --sheetbg:#130e12;
+  --f1:'Cinzel',Georgia,serif; --f2:'Oswald',sans-serif; --f3:'Cormorant Garamond',Georgia,serif;
 }
-html[data-theme="gothic"] body { font-weight:600; }
-html[data-theme="gothic"] .brand b, html[data-theme="gothic"] #logo b { font-weight:700; letter-spacing:.06em; }
-html[data-theme="gothic"] #logo b { font-size:118px; }
-html[data-theme="gothic"] #logo span { font-size:56px; letter-spacing:.5em; }
-html[data-theme="gothic"] #logo { text-shadow:0 0 60px rgba(160,20,70,.75); }
-html[data-theme="gothic"] .brand b { font-size:40px; }
-html[data-theme="gothic"] #sub b { font-size:22px; letter-spacing:.3em; }
-html[data-theme="gothic"] #pickL h2 { font-size:56px; }
-html[data-theme="gothic"] .tier .pr { font-size:54px; } html[data-theme="gothic"] .tier .pl { font-size:26px; }
-html[data-theme="gothic"] #title { font-weight:700; }
-html[data-theme="gothic"] #npHead b, html[data-theme="gothic"] #qHead b, html[data-theme="gothic"] #topHead { letter-spacing:.28em; }
-html[data-theme="gothic"] #artist { letter-spacing:.2em; }
-html[data-theme="gothic"] #bar i { box-shadow:0 0 16px rgba(180,30,80,.9); }
-html[data-theme="gothic"] body { background-image:radial-gradient(90% 50% at 50% 0%, rgba(120,16,52,.35), transparent 70%); background-attachment:fixed; }
+html[data-theme="gothic"] body {
+  background-color:var(--bg);
+  background-image:linear-gradient(180deg,transparent,#08040bf2 720px),url('assets/cathedral.svg');
+  background-position:center top; background-size:auto,720px auto;
+  background-repeat:no-repeat; background-attachment:fixed; font-weight:400;
+}
+html[data-theme="gothic"] .wrap { position:relative; }
+html[data-theme="gothic"] .ritual-identity { display:flex; flex-direction:column; align-items:center; text-align:center; }
+html[data-theme="gothic"] .brand > b,
+html[data-theme="gothic"] .brand > span,
+html[data-theme="gothic"] #logo > b,
+html[data-theme="gothic"] #logo > span,
+html[data-theme="gothic"] .ritual-admin-heading { display:none; }
+html[data-theme="gothic"] .ritual-eyebrow { font:500 10px var(--f2); letter-spacing:.36em; color:var(--g); line-height:1.5; }
+html[data-theme="gothic"] .ritual-wordmark {
+  display:block; width:214px; height:auto; margin:2px auto 0;
+  filter:sepia(.8) saturate(.65) brightness(1.1); object-fit:contain; text-shadow:none;
+}
+html[data-theme="gothic"] .ritual-caption { font:500 11px var(--f1); color:var(--ink); letter-spacing:.26em; line-height:1.6; }
+html[data-theme="gothic"] header { padding:12px 0 18px; border-bottom:1px solid #80613f80; position:relative; }
+html[data-theme="gothic"] header::after {
+  content:'◆'; position:absolute; bottom:-7px; left:calc(50% - 12px); width:24px;
+  background:var(--bg); text-align:center; color:var(--g); font:12px Georgia,serif;
+}
+html[data-theme="gothic"] header p { margin-top:14px; color:var(--mute); font-size:10px; letter-spacing:.22em; }
+html[data-theme="gothic"] .brand { text-shadow:none; }
+
+/* Phone: large touch targets and legible song information. */
+html[data-theme="gothic"] #bal,
+html[data-theme="gothic"] #ctl,
+html[data-theme="gothic"] .item,
+html[data-theme="gothic"] #panel .card {
+  background:linear-gradient(115deg,#241a1bde,#130e12f5 65%);
+  border:1px solid #8e6b414d; border-radius:4px;
+  box-shadow:inset 0 1px #e3c68b09,0 8px 24px #0003;
+}
+html[data-theme="gothic"] #bal { margin-top:24px; border-left:3px solid var(--g); }
+html[data-theme="gothic"] #bal .n { font:500 38px var(--f1); }
+html[data-theme="gothic"] #bal .l { font-size:12px; letter-spacing:.08em; }
+html[data-theme="gothic"] #bal .l small { font-size:10px; letter-spacing:.05em; margin-top:3px; }
+html[data-theme="gothic"] #ctl { position:relative; padding-top:30px; margin-bottom:22px; }
+html[data-theme="gothic"] #ctl::before { content:'NOW PLAYING'; position:absolute; top:10px; left:16px; font-size:9px; letter-spacing:.25em; color:var(--g); }
+html[data-theme="gothic"] #ctlT b { font:500 20px var(--f2); }
+html[data-theme="gothic"] #ctlT span { margin-top:4px; }
+html[data-theme="gothic"] #ctl button { width:58px; height:58px; border-radius:50%; background:#d8b8780d; border-color:#ae865c80; }
+html[data-theme="gothic"] .btn,
+html[data-theme="gothic"] #panel > .row > button:not(.ghost),
+html[data-theme="gothic"] #go { background:linear-gradient(135deg,#ebd0a0,#b88a4c); color:var(--onG); border-radius:3px; }
+html[data-theme="gothic"] .btn.ghost { color:var(--ink); background:transparent; }
+html[data-theme="gothic"] .mode,
+html[data-theme="gothic"] .modes button,
+html[data-theme="gothic"] #bnav button { border-radius:3px; border-color:#7b63454d; font-size:12px; letter-spacing:.1em; }
+html[data-theme="gothic"] .mode.on,
+html[data-theme="gothic"] #bnav button.on,
+html[data-theme="gothic"] .modes button.on { background:#6220334a; border-color:#b7935f; color:#f0d5a0; box-shadow:inset 0 -2px #d8b878; }
+html[data-theme="gothic"] .inp,
+html[data-theme="gothic"] #q,
+html[data-theme="gothic"] input { border-radius:3px; border-color:#8e6b4166; background:#100d11; font-size:17px; }
+html[data-theme="gothic"] input::placeholder { color:#aaa095; opacity:1; }
+html[data-theme="gothic"] .lt { border-radius:2px; border-color:#8e6b414d; }
+html[data-theme="gothic"] .lt.on { background:var(--g); color:var(--onG); }
+html[data-theme="gothic"] .card img,
+html[data-theme="gothic"] .card .ph { border-radius:3px; border:1px solid #9d7a4d80; padding:4px; background:#100b0d; }
+html[data-theme="gothic"] .card img.round,
+html[data-theme="gothic"] .card .ph.round { border-radius:50%; }
+html[data-theme="gothic"] .card.sel img,
+html[data-theme="gothic"] .card.sel .ph { border:2px solid var(--g); }
+html[data-theme="gothic"] .card .t { font-family:var(--f3); font-size:20px; font-weight:600; }
+html[data-theme="gothic"] .card .a { font-size:12px; letter-spacing:.04em; }
+html[data-theme="gothic"] #cnav button { border-radius:3px; background:linear-gradient(#251a1c,#150f13); border-color:#96734566; }
+html[data-theme="gothic"] .item { padding:10px; min-height:76px; }
+html[data-theme="gothic"] .item .t { font:600 21px var(--f3); }
+html[data-theme="gothic"] .item .a { font-size:12px; letter-spacing:.04em; margin-top:3px; }
+html[data-theme="gothic"] .item .w { font-size:9px; letter-spacing:.08em; }
+html[data-theme="gothic"] .item .w b { font-size:17px; }
+html[data-theme="gothic"] h3,
+html[data-theme="gothic"] .lbl { font:500 12px var(--f1); letter-spacing:.16em; line-height:1.6; }
+html[data-theme="gothic"] .sheet { border-radius:6px 6px 0 0; border-color:#b08c55; box-shadow:0 -20px 100px #5d172b40; }
+html[data-theme="gothic"] .sheet h2 { font-size:26px; }
+html[data-theme="gothic"] #toast { border-radius:3px; box-shadow:0 10px 50px #000c; }
+html[data-theme="gothic"] .gate h2 { font-size:30px; }
+html[data-theme="gothic"] :is(button,input):focus-visible { outline:2px solid #f0d5a0; outline-offset:4px; }
+html[data-theme="gothic"] button:active { filter:brightness(1.25); }
+html[data-theme="gothic"] #looks { flex-wrap:wrap; }
+html[data-theme="gothic"] #looks button { min-width:140px; font-size:12px; }
+html[data-theme="gothic"] .wrap > .ritual-identity { padding:22px 0 28px; }
+
+/* Portrait TV: an illuminated cathedral poster around the live jukebox. */
+html[data-theme="gothic"] #stage {
+  padding:34px 70px 0; isolation:isolate;
+  background:radial-gradient(ellipse at 50% 12%,#62203340,transparent 45%),#08070a;
+}
+html[data-theme="gothic"] #stage::before { content:''; position:absolute; inset:0; z-index:0; pointer-events:none; background:url('assets/cathedral.svg') center top / 1080px 1920px no-repeat; }
+html[data-theme="gothic"] #stage::after { content:''; position:absolute; inset:24px; z-index:2; pointer-events:none; border:1px solid #b993564d; outline:1px solid #b9935626; outline-offset:7px; }
+html[data-theme="gothic"] #bgart { opacity:0; filter:blur(70px) brightness(.16) saturate(.5); }
+html[data-theme="gothic"] #bgart.on { opacity:.3; }
+html[data-theme="gothic"] #logo { height:340px; text-shadow:none; }
+html[data-theme="gothic"] #logo .ritual-eyebrow { font-size:18px; letter-spacing:.42em; }
+html[data-theme="gothic"] #logo .ritual-wordmark { width:435px; margin:-8px 0 -6px; filter:sepia(.8) saturate(.65) brightness(1.05) drop-shadow(0 5px 18px #000); }
+html[data-theme="gothic"] #logo .ritual-caption { font-size:22px; letter-spacing:.34em; }
+html[data-theme="gothic"] #sub { gap:22px; height:42px; margin-top:0; }
+html[data-theme="gothic"] #sub b { font:500 23px var(--f1); letter-spacing:.2em; white-space:nowrap; }
+html[data-theme="gothic"] #sub i { background:linear-gradient(90deg,transparent,var(--g)); height:1px; opacity:.6; }
+html[data-theme="gothic"] #sub i:last-child { transform:rotate(180deg); }
+html[data-theme="gothic"] #np {
+  box-sizing:border-box; margin-top:26px; height:300px; gap:32px; padding:26px;
+  border:1px solid #bb955b73; background:linear-gradient(115deg,#2d1b21cc,#100d12eb 70%);
+  box-shadow:inset 0 0 0 5px #09070b,inset 0 0 0 6px #9b79422e,0 12px 50px #0008;
+}
+html[data-theme="gothic"] #glow,
+html[data-theme="gothic"] #rec { width:224px; height:224px; }
+html[data-theme="gothic"] #glow { animation:none; box-shadow:0 0 0 7px #100c0f,0 0 0 8px #a8854f,0 0 50px #a22e4930; }
+html[data-theme="gothic"] #rec .label.art { margin:-112px 0 0 -112px; }
+html[data-theme="gothic"] #npHead b { font:500 21px var(--f1); letter-spacing:.18em; }
+html[data-theme="gothic"] #title { font-family:'Bebas Neue',sans-serif; font-weight:400; line-height:1.05; margin-top:12px; }
+html[data-theme="gothic"] #artist { font-size:27px; letter-spacing:.16em; color:#d1bda0; margin-top:4px; }
+html[data-theme="gothic"] #eq { height:34px; gap:5px; }
+html[data-theme="gothic"] #eq i { width:5px; background:#c27d65; }
+html[data-theme="gothic"] #bar { height:5px; background:#d8b87826; margin-top:18px; }
+html[data-theme="gothic"] #bar i { background:linear-gradient(90deg,#a54d51,#e7c787); box-shadow:0 0 12px #d89665; }
+html[data-theme="gothic"] #times { font-size:19px; margin-top:10px; letter-spacing:.12em; }
+html[data-theme="gothic"] .rule { height:1px; background:linear-gradient(90deg,transparent,#bb955b,transparent); opacity:.55; }
+html[data-theme="gothic"] #pick { height:292px; gap:32px; margin-top:26px; align-items:center; }
+html[data-theme="gothic"] #pickL { align-self:stretch; padding:16px 0; }
+html[data-theme="gothic"] #pickL h2 { font:500 46px/1.15 var(--f1); max-width:530px; }
+html[data-theme="gothic"] #pickL p { font:italic 34px var(--f3); letter-spacing:.04em; color:var(--ink); margin-top:12px; }
+html[data-theme="gothic"] #tiers { margin-top:20px; }
+html[data-theme="gothic"] .tier { height:68px; padding:0 18px; border-radius:0; border:1px solid #b9945f66; gap:16px; background:#8c24341a; }
+html[data-theme="gothic"] .tier .pr { font-size:38px; }
+html[data-theme="gothic"] .tier .eqs { font:300 28px var(--f2); color:#806f60; }
+html[data-theme="gothic"] .tier .pl { font:400 19px var(--f2); letter-spacing:.04em; }
+html[data-theme="gothic"] #fcfp { font-size:17px; letter-spacing:.2em; }
+html[data-theme="gothic"] #qrBox { width:282px; height:282px; padding:18px; background:#fff; border-radius:0; box-shadow:0 0 0 5px #100d12,0 0 0 6px #b9945f; }
+html[data-theme="gothic"] #qr { width:246px; height:246px; }
+html[data-theme="gothic"] #qr img,
+html[data-theme="gothic"] #qr canvas { width:246px !important; height:246px !important; }
+html[data-theme="gothic"] #qrMsg { color:#111; font-size:22px; }
+html[data-theme="gothic"] #qHead { height:52px; margin-top:18px; }
+html[data-theme="gothic"] #qHead b,
+html[data-theme="gothic"] #topHead { font:500 23px var(--f1); letter-spacing:.2em; }
+html[data-theme="gothic"] #qCount { font-size:16px; letter-spacing:.15em; }
+html[data-theme="gothic"] .row { height:82px; gap:18px; border-color:#b9945f26; }
+html[data-theme="gothic"] .row .no { width:52px; font:400 28px var(--f1); color:#b9945f; }
+html[data-theme="gothic"] .row .t { font:600 36px/1.15 var(--f3); }
+html[data-theme="gothic"] .row .a { font:400 20px var(--f2); letter-spacing:.04em; margin-top:2px; }
+html[data-theme="gothic"] .row .w span { font-size:15px; letter-spacing:.12em; }
+html[data-theme="gothic"] .row .w b { font-size:30px; min-width:76px; font-weight:400; }
+html[data-theme="gothic"] #qEmpty { font-size:32px; }
+html[data-theme="gothic"] #topHead { margin-top:18px; height:48px; }
+html[data-theme="gothic"] #topGrid { column-gap:36px; font:400 25px var(--f3); }
+html[data-theme="gothic"] .tr { height:42px; border-bottom:1px solid #b9945f12; }
+html[data-theme="gothic"] .tr span { font:400 19px var(--f2); width:28px; color:#b9945f; }
+html[data-theme="gothic"] #tick { height:58px; margin-bottom:42px; border-top:1px solid #b9945f80; border-bottom:1px solid #b9945f40; }
+html[data-theme="gothic"] #tick b { font:500 16px var(--f1); letter-spacing:.16em; }
+html[data-theme="gothic"] #tickText { font-size:27px; }
+
+@media (max-width:360px) {
+  html[data-theme="gothic"] .wrap { padding-left:12px; padding-right:12px; }
+  html[data-theme="gothic"] #ctl { gap:7px; padding-left:12px; }
+  html[data-theme="gothic"] #ctl button { width:48px; height:52px; }
+  html[data-theme="gothic"] #bal .l small { font-size:9px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  html[data-theme="gothic"] #bgart { animation:none; }
+}
