@@ -1,6 +1,6 @@
 # Edd & Cheryl Jukebox: update the pages and redeploy. Keeps your keys and settings.
 $ErrorActionPreference = 'Stop'
-$sha  = 'd9bf1608a7d4d0685e69a2f6ee82f67b4c546e84'
+$sha  = '1545fd4ee3c1727980f62a149f90f7ff29a495e9'
 $root = "$HOME\rockboard-home"; $repo = "$root\repo"
 Invoke-WebRequest "https://github.com/eddrock79/rockboard/archive/$sha.zip" -OutFile "$root\upd.zip"
 Expand-Archive "$root\upd.zip" -DestinationPath "$root\upd" -Force
