@@ -61,13 +61,14 @@ async function uploadArt() {
 }
 
 // ── mpv control over its IPC pipe ────────────────────────────
-const ipcName = process.platform === 'win32' ? '\\\\.\\pipe\\banshee-mpv' : path.join(os.tmpdir(), 'banshee-mpv.sock');
+const ipcBase = process.platform === 'win32' ? '\\\\.\\pipe\\banshee-mpv' : path.join(os.tmpdir(), 'banshee-mpv');
+let mpvCount = 0;
 class Mpv {
-  constructor(file) {
-    this.file = file; this.buf = ''; this.pending = new Map(); this.n = 0; this.exited = false; this.sock = null;
+  constructor(file, volume = 100) {
+    this.file = file; this.ipcName = ipcBase + '-' + process.pid + '-' + (++mpvCount) + (process.platform === 'win32' ? '' : '.sock'); this.buf = ''; this.pending = new Map(); this.n = 0; this.exited = false; this.sock = null;
     const cmd = cfg.mpvPath || 'mpv';
     const args = [...(cfg.mpvArgs || []), '--no-video', '--no-terminal', '--audio-display=no', '--ytdl=no', '--idle=no',
-      '--input-ipc-server=' + ipcName, ...(cfg.mpvExtra || []), file];
+      '--input-ipc-server=' + this.ipcName, '--volume=' + volume, ...(cfg.mpvExtra || []), file];
     this.proc = spawn(cmd, args, { stdio: 'ignore', windowsHide: true });
     this.proc.on('error', e => { log('Could not start mpv:', e.message); this.exited = true; this.code = -1; });
     this.done = new Promise(res => this.proc.on('exit', code => { this.exited = true; this.code = code; try { this.sock && this.sock.destroy(); } catch (e) {} res(code); }));
@@ -76,7 +77,7 @@ class Mpv {
     for (let i = 0; i < 40 && !this.exited; i++) {
       try {
         await new Promise((res, rej) => {
-          const s = net.connect(ipcName); s.once('connect', () => { this.sock = s; res(); }); s.once('error', rej);
+          const s = net.connect(this.ipcName); s.once('connect', () => { this.sock = s; res(); }); s.once('error', rej);
         });
         this.sock.on('data', d => this.onData(d)); this.sock.on('error', () => {});
         return true;
@@ -102,6 +103,7 @@ class Mpv {
   }
   async pos() { const r = await this.cmd('get_property', 'time-pos'); return r && typeof r.data === 'number' ? Math.round(r.data * 1000) : null; }
   pause(v) { return this.cmd('set_property', 'pause', !!v); }
+  volume(v) { return this.cmd('set_property', 'volume', Math.max(0, Math.min(100, Math.round(v)))); }
   kill() { try { this.proc.kill(); } catch (e) {} }
 }
 
@@ -129,40 +131,85 @@ function pickHouse() {
   return { ...catalogue[0], duration: catalogue[0].seconds * 1000 };
 }
 
-// ── play one track until it ends or is skipped ───────────────
-async function playTrack(t, kind) {
-  const file = path.join(cfg.musicRoot, ...String(t.path).split('/'));
-  log((kind === 'request' ? 'REQUEST ' : 'house   ') + t.artist + ' - ' + (t.title || t.name));
-  const m = new Mpv(file);
-  const started = Date.now();
-  let paused = false, skipped = false;
-  const ok = await m.connect();
-  const report = async () => {
-    let p = ok ? await m.pos() : null; if (p === null) p = Date.now() - started;
-    try {
-      const r = await api('/player/report', { id: t.id, progress: p, playing: !paused, kind });
-      for (const c of r.cmds || []) {
-        if (c === 'skip') { skipped = true; log('Skipped by staff'); m.kill(); }
-        else if (c === 'pause') { paused = true; await m.pause(true); }
-        else if (c === 'play') { paused = false; await m.pause(false); }
-      }
-    } catch (e) { /* worker unreachable: keep playing */ }
-  };
-  await report();
-  const timer = setInterval(() => { if (!m.exited) report(); }, 2000);
-  await m.done; clearInterval(timer);
-  if (!skipped && Date.now() - started < 3000) { log('  could not play that file (is the NAS reachable? is mpv installed?)'); await sleep(2000); }
+// ── playing, with a crossfade between songs ─────────────────
+// The next song starts FADE seconds before the current one ends; one fades down while the other fades up.
+// Set "crossfadeSeconds" in player-config.json (default 5, 0 = off). Very short tracks are not crossfaded.
+const FADE_MS = Math.max(0, Number(cfg.crossfadeSeconds === undefined ? 5 : cfg.crossfadeSeconds) * 1000);
+
+async function pickNext() {
+  let t = null, kind = 'request';
+  try { t = (await api('/player/next')).track; } catch (e) { log('Worker not reachable (' + e.message + '). Playing house music.'); }
+  if (!t) { t = pickHouse(); kind = 'house'; }
+  return t ? { t, kind } : null;
+}
+async function startDeck(p, volume) {
+  const t = p.t, file = path.join(cfg.musicRoot, ...String(t.path).split('/'));
+  log((p.kind === 'request' ? 'REQUEST ' : 'house   ') + t.artist + ' - ' + (t.title || t.name));
+  const m = new Mpv(file, volume), ok = await m.connect();
+  const d = { t, kind: p.kind, m, ok, started: Date.now(), dur: (t.seconds || (t.duration || 0) / 1000 || 0) * 1000 };
+  if (ok) { const r = await m.cmd('get_property', 'duration'); if (r && typeof r.data === 'number' && r.data > 0) d.dur = r.data * 1000; }
+  return d;
 }
 
 async function run() {
   loadCatalogue();
-  log('Player started. Worker: ' + W);
+  log('Player started. Worker: ' + W + (FADE_MS ? '  Crossfade: ' + FADE_MS / 1000 + 's' : '  Crossfade: off'));
+  let active = null, outgoing = null, fadeStart = 0, paused = false, lastRep = 0, pendingPick = null;
+  const decks = () => [active, outgoing].filter(Boolean);
+  const skip = () => { const d = outgoing || active; if (d) d.m.kill(); };
+  const report = async () => {
+    if (!active) return;
+    let p = active.ok ? await active.m.pos() : null; if (p === null) p = Date.now() - active.started;
+    try {
+      const r = await api('/player/report', { id: active.t.id, progress: p, playing: !paused, kind: active.kind });
+      for (const c of r.cmds || []) {
+        if (c === 'skip') { log('Skipped by staff'); skip(); }
+        else if (c === 'pause') { paused = true; for (const d of decks()) await d.m.pause(true); }
+        else if (c === 'play') { paused = false; for (const d of decks()) await d.m.pause(false); }
+      }
+    } catch (e) { /* worker unreachable: keep playing */ }
+  };
   for (;;) {
-    let t = null, kind = 'request';
-    try { t = (await api('/player/next')).track; } catch (e) { log('Worker not reachable (' + e.message + '). Playing house music.'); }
-    if (!t) { t = pickHouse(); kind = 'house'; }
-    if (!t) { log('Nothing to play yet. Run:  node player.js upload'); await sleep(5000); continue; }
-    await playTrack(t, kind);
+    if (!active) {
+      const p = pendingPick || await pickNext(); pendingPick = null;
+      if (!p) { log('Nothing to play yet. Run:  node player.js upload'); await sleep(5000); continue; }
+      active = await startDeck(p, 100);
+      if (paused) await active.m.pause(true);
+      lastRep = Date.now(); await report();
+      continue;
+    }
+    await sleep(250);
+    const now = Date.now();
+    // the old song has finished fading (or was skipped): the new one takes over at full volume
+    if (outgoing && (outgoing.m.exited || now - fadeStart >= FADE_MS)) {
+      outgoing.m.kill(); outgoing = null;
+      if (active && !active.m.exited) await active.m.volume(100);
+    }
+    // the current song has ended
+    if (active.m.exited) {
+      if (!outgoing && now - active.started < 3000) { log('  could not play that file (is the NAS reachable? is mpv installed?)'); await sleep(2000); }
+      active = outgoing; outgoing = null;
+      if (active) { await active.m.volume(100); lastRep = 0; }
+      continue;
+    }
+    if (now - lastRep > 2000) { lastRep = now; await report(); }
+    if (outgoing) { // mid-crossfade: equal-power curves so the blend doesn't dip
+      const x = Math.min(1, (now - fadeStart) / FADE_MS);
+      await outgoing.m.volume(100 * Math.cos(x * Math.PI / 2)); await active.m.volume(100 * Math.sin(x * Math.PI / 2));
+      continue;
+    }
+    // time to start the next song underneath?
+    if (FADE_MS && active.ok && !paused && active.dur > FADE_MS * 3) {
+      const pos = await active.m.pos();
+      if (pos !== null && active.dur - pos <= FADE_MS + 1200) {
+        const p = pendingPick || await pickNext(); pendingPick = null;
+        if (p) {
+          const nd = await startDeck(p, 0);
+          if (nd.ok) { outgoing = active; active = nd; fadeStart = Date.now(); lastRep = Date.now(); await report(); }
+          else { nd.m.kill(); pendingPick = p; } // couldn't start it underneath: play it normally when this one ends
+        }
+      }
+    }
   }
 }
 
