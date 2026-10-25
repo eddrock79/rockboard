@@ -40,6 +40,11 @@
          font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; letter-spacing:.06em; }
   #rec .label.art { width:150px; height:150px; margin:-75px 0 0 -75px; background-size:cover; background-position:center; color:transparent; }
   #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:#030403; }
+  #bgart { position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(46px) brightness(.38) saturate(1.3); opacity:0; transition:opacity 1.2s; z-index:0; }
+  #bgart.on { opacity:1; }
+  #stage > *:not(#bgart):not(#offline) { position:relative; z-index:1; }
+  #cover { display:none; flex:none; width:300px; height:300px; border-radius:14px; background-size:cover; background-position:center; box-shadow:0 14px 50px rgba(0,0,0,.7), 0 0 0 2px rgba(110,240,160,.35); }
+  #np.cover #cover { display:block; } #np.cover #glow { display:none; }
   #npText { flex:1; min-width:0; display:flex; flex-direction:column; }
   #npHead { display:flex; align-items:flex-end; justify-content:space-between; }
   #npHead b { font-weight:600; font-size:26px; letter-spacing:.4em; color:var(--g); }
@@ -64,7 +69,7 @@
   .tier .pr { font-size:66px; line-height:1; color:var(--g); }
   .tier .eqs { font-size:50px; }
   .tier .n { font-size:66px; line-height:1; }
-  .tier .pl { font-size:46px; letter-spacing:.04em; }
+  .tier .pl { font-size:34px; letter-spacing:.04em; white-space:nowrap; }
   .tier .badge { margin-left:auto; padding:4px 14px; border-radius:8px; background:var(--g); color:#04110a; font-family:'Oswald',sans-serif; font-weight:700; font-size:20px; line-height:1.1; letter-spacing:.1em; text-align:center; }
   #fcfp { margin-top:auto; font-weight:500; font-size:22px; letter-spacing:.34em; color:var(--mute); }
   #qrBox { flex:none; width:330px; height:330px; box-sizing:border-box; padding:24px; border-radius:6px; background:#fff; position:relative; }
@@ -106,11 +111,13 @@
 </head>
 <body>
 <div id="stage">
+  <div id="bgart"></div>
   <div id="offline">RECONNECTING…</div>
   <div id="logo"><b>EDD &amp; CHERYL</b><span>JUKEBOX</span></div>
   <div id="sub"><i></i><b>HOME SWEET HOME</b><i></i></div>
 
   <div id="np">
+    <div id="cover"></div>
     <div id="glow"><div id="rec"><div class="sheen"></div><div class="label">EDD &amp;<br>CHERYL</div><div class="hole"></div></div></div>
     <div id="npText">
       <div id="npHead"><b>NOW PLAYING</b><div id="eq"><i></i><i></i><i></i><i></i><i></i></div></div>
@@ -192,6 +199,7 @@
     $('eq').classList.toggle('on', on);
     fitTitle(t ? t.name : 'Waiting for music');
     const lab = document.querySelector('#rec .label'), art = t && t.image ? (t.image.charAt(0) === '/' ? CFG.workerUrl + t.image : t.image) : '';
+    if ($('cover').dataset.art !== art) { $('cover').dataset.art = art; $('cover').style.backgroundImage = art ? 'url("' + art + '")' : ''; $('bgart').style.backgroundImage = art ? 'url("' + art + '")' : ''; $('bgart').classList.toggle('on', !!art); $('np').classList.toggle('cover', !!art); }
     if (lab.dataset.art !== art) { lab.dataset.art = art; lab.style.backgroundImage = art ? 'url("' + art + '")' : ''; lab.classList.toggle('art', !!art); }
     if (!t) {
       $('title').textContent = 'Waiting for music';
