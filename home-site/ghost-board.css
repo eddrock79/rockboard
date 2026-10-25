@@ -35,7 +35,7 @@ html[data-theme="gothic"] #stage[data-layout="landscape"] > .rule { display:none
 html[data-theme="gothic"] #stage[data-layout="landscape"] #logo { position:absolute; left:68px; top:26px; width:290px; height:145px; z-index:3; }
 html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-eyebrow,
 html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-caption { display:none; }
-html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-wordmark { width:268px; margin:0; filter:sepia(.4) saturate(.6) brightness(1.2) drop-shadow(0 4px 18px #000); }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-wordmark { width:268px; margin:0; filter:drop-shadow(0 4px 18px #000); }
 html[data-theme="gothic"] #stage[data-layout="landscape"] #sub { position:absolute; left:400px; top:63px; width:840px; height:54px; margin:0; justify-content:flex-start; }
 html[data-theme="gothic"] #stage[data-layout="landscape"] #sub i { display:none; }
 html[data-theme="gothic"] #stage[data-layout="landscape"] #sub b { font:500 40px/1.2 'Cinzel',Georgia,serif; letter-spacing:.14em; text-shadow:0 2px 20px #000; }

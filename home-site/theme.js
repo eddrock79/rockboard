@@ -11,8 +11,7 @@
     if (!host || document.querySelector('.ritual-identity')) return;
     const identity = document.createElement('div');
     identity.className = 'ritual-identity';
-    identity.innerHTML = '<div class="ritual-eyebrow">EDD &amp; CHERYL PRESENT</div>' +
-      '<img class="ritual-wordmark" src="assets/ghost-wordmark.webp" alt="Ghost" width="500" height="274">' +
+    identity.innerHTML = '<img class="ritual-wordmark" src="assets/cheryl-edd-logo.webp" alt="Cheryl &amp; Edd" width="1400" height="518">' +
       '<div class="ritual-caption">' + (host.tagName === 'H1' ? 'THE HOUSE CONTROLS' : 'THE HOME RITUAL') + '</div>';
     if (host.tagName === 'H1') {
       host.classList.add('ritual-admin-heading');

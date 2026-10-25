@@ -113,7 +113,7 @@ html[data-theme="gothic"] #bgart { opacity:0; filter:blur(70px) brightness(.16) 
 html[data-theme="gothic"] #bgart.on { opacity:.3; }
 html[data-theme="gothic"] #logo { height:340px; text-shadow:none; }
 html[data-theme="gothic"] #logo .ritual-eyebrow { font-size:18px; letter-spacing:.42em; }
-html[data-theme="gothic"] #logo .ritual-wordmark { width:435px; margin:-8px 0 -6px; filter:sepia(.8) saturate(.65) brightness(1.05) drop-shadow(0 5px 18px #000); }
+html[data-theme="gothic"] #logo .ritual-wordmark { width:560px; margin:-8px 0 -6px; filter:drop-shadow(0 5px 18px #000); }
 html[data-theme="gothic"] #logo .ritual-caption { font-size:22px; letter-spacing:.34em; }
 html[data-theme="gothic"] #sub { gap:22px; height:42px; margin-top:0; }
 html[data-theme="gothic"] #sub b { font:500 23px var(--f1); letter-spacing:.2em; white-space:nowrap; }
@@ -180,3 +180,4 @@ html[data-theme="gothic"] #tickText { font-size:27px; }
 @media (prefers-reduced-motion:reduce) {
   html[data-theme="gothic"] #bgart { animation:none; }
 }
+html[data-theme="gothic"] .logo-img { display:none; }
