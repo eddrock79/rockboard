@@ -147,6 +147,7 @@
     $('pillX').onclick = resetArtist;
     document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => { bKind = b.dataset.k; bLetter = ''; bArtist = null; artist = null; results = []; paintResults(); loadLetters(); });
     $('bpillX').onclick = () => { bArtist = null; artist = null; results = []; paintResults(); loadLetters(); };
+    holdScroll($('cPrev'), -1); holdScroll($('cNext'), 1);
     refreshBal(); pollState(); setInterval(pollState, 8000); setInterval(refreshBal, 12000);
     setMode(CFG.browse ? 'browse' : 'artist');
   }
@@ -240,7 +241,6 @@
     btn.addEventListener('pointerleave', () => { if (t0) end(); });
     btn.addEventListener('contextmenu', e => e.preventDefault());
   }
-  holdScroll($('cPrev'), -1); holdScroll($('cNext'), 1);
   async function openAlbum(a, btn) {
     document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel')); btn.classList.add('sel');
     albumCtx = a; $('results').innerHTML = '<div class="msg">Loading…</div>';
