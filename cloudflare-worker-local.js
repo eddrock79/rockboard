@@ -286,7 +286,9 @@ async function verifyStripeSignature(env, body, header) {
 }
 
 // Add a catalogue track to the paid queue (shared by guests and staff).
-async function enqueue(ledger, uri) {
+const MAX_TRACK_MS = 7 * 60 * 1000; // guests can't pick anything longer than 7 minutes
+const shortEnough = t => (t.duration || 0) > 0 && t.duration <= MAX_TRACK_MS;
+async function enqueue(ledger, uri, guest) {
   if (!TRACK_URI.test(uri || '')) return { error: 'Bad request', status: 400 };
   const id = uri.slice(6);
   const [row, pending, now] = await Promise.all([ledger.trackById(id), ledger.getPending(), ledger.getNow()]);
@@ -294,6 +296,7 @@ async function enqueue(ledger, uri) {
   if (pending.some(p => p.id === id) || (now && now.track && now.track.id === id && (Date.now() - now.reportedAt) < PLAYER_STALE_MS))
     return { error: 'That track is already in the queue', status: 409 };
   const track = shape(row);
+  if (guest && !shortEnough(track)) return { error: 'Sorry, tracks over 7 minutes can’t be requested.', status: 422 };
   return { track, commit: async () => { await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]); await ledger.bumpTrack(track); await ledger.bumpArtists(track.artists); await bustState(); } };
 }
 
@@ -429,8 +432,8 @@ export default {
       if (path === '/search') {
         if (!(await needSession())) return json(NOSESSION, 401);
         const albumId = url.searchParams.get('album_id') || '';
-        if (/^[0-9a-f]{10}$/.test(albumId)) return json({ items: await ledger.albumTracks(albumId) });
-        return json({ items: await ledger.searchTracks({ q: url.searchParams.get('q') || '', artistId: (url.searchParams.get('artist_id') || '').slice(0, 16) }) });
+        if (/^[0-9a-f]{10}$/.test(albumId)) return json({ items: (await ledger.albumTracks(albumId)).filter(shortEnough) });
+        return json({ items: (await ledger.searchTracks({ q: url.searchParams.get('q') || '', artistId: (url.searchParams.get('artist_id') || '').slice(0, 16) })).filter(shortEnough) });
       }
       if (path === '/balance') {
         if (!(await needSession())) return json(NOSESSION, 401);
@@ -442,7 +445,7 @@ export default {
         if (!(await needSession())) return json(NOSESSION, 401);
         const { device_id, uri } = await request.json();
         if (!device_id) return json({ error: 'Bad request' }, 400);
-        const e = await enqueue(ledger, uri);
+        const e = await enqueue(ledger, uri, true);
         if (e.error) return json({ error: e.error }, e.status);
         const spend = await ledger.debit(device_id);
         if (!spend.ok) return json({ error: 'No plays left', needPlays: true }, 402);
