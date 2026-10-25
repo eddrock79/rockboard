@@ -1,47 +1,48 @@
 // Haunt effects for the TV board, ported from the What's On board.
-//  1. Text twitch: every 10-30 s one piece of text jitters and skews with ghost copies of its letters.
+//  1. Letter glitch: every 9-24 s ONE letter somewhere on the board swaps for a moment and slips a pixel or two.
 //  2. Backdrop tear: every few minutes a short burst of static and a judder, in the backdrop picture only.
 // ?haunt=off on the board address turns both off (it remembers); ?haunt=on turns them back on.
 (function () {
   try { const q = new URLSearchParams(location.search).get('haunt'); if (q) localStorage.setItem('ej_haunt', q); if (localStorage.getItem('ej_haunt') === 'off') return; } catch (e) {}
+  const TARGETS = '#title, #artist, #pickL h2, #npHead b, #qHead b, #topHead, .row .t, .row .a, .tr em, #sub b';
+  const UP = 'ABCDEFGHKMNORSTUVWXZ#%&@?/', LOW = 'abcdeghkmnoprstuvwxz#%&?/';
   const css = document.createElement('style');
-  css.textContent = `
-  :root { --gh1:100,228,190; --gh2:220,50,30; }
-  html[data-theme="gothic"] { --gh1:226,181,96; --gh2:170,24,70; }
-  .haunt-twitch { display:inline-block; position:relative; animation:hauntTextTwitch .72s steps(1,end); will-change:transform,filter,opacity; text-shadow:none!important; }
-  .haunt-twitch::before, .haunt-twitch::after { content:attr(data-haunt-text); position:absolute; left:0; top:0; opacity:0; pointer-events:none; mix-blend-mode:screen; white-space:inherit; }
-  .haunt-twitch::before { color:rgba(var(--gh1),.85); transform:translate(-5px,-2px); animation:hauntGhostA .72s steps(1,end); }
-  .haunt-twitch::after { color:rgba(var(--gh2),.78); transform:translate(6px,2px); animation:hauntGhostB .72s steps(1,end); }
-  @keyframes hauntTextTwitch {
-    0%,100% { transform:none; filter:none; opacity:1 }
-    8% { transform:translateX(-2px) skewX(-1deg); filter:blur(.3px); opacity:.88 }
-    11% { transform:translateX(12px) skewX(9deg); filter:blur(1.2px) contrast(1.4); opacity:.45 }
-    13% { transform:translateX(-8px) skewX(-6deg); filter:blur(.6px); opacity:.92 }
-    15% { transform:none; filter:hue-rotate(180deg) contrast(1.2) }
-    20% { transform:none; filter:none }
-    42% { transform:translateX(3px); opacity:.72; filter:blur(.2px) }
-    45% { transform:translateX(-14px) skewX(-10deg); filter:blur(1.8px) contrast(1.6); opacity:.28 }
-    47% { transform:translateX(7px) skewX(5deg); opacity:.88; filter:blur(.4px) }
-    50% { transform:none; filter:none; opacity:1 }
-    65% { transform:translateX(-1px); filter:blur(.1px) brightness(.92); opacity:.96 }
-    68% { transform:translateX(8px) skewX(6deg); filter:blur(.9px) contrast(1.3); opacity:.52 }
-    70% { transform:none; filter:none; opacity:1 }
-  }
-  @keyframes hauntGhostA { 0%,8%,20%,42%,52%,100% { opacity:0 } 9%,14%,43%,49% { opacity:.78 } }
-  @keyframes hauntGhostB { 0%,11%,22%,45%,55%,100% { opacity:0 } 12%,17%,46%,52% { opacity:.68 } }`;
+  css.textContent = ':root{--gh1:100,228,190;--gh2:220,50,30} html[data-theme="gothic"]{--gh1:226,181,96;--gh2:170,24,70}';
   document.head.appendChild(css);
 
-  const TARGETS = '#title, #artist, #pickL h2, #npHead b, #qHead b, #topHead, .row .t, .row .a, .tr em, #sub b';
-  function twitch() {
+  // One letter, briefly: it swaps to other characters and slips a pixel or two, then goes back. Nothing else moves.
+  function glitchLetter() {
     const els = [...document.querySelectorAll(TARGETS)].filter(el => {
-      const r = el.getBoundingClientRect(); return r.width > 12 && r.height > 8 && (el.textContent || '').trim().length > 1 && getComputedStyle(el).visibility !== 'hidden';
+      const r = el.getBoundingClientRect(); return r.width > 12 && r.height > 8 && getComputedStyle(el).visibility !== 'hidden';
     });
     if (!els.length) return;
     const el = els[Math.floor(Math.random() * els.length)];
-    if (el.classList.contains('haunt-twitch')) return;
-    el.dataset.hauntText = (el.textContent || '').trim();
-    el.classList.add('haunt-twitch');
-    setTimeout(() => { el.classList.remove('haunt-twitch'); delete el.dataset.hauntText; }, 700);
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), nodes = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) if (/[A-Za-z]/.test(n.nodeValue) && !n.parentNode.closest('.hz')) nodes.push(n);
+    if (!nodes.length) return;
+    const node = nodes[Math.floor(Math.random() * nodes.length)], text = node.nodeValue;
+    const idxs = []; for (let i = 0; i < text.length; i++) if (/[A-Za-z]/.test(text[i])) idxs.push(i);
+    const i = idxs[Math.floor(Math.random() * idxs.length)], ch = text[i];
+    const range = document.createRange(); range.setStart(node, i); range.setEnd(node, i + 1);
+    const w = range.getBoundingClientRect().width, scale = el.getBoundingClientRect().width / (el.offsetWidth || 1) || 1;
+    const span = document.createElement('span'); span.className = 'hz'; span.textContent = ch;
+    span.style.cssText = 'display:inline-block;text-align:center;overflow:visible;width:' + (w / scale).toFixed(2) + 'px;white-space:pre';
+    const after = node.splitText(i + 1), mid = node.splitText(i); // node = before, mid = the letter, after = rest
+    mid.parentNode.replaceChild(span, mid);
+    const pool = ch === ch.toUpperCase() ? UP : LOW;
+    let frames = 0; const total = 5 + Math.floor(Math.random() * 4);
+    const t = setInterval(() => {
+      frames++;
+      if (!span.isConnected) { clearInterval(t); return; }
+      if (frames > total) {
+        clearInterval(t); span.textContent = ch; span.style.transform = ''; span.style.textShadow = '';
+        try { const p = span.parentNode; p.replaceChild(document.createTextNode(ch), span); p.normalize(); } catch (e) {}
+        return;
+      }
+      span.textContent = Math.random() < .35 ? ch : pool[Math.floor(Math.random() * pool.length)];
+      span.style.transform = 'translate(' + ((Math.random() * 3 - 1.5)).toFixed(1) + 'px,' + ((Math.random() * 2 - 1)).toFixed(1) + 'px)';
+      span.style.textShadow = Math.random() < .5 ? '-1.5px 0 rgba(var(--gh1),.8), 1.5px 0 rgba(var(--gh2),.7)' : '';
+    }, 70);
   }
 
   // rare static + judder, backdrop picture only
@@ -71,7 +72,7 @@
   function loop(fn, minMs, maxMs, firstMin, firstMax) {
     setTimeout(() => { fn(); loop(fn, minMs, maxMs); }, firstMin + Math.random() * (firstMax - firstMin));
   }
-  loop(twitch, 10000, 30000, 6000, 16000);
+  loop(glitchLetter, 9000, 24000, 7000, 16000);
   loop(tear, 120000, 300000, 60000, 140000);
-  window.__haunt = { twitch, tear };
+  window.__haunt = { glitchLetter, tear };
 })();
