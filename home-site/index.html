@@ -55,10 +55,11 @@
   .card.sel img, .card.sel .ph { border-color:var(--g); }
   .card .t { margin-top:7px; font-weight:600; font-size:15px; line-height:1.15; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .card .a { font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #ctl { display:flex; align-items:center; gap:10px; margin:0 0 14px; background:var(--card); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:8px 8px 8px 14px; }
-  #ctlT { flex:1; min-width:0; } #ctlT b { display:block; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } #ctlT span { display:block; font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #ctl button { flex:none; width:64px; height:52px; border-radius:12px; border:1px solid rgba(110,240,160,.45); background:rgba(110,240,160,.1); color:var(--g); font-size:18px; font-weight:700; touch-action:manipulation; }
+  #ctl { display:flex; align-items:center; gap:10px; margin:0 0 14px; background:var(--card); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:10px 10px 10px 16px; }
+  #ctlT { flex:1; min-width:0; } #ctlT b { display:block; font-size:19px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } #ctlT span { display:block; font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #ctl button { flex:none; width:76px; height:60px; display:flex; align-items:center; justify-content:center; border-radius:14px; border:1px solid rgba(110,240,160,.45); background:rgba(110,240,160,.1); color:var(--g); font-size:18px; font-weight:700; touch-action:manipulation; }
   #ctl button:active { background:rgba(110,240,160,.3); }
+  .item.queued { opacity:.55; border-color:rgba(110,240,160,.5); }
   .lbl { margin:2px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
   .item .ph.round, .item img.round { border-radius:50%; }
   h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
@@ -128,7 +129,7 @@
   function shell() {
     $('app').innerHTML = `
       <div id="bal"><div class="n" id="plays">0</div><div class="l">SONGS OF YOURS WAITING<small>FREE PLAYS · ADD AS MANY AS YOU LIKE</small></div></div>
-      <div id="ctl"><div id="ctlT"><b id="ctlName">Nothing playing</b><span id="ctlArt"></span></div><button id="cPlay" aria-label="Pause or play">&#10074;&#10074;</button><button id="cSkip" aria-label="Skip">&#9654;&#9654;|</button></div>
+      <div id="ctl"><div id="ctlT"><b id="ctlName">Nothing playing</b><span id="ctlArt"></span></div><button id="cPlay" aria-label="Pause or play"><svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><rect x="6" y="4.5" width="4.4" height="15" rx="1"/><rect x="13.6" y="4.5" width="4.4" height="15" rx="1"/></svg></button><button id="cSkip" aria-label="Skip to next song"><svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M3 5v14l9-7zM12 5v14l9-7z"/><rect x="20.5" y="5" width="2.2" height="14" rx="1"/></svg></button></div>
       <div id="modes">${CFG.browse ? '<button class="mode" data-m="browse">BROWSE</button>' : ''}<button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
       <div id="browseBox" style="display:none">
         <div id="bnav"><button class="on" data-k="albums">ALBUMS A–Z</button><button data-k="artists">ARTISTS A–Z</button></div>
@@ -181,7 +182,7 @@
   function paintCtl() {
     const t = state && state.track; if (!$('ctlName')) return;
     $('ctlName').textContent = t ? t.name : 'Nothing playing'; $('ctlArt').textContent = t ? t.artist + (state.playing ? '' : ' · paused') : '';
-    $('cPlay').innerHTML = state && state.playing ? '&#10074;&#10074;' : '&#9654;';
+    $('cPlay').innerHTML = state && state.playing ? '<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><rect x="6" y="4.5" width="4.4" height="15" rx="1"/><rect x="13.6" y="4.5" width="4.4" height="15" rx="1"/></svg>' : '<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
   }
   async function control(cmd) {
     if (cmd !== 'skip' && state) { state.playing = cmd === 'play'; paintCtl(); }
@@ -313,6 +314,7 @@
     if (r.status === 401) return gate();
     results = r.items || []; paintResults('search');
   }
+  const inQ = uri => !!(state && (state.queue || []).some(q => q.uri === uri));
   function paintResults(kind) {
     const el = $('results'); if (!el) return;
     if (kind) lastKind = kind; else if (!results.length) lastKind = ''; kind = kind || lastKind;
@@ -320,17 +322,28 @@
     const w = waits(); const end = w ? w.end : null;
     el.innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : '') +
       (kind === 'album' && albumCtx ? `<div class="lbl">${esc((albumCtx.name + ' · ' + albumCtx.artist).toUpperCase())}</div>` : '') + results.map((x, i) =>
-      `<button class="item" data-i="${i}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +
+      `<button class="item${inQ(x.uri) ? ' queued' : ''}" data-i="${i}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +
       `<div class="nm"><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div>` +
-      (end !== null ? `<div class="w">PLAYS IN<b>~${mmss(end)}</b></div>` : '') + `</button>`).join('');
+      (inQ(x.uri) ? `<div class="w"><b>IN QUEUE</b></div>` : end !== null ? `<div class="w">TAP TO ADD<b>~${mmss(end)}</b></div>` : '') + `</button>`).join('');
     el.querySelectorAll('.item').forEach(b => b.onclick = () => confirmTrack(results[b.dataset.i]));
   }
   function sheet(html) { $('sheet').innerHTML = html; $('sheetBg').style.display = 'flex'; }
   function closeSheet() { $('sheetBg').style.display = 'none'; }
   $('sheetBg').onclick = e => { if (e.target === $('sheetBg')) closeSheet(); };
 
+  async function addNow(t) {
+    const r = await api('/request', { method: 'POST', body: JSON.stringify({ device_id: device, uri: t.uri }) });
+    if (r.status === 401) return gate();
+    if (r.ok) {
+      waiting = Math.min(maxQ, waiting + 1); paintBal(); mine.add(t.uri); ls.set('bb_mine', JSON.stringify([...mine].slice(-30)));
+      await pollState(); paintResults();
+      const w2 = waits(); toast(`Added! "${t.name}" plays in about ${w2 && w2.map[t.uri] !== undefined ? mmss(w2.map[t.uri]) : 'a few minutes'}.`);
+    } else toast(r.error || 'Something went wrong. Try again.');
+  }
   function confirmTrack(t) {
     if (waiting >= maxQ) return toast(`You already have ${maxQ} songs waiting. Let some play first.`);
+    if (inQ(t.uri)) return toast('That one is already in the queue.');
+    addNow(t); return;
     const w = waits();
     sheet(`<h2>${esc(t.name)}</h2><p>${esc(t.artist)}<br>Free to play.${w ? ` It should play in about ${mmss(w.end)}.` : ''}</p>
       <div class="row2"><button class="btn ghost" id="no">CANCEL</button><button class="btn" id="yes">ADD TO QUEUE</button></div>`);
@@ -341,7 +354,6 @@
       closeSheet();
       if (r.ok) {
         waiting = Math.min(maxQ, waiting + 1); paintBal(); mine.add(t.uri); ls.set('bb_mine', JSON.stringify([...mine].slice(-30)));
-        setMode(mode);
         await pollState();
         const w2 = waits(); toast(`Queued! "${t.name}" plays in about ${w2 && w2.map[t.uri] !== undefined ? mmss(w2.map[t.uri]) : 'a few minutes'}.`);
       } else toast(r.error || 'Something went wrong. Try again.');
