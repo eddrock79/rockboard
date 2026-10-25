@@ -11,7 +11,9 @@
   document.head.appendChild(css);
 
   // One letter, briefly: it swaps to other characters and slips a pixel or two, then goes back. Nothing else moves.
+  let busy = false;
   function glitchLetter() {
+    if (busy) return;
     const els = [...document.querySelectorAll(TARGETS)].filter(el => {
       const r = el.getBoundingClientRect(); return r.width > 12 && r.height > 8 && getComputedStyle(el).visibility !== 'hidden';
     });
@@ -29,14 +31,16 @@
     span.style.cssText = 'display:inline-block;text-align:center;overflow:visible;width:' + (w / scale).toFixed(2) + 'px;white-space:pre';
     const after = node.splitText(i + 1), mid = node.splitText(i); // node = before, mid = the letter, after = rest
     mid.parentNode.replaceChild(span, mid);
+    busy = true;
     const pool = ch === ch.toUpperCase() ? UP : LOW;
     let frames = 0; const total = 5 + Math.floor(Math.random() * 4);
     const t = setInterval(() => {
       frames++;
-      if (!span.isConnected) { clearInterval(t); return; }
+      if (!span.isConnected) { clearInterval(t); busy = false; return; }
       if (frames > total) {
         clearInterval(t); span.textContent = ch; span.style.transform = ''; span.style.textShadow = '';
         try { const p = span.parentNode; p.replaceChild(document.createTextNode(ch), span); p.normalize(); } catch (e) {}
+        busy = false;
         return;
       }
       span.textContent = Math.random() < .35 ? ch : pool[Math.floor(Math.random() * pool.length)];
@@ -69,7 +73,7 @@
     }, 80);
   }
 
-  function loop(fn, minMs, maxMs, firstMin, firstMax) {
+  function loop(fn, minMs, maxMs, firstMin = minMs, firstMax = maxMs) {
     setTimeout(() => { fn(); loop(fn, minMs, maxMs); }, firstMin + Math.random() * (firstMax - firstMin));
   }
   loop(glitchLetter, 9000, 24000, 7000, 16000);
