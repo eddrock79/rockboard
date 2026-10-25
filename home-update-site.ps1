@@ -7,6 +7,7 @@ Expand-Archive "$root\upd.zip" -DestinationPath "$root\upd" -Force
 $src = (Get-ChildItem "$root\upd" | Select-Object -First 1).FullName
 Remove-Item "$repo\home-site" -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item "$src\home-site" "$repo\home-site" -Recurse -Force
+Copy-Item "$src\tools\player.js" "$repo\tools" -Force
 Copy-Item "$src\cloudflare-worker-home.js","$src\wrangler-home.toml" $repo -Force
 Remove-Item "$root\upd" -Recurse -Force; Remove-Item "$root\upd.zip" -Force
 Push-Location $repo; npx wrangler deploy -c wrangler-home.toml; Pop-Location

@@ -118,7 +118,9 @@ function loadCatalogue() {
   log('House music pool: ' + pool.length + ' tracks' + (want.size ? ' (' + want.size + ' chosen artists)' : ' (whole library)'));
 }
 const recent = [];
+let catMtime = 0;
 function pickHouse() {
+  try { const m = fs.statSync(path.join(__dirname, 'catalogue.json')).mtimeMs; if (catMtime && m !== catMtime) { loadCatalogue(); } catMtime = m; } catch (e) {}
   if (!catalogue.length) return null;
   for (let i = 0; i < 30; i++) {
     const t = catalogue[Math.floor(Math.random() * catalogue.length)];

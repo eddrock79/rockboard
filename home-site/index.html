@@ -55,6 +55,10 @@
   .card.sel img, .card.sel .ph { border-color:var(--g); }
   .card .t { margin-top:7px; font-weight:600; font-size:15px; line-height:1.15; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .card .a { font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #ctl { display:flex; align-items:center; gap:10px; margin:0 0 14px; background:var(--card); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:8px 8px 8px 14px; }
+  #ctlT { flex:1; min-width:0; } #ctlT b { display:block; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } #ctlT span { display:block; font-size:12px; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #ctl button { flex:none; width:64px; height:52px; border-radius:12px; border:1px solid rgba(110,240,160,.45); background:rgba(110,240,160,.1); color:var(--g); font-size:18px; font-weight:700; touch-action:manipulation; }
+  #ctl button:active { background:rgba(110,240,160,.3); }
   .lbl { margin:2px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
   .item .ph.round, .item img.round { border-radius:50%; }
   h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
@@ -123,7 +127,8 @@
 
   function shell() {
     $('app').innerHTML = `
-      <div id="bal"><div class="n" id="plays">0</div><div class="l">OF YOUR <span id="max">5</span> SONGS WAITING<small>FREE PLAYS · NO LIMIT OVERALL</small></div></div>
+      <div id="bal"><div class="n" id="plays">0</div><div class="l">SONGS OF YOURS WAITING<small>FREE PLAYS · ADD AS MANY AS YOU LIKE</small></div></div>
+      <div id="ctl"><div id="ctlT"><b id="ctlName">Nothing playing</b><span id="ctlArt"></span></div><button id="cPlay" aria-label="Pause or play">&#10074;&#10074;</button><button id="cSkip" aria-label="Skip">&#9654;&#9654;|</button></div>
       <div id="modes">${CFG.browse ? '<button class="mode" data-m="browse">BROWSE</button>' : ''}<button class="mode on" data-m="artist">BY ARTIST</button><button class="mode" data-m="song">BY SONG</button></div>
       <div id="browseBox" style="display:none">
         <div id="bnav"><button class="on" data-k="albums">ALBUMS A–Z</button><button data-k="artists">ARTISTS A–Z</button></div>
@@ -145,13 +150,14 @@
     const deb = (fn) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, 350); }; };
     $('qa').oninput = deb(searchArtists); $('qt').oninput = deb(loadTracks); $('qs').oninput = deb(searchSongs);
     $('pillX').onclick = resetArtist;
+    $('cPlay').onclick = () => control(state && state.playing ? 'pause' : 'play'); $('cSkip').onclick = () => control('skip');
     document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => { bKind = b.dataset.k; bLetter = ''; bArtist = null; artist = null; results = []; paintResults(); loadLetters(); });
     $('bpillX').onclick = () => { bArtist = null; artist = null; results = []; paintResults(); loadLetters(); };
     holdScroll($('cPrev'), -1); holdScroll($('cNext'), 1);
     refreshBal(); pollState(); setInterval(pollState, 8000); setInterval(refreshBal, 12000);
     setMode(CFG.browse ? 'browse' : 'artist');
   }
-  function paintBal() { $('plays').textContent = waiting; $('max').textContent = maxQ; }
+  function paintBal() { $('plays').textContent = waiting; }
   async function refreshBal() {
     const r = await api('/balance?device_id=' + encodeURIComponent(device));
     if (r.status === 401) return gate();
@@ -170,7 +176,18 @@
   }
   async function pollState() {
     try { state = await (await fetch(W + '/state')).json(); state.recvAt = Date.now(); } catch (e) { return; }
-    paintQueue(); paintResults();
+    paintQueue(); paintResults(); paintCtl();
+  }
+  function paintCtl() {
+    const t = state && state.track; if (!$('ctlName')) return;
+    $('ctlName').textContent = t ? t.name : 'Nothing playing'; $('ctlArt').textContent = t ? t.artist + (state.playing ? '' : ' · paused') : '';
+    $('cPlay').innerHTML = state && state.playing ? '&#10074;&#10074;' : '&#9654;';
+  }
+  async function control(cmd) {
+    if (cmd !== 'skip' && state) { state.playing = cmd === 'play'; paintCtl(); }
+    const r = await api('/control/' + cmd, { method: 'POST' });
+    if (r.status === 401) return gate();
+    setTimeout(pollState, 2600);
   }
   function paintQueue() {
     const w = waits(); if (!w || !$('queue')) return;

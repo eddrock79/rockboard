@@ -14,7 +14,7 @@ const TIERS = {
   tier2: { amountPence: 200, plays: 5, label: '£2' },
 };
 const VENUE = 'home';
-const MAX_QUEUED = 5; // songs one phone can have waiting in the queue at a time
+const MAX_QUEUED = 500; // effectively unlimited at home
 const SESSION_WINDOW_MS = 2 * 60 * 60 * 1000;
 const TRACK_URI = /^local:[0-9a-f]{10}$/;
 const PLAYER_STALE_MS = 30000; // no report for this long = player offline
@@ -412,6 +412,12 @@ export default {
       }
 
       // ── Guest endpoints ──
+      if (path.startsWith('/control/') && request.method === 'POST') { // home only: any phone can pause / resume / skip
+        if (!(await needSession())) return json(NOSESSION, 401);
+        const cmd = path.slice(9);
+        if (!['pause', 'play', 'skip'].includes(cmd)) return json({ error: 'Unknown control' }, 400);
+        await ledger.pushCmd(cmd); await bustState(); return json({ ok: true });
+      }
       if (path === '/search-artists') {
         if (!(await needSession())) return json(NOSESSION, 401);
         return json({ items: await ledger.searchArtists(url.searchParams.get('q')) });
