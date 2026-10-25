@@ -29,7 +29,7 @@ Write-Host '6/6 Writing the player settings...'
 $url = 'https://edd-cheryl-jukebox.eddrock79.workers.dev'
 $cfg = Get-Content "$old\player-config.json" -Raw | ConvertFrom-Json
 $cfg.workerUrl = $url; $cfg.playerKey = $k.PLAYER_KEY
-$cfg | ConvertTo-Json -Depth 5 | Set-Content "$repo\tools\player-config.json" -Encoding UTF8
+$cfg | ConvertTo-Json -Depth 5 | Out-File "$repo\tools\player-config.json" -Encoding ASCII
 @"
 EDD & CHERYL JUKEBOX
 TV board:  $url/board?key=$($k.DISPLAY_KEY)

@@ -12,7 +12,7 @@ const { spawn } = require('child_process');
 
 const cfgFile = path.join(__dirname, 'player-config.json');
 if (!fs.existsSync(cfgFile)) { console.error('Missing player-config.json (copy player-config.example.json and fill it in).'); process.exit(1); }
-const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8').replace(/^\uFEFF/, ''));
 const W = String(cfg.workerUrl || '').replace(/\/$/, '');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const norm = s => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/^the /, '');
