@@ -45,7 +45,7 @@
   @keyframes drift { 0% { transform:scale(1.12) translate(-2.5%,-1.5%) rotate(0deg); } 50% { transform:scale(1.22) translate(2.5%,2%) rotate(1.5deg); } 100% { transform:scale(1.12) translate(-2.5%,-1.5%) rotate(0deg); } }
   #bgart { animation:drift 38s ease-in-out infinite; position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(46px) brightness(.38) saturate(1.3); opacity:0; transition:opacity 1.2s; z-index:0; }
   #bgart.on { opacity:1; }
-  #stage > *:not(#bgart):not(#offline) { position:relative; z-index:1; }
+  #stage > :where(:not(#bgart):not(#offline)) { position:relative; z-index:1; }
   #npText { flex:1; min-width:0; display:flex; flex-direction:column; }
   #npHead { display:flex; align-items:flex-end; justify-content:space-between; }
   #npHead b { font-weight:600; font-size:26px; letter-spacing:.4em; color:var(--g); }
@@ -109,22 +109,53 @@
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 3px var(--ring),0 0 40px rgba(var(--gr),.35); } 50% { box-shadow:0 0 0 3px var(--ring),0 0 64px rgba(var(--gr),.6); } }
   @media (prefers-reduced-motion:reduce) { #rec, #glow, #eq i, #tickText { animation:none !important; } }
 </style>
+<link rel="stylesheet" href="ghost-board.css">
 </head>
 <body>
 <div id="stage">
+  <div id="ghostScene" class="ghost-only" aria-hidden="true">
+    <div class="ghost-cathedral"></div>
+    <video id="ghostImpera" data-src="assets/ghost-impera-loop.mp4" poster="assets/ghost-impera.webp" preload="none" muted loop playsinline disablepictureinpicture></video>
+    <video id="ghostSkeleta" data-src="assets/ghost-skeleta-loop.mp4" poster="assets/ghost-skeleta.webp" preload="none" muted loop playsinline disablepictureinpicture></video>
+    <div class="ghost-shade"></div><div class="ghost-beams"></div>
+    <div class="ghost-fog fog-back"></div><div class="ghost-fog fog-front"></div>
+    <div id="ghostEmbers"></div><div class="ghost-vignette"></div>
+  </div>
+  <div id="ghostQueueFrame" class="ghost-only" aria-hidden="true"></div>
+  <div id="ghostWelcome" class="ghost-only">A PRIVATE RITUAL · EDD &amp; CHERYL</div>
+  <div id="ghostTools" class="ghost-only">
+    <button id="ghostArtView" type="button" aria-pressed="false">ART VIEW</button>
+    <button id="ghostMotion" type="button" aria-pressed="true">ATMOSPHERE ON</button>
+    <button id="ghostFullscreen" type="button">FULL SCREEN</button>
+  </div>
   <div id="bgart"></div>
   <div id="offline">RECONNECTING…</div>
   <div id="logo"><b>EDD &amp; CHERYL</b><span data-tx="jb">JUKEBOX</span></div>
   <div id="sub"><i></i><b data-tx="sub">HOME SWEET HOME</b><i></i></div>
 
   <div id="np">
-    <div id="glow"><div id="rec"><div class="sheen"></div><div class="label">EDD &amp;<br>CHERYL</div><div class="hole"></div></div></div>
+    <div id="glow"><div id="ghostHalo" class="ghost-only" aria-hidden="true"></div><div id="rec"><div class="sheen"></div><div class="label">EDD &amp;<br>CHERYL</div><div class="hole"></div></div></div>
     <div id="npText">
       <div id="npHead"><b>NOW PLAYING</b><div id="eq"><i></i><i></i><i></i><i></i><i></i></div></div>
       <div id="title">Waiting for music</div>
       <div id="artist">&nbsp;</div>
       <div id="bar"><i></i></div>
       <div id="times"><span id="tPos">0:00</span><span id="tLeft"></span></div>
+    </div>
+  </div>
+
+  <div id="ghostTransport" class="ghost-only" role="group" aria-label="Playback controls">
+    <button id="ghostPlay" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>PLAY</span></button>
+    <button id="ghostSkip" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7zM17 5h3v14h-3z"/></svg><span>NEXT</span></button>
+    <button id="ghostBrowse" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>CHOOSE MUSIC</span></button>
+  </div>
+  <div id="ghostNotice" class="ghost-only" role="status" aria-live="polite"></div>
+  <div id="ghostScenes" class="ghost-only" role="group" aria-label="Visual scenes">
+    <div class="ghost-scenes-heading"><span>THE VISUAL CHAPTERS</span><small>Choose the atmosphere</small></div>
+    <div class="ghost-scene-options">
+      <button type="button" data-scene="cathedral" aria-pressed="true"><img src="assets/ghost-cathedral.webp" alt="" loading="lazy"><span><small>CHAPTER I</small><b>The Cathedral</b><em>CANDLELIGHT &amp; SPECTRAL FOG</em></span></button>
+      <button type="button" data-scene="impera" aria-pressed="false"><img src="assets/ghost-impera.webp" alt="" loading="lazy"><span><small>CHAPTER II</small><b>Impera</b><em>ANIMATED ALBUM ART</em></span></button>
+      <button type="button" data-scene="skeleta" aria-pressed="false"><img src="assets/ghost-skeleta.webp" alt="" loading="lazy"><span><small>CHAPTER III</small><b>Skeletá</b><em>ANIMATED ALBUM ART</em></span></button>
     </div>
   </div>
 
@@ -153,6 +184,11 @@
   <div id="tick"><b>FROM THE HOUSE</b><div id="tickWrap"><span id="tickText"></span></div></div>
 </div>
 
+<dialog id="ghostLibrary" aria-labelledby="ghostLibraryTitle">
+  <div class="ghost-library-head"><h2 id="ghostLibraryTitle">Choose your next track</h2><form method="dialog"><button aria-label="Close music library">✕</button></form></div>
+  <iframe id="ghostLibraryFrame" title="Music library and song requests"></iframe>
+</dialog>
+
 <script src="config.js"></script>
 <script src="theme.js"></script>
 <script>
@@ -162,14 +198,23 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
-  // Fit the 1080x1920 stage to whatever the screen is (TV, laptop, preview).
+  // The Ghost set fills a landscape TV; the existing portrait and Classic boards stay available.
   function fit() {
-    const s = Math.min(innerWidth / 1080, innerHeight / 1920);
+    const wide = document.documentElement.dataset.theme === 'gothic' && innerWidth >= innerHeight;
+    const w = wide ? 1920 : 1080, h = wide ? 1080 : 1920;
+    const s = Math.min(innerWidth / w, innerHeight / h);
+    stage.dataset.layout = wide ? 'landscape' : 'portrait';
+    document.documentElement.dataset.boardLayout = stage.dataset.layout;
+    stage.style.width = w + 'px'; stage.style.height = h + 'px';
     stage.style.transform = `scale(${s})`;
-    stage.style.left = (innerWidth - 1080 * s) / 2 + 'px';
-    stage.style.top = (innerHeight - 1920 * s) / 2 + 'px';
+    stage.style.left = (innerWidth - w * s) / 2 + 'px';
+    stage.style.top = (innerHeight - h * s) / 2 + 'px';
+    fitTitle($('title').textContent, true);
   }
-  addEventListener('resize', fit); fit();
+  addEventListener('resize', () => { fit(); syncGhostMotion(); });
+  addEventListener('jukeboxthemechange', () => { fit(); syncGhostMotion(); });
+  fit();
+  document.fonts.ready.then(() => { if (document.documentElement.dataset.theme === 'gothic') fitTitle($('title').textContent, true); });
 
   // Price cards
   $('tiers').innerHTML = `<div class="tier best"><span class="pr">FREE</span><span class="eqs">=</span><span class="pl">PLAY AS MUCH AS YOU LIKE</span></div>`;
@@ -198,6 +243,8 @@
   function render() {
     const s = state, t = s && s.track;
     const on = !!(s && s.playing);
+    stage.dataset.playing = String(on);
+    paintGhostControls(); syncGhostMotion();
     $('rec').classList.toggle('on', on);
     $('eq').classList.toggle('on', on);
     fitTitle(t ? t.name : 'Waiting for music');
@@ -231,12 +278,14 @@
     }
   }
   // Long titles shrink to fit on one line instead of being cut off.
-  function fitTitle(text) {
-    const el = $('title');
-    if (el.dataset.text === text) return;
+  function fitTitle(text, force = false) {
+    const el = $('title'), wide = stage.dataset.layout === 'landscape';
+    if (!force && el.dataset.text === text) return;
     el.dataset.text = text; el.textContent = text;
-    let size = 118; el.style.fontSize = size + 'px';
-    while (el.scrollWidth > el.clientWidth && size > 52) { size -= 4; el.style.fontSize = size + 'px'; }
+    let size = wide ? 90 : 118; el.style.fontSize = size + 'px';
+    while ((el.scrollWidth > el.clientWidth || (wide && el.scrollHeight > 188)) && size > (wide ? 38 : 52)) {
+      size -= 4; el.style.fontSize = size + 'px';
+    }
   }
   function tickProgress() {
     if (!state || !state.track) return;
@@ -301,6 +350,8 @@
   try { if (keyParam) { localStorage.setItem('bb_display_key', keyParam); history.replaceState(null, '', location.pathname); } } catch (e) {}
   let displayKey = ''; try { displayKey = localStorage.getItem('bb_display_key') || ''; } catch (e) {}
   let qrToken = null, qrObj = null;
+  let ghostScene = 'cathedral', ghostMotion = true, ghostBusy = false;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   function showQrMsg(msg) { const m = $('qrMsg'); m.textContent = msg; m.style.display = msg ? 'flex' : 'none'; }
   async function refreshQr() {
     if (!displayKey) { showQrMsg('Display key missing. Open this page once with ?key=YOUR_KEY'); return; }
@@ -311,12 +362,108 @@
       showQrMsg('');
       if (token === qrToken) return;
       qrToken = token;
+      paintGhostControls();
       const link = new URL('./', location.href).href + '?s=' + encodeURIComponent(token);
       $('qr').innerHTML = '';
       qrObj = new QRCode($('qr'), { text: link, width: 564, height: 564, correctLevel: QRCode.CorrectLevel.M });
     } catch (e) { /* keep showing the current code */ }
   }
   refreshQr(); setInterval(refreshQr, 10 * 60 * 1000);
+
+
+  // ── Ghost landscape theatre ──
+  function paintGhostControls() {
+    const playing = !!(state && state.playing), ready = !!qrToken;
+    $('ghostPlay').disabled = !ready || ghostBusy;
+    $('ghostSkip').disabled = !ready || ghostBusy;
+    $('ghostBrowse').disabled = !ready;
+    $('ghostPlay').setAttribute('aria-label', playing ? 'Pause playback' : 'Resume playback');
+    $('ghostPlay').querySelector('span').textContent = playing ? 'PAUSE' : 'PLAY';
+    $('ghostPlay').querySelector('svg').innerHTML = playing
+      ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+  }
+  function ghostMessage(message) {
+    $('ghostNotice').textContent = message;
+    clearTimeout(ghostMessage.timer);
+    ghostMessage.timer = setTimeout(() => { $('ghostNotice').textContent = ''; }, 6500);
+  }
+  async function ghostControl(command, retry = true) {
+    if (!qrToken || ghostBusy) return;
+    ghostBusy = true; paintGhostControls();
+    try {
+      const r = await fetch(CFG.workerUrl + '/control/' + command, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': qrToken },
+      });
+      if (r.status === 401 && retry) {
+        await refreshQr(); ghostBusy = false;
+        return await ghostControl(command, false);
+      }
+      if (!r.ok) throw new Error('The player could not accept that command. Please try again.');
+      if (state && command !== 'skip') { state.playing = command === 'play'; stage.dataset.playing = String(state.playing); }
+      paintGhostControls(); syncGhostMotion();
+      ghostMessage(command === 'skip' ? 'Next track requested.' : command === 'pause' ? 'Playback paused.' : 'Playback resumed.');
+      setTimeout(pollState, 1800);
+    } catch (e) { ghostMessage(e.message || 'Could not reach the jukebox. Please try again.'); }
+    finally { ghostBusy = false; paintGhostControls(); }
+  }
+  function syncGhostMotion() {
+    const active = document.documentElement.dataset.theme === 'gothic' && stage.dataset.layout === 'landscape';
+    // Reduced-motion and atmosphere-off modes leave a still image, including for the videos.
+    const moving = active && ghostMotion && !reducedMotion.matches && !document.hidden;
+    stage.dataset.motion = moving ? 'on' : 'off';
+    $('ghostMotion').setAttribute('aria-pressed', String(ghostMotion && !reducedMotion.matches));
+    $('ghostMotion').textContent = moving ? 'ATMOSPHERE ON' : 'ATMOSPHERE STILL';
+    for (const [scene, id] of [['impera', 'ghostImpera'], ['skeleta', 'ghostSkeleta']]) {
+      const video = $(id), selected = active && scene === ghostScene;
+      if (selected && !video.getAttribute('src')) { video.src = video.dataset.src; video.load(); }
+      if (selected && moving && state && state.playing) {
+        if (video.paused) video.play().catch(() => { /* the poster is the video fallback */ });
+      } else video.pause();
+    }
+  }
+  function setGhostScene(scene) {
+    if (!['cathedral', 'impera', 'skeleta'].includes(scene)) return;
+    ghostScene = scene; stage.dataset.scene = scene;
+    document.querySelectorAll('#ghostScenes [data-scene]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.scene === scene)));
+    syncGhostMotion();
+  }
+  $('ghostPlay').onclick = () => ghostControl(state && state.playing ? 'pause' : 'play');
+  $('ghostSkip').onclick = () => ghostControl('skip');
+  $('ghostArtView').onclick = () => {
+    const immersive = stage.dataset.immersive !== 'true';
+    stage.dataset.immersive = String(immersive);
+    $('ghostArtView').setAttribute('aria-pressed', String(immersive));
+    $('ghostArtView').textContent = immersive ? 'SHOW JUKEBOX' : 'ART VIEW';
+    fitTitle($('title').textContent, true);
+  };
+  $('ghostMotion').onclick = () => { ghostMotion = !ghostMotion; syncGhostMotion(); };
+  $('ghostFullscreen').onclick = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch (e) { ghostMessage('Use F11 on the jukebox PC to enter full screen.'); }
+  };
+  document.addEventListener('fullscreenchange', () => {
+    $('ghostFullscreen').textContent = document.fullscreenElement ? 'EXIT FULL SCREEN' : 'FULL SCREEN'; fit();
+  });
+  $('ghostBrowse').onclick = () => {
+    if (!qrToken) return;
+    $('ghostLibraryFrame').src = new URL('./', location.href).href + '?s=' + encodeURIComponent(qrToken);
+    $('ghostLibrary').showModal();
+  };
+  $('ghostLibrary').addEventListener('close', () => { $('ghostLibraryFrame').src = 'about:blank'; });
+  $('ghostLibrary').addEventListener('click', e => { if (e.target === $('ghostLibrary')) $('ghostLibrary').close(); });
+  document.querySelectorAll('#ghostScenes [data-scene]').forEach(button => { button.onclick = () => setGhostScene(button.dataset.scene); });
+  document.addEventListener('visibilitychange', syncGhostMotion);
+  reducedMotion.addEventListener('change', syncGhostMotion);
+  $('ghostEmbers').innerHTML = Array.from({ length: 26 }, (_, i) =>
+    `<i style="--x:${(i * 37 + 11) % 100}%;--delay:-${i * 1.7}s;--duration:${14 + i % 12}s;--size:${i % 3 + 2}px"></i>`).join('');
+  $('ghostHalo').innerHTML = '<svg viewBox="0 0 600 600" focusable="false"><g fill="none" stroke="currentColor">' +
+    '<circle cx="300" cy="300" r="284"/><circle cx="300" cy="300" r="270" stroke-dasharray="1 15" stroke-width="5"/>' +
+    '<circle cx="300" cy="300" r="248"/><circle cx="300" cy="300" r="222" stroke-dasharray="70 14"/>' +
+    Array.from({ length: 16 }, (_, i) => `<path d="M300 8V64M288 40h24M300 70l10 15-10 15-10-15z" transform="rotate(${i * 22.5} 300 300)"/>`).join('') +
+    '</g></svg>';
+  setGhostScene('cathedral');
 
   // Gentle nightly refresh at 03:30 so the page never goes stale.
   setInterval(() => { const d = new Date(); if (d.getHours() === 3 && d.getMinutes() === 30 && d.getSeconds() < 30) location.reload(); }, 30000);

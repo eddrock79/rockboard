@@ -1,0 +1,150 @@
+/* The landscape Ghost theatre is a presentation layer over the existing player. */
+.ghost-only { display:none; }
+#ghostLibrary { padding:0; border:1px solid #b3935d; color:#f2ebde; background:#100c10; width:min(580px,92vw); max-width:92vw; height:calc(100dvh - 48px); max-height:calc(100dvh - 48px); margin:24px 24px 24px auto; box-shadow:0 0 100px #000; }
+#ghostLibrary::backdrop { background:#000b; backdrop-filter:blur(5px); }
+.ghost-library-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid #b3935d55; }
+.ghost-library-head h2 { margin:0; font:500 19px 'Cinzel',Georgia,serif; }
+.ghost-library-head form { margin:0; }
+.ghost-library-head button { background:none; color:#f2ebde; border:1px solid #b3935d70; width:44px; height:44px; cursor:pointer; font-size:23px; }
+#ghostLibraryFrame { width:100%; height:calc(100% - 77px); border:0; display:block; background:#08040b; }
+html[data-theme="gothic"][data-board-layout="landscape"] body { cursor:default; background:#05080a; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] {
+  --g:#dcc38f; --ink:#f5eddf; --mute:#b6b9b4; --scene-accent:125,191,191;
+  display:block; padding:0; background:#060b0f; color:var(--ink); isolation:isolate;
+}
+html[data-theme="gothic"] #stage[data-layout="landscape"]::before { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"]::after { inset:25px; border-color:#d6ba7a33; outline-color:#d6ba7a18; z-index:8; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] .ghost-only { display:block; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] > #ghostScene { position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+#ghostScene .ghost-cathedral { position:absolute; inset:-20px; background:url('assets/ghost-cathedral.webp') calc(50% - 160px) center / cover no-repeat; animation:ghost-camera 38s ease-in-out infinite alternate; }
+#ghostScene video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 1.5s ease; }
+#stage[data-scene="impera"] #ghostImpera, #stage[data-scene="skeleta"] #ghostSkeleta { opacity:.87; }
+#stage[data-scene="skeleta"] { --scene-accent:178,131,219; }
+#stage[data-scene="impera"] { --scene-accent:192,154,93; }
+#ghostScene .ghost-shade { position:absolute; inset:0; background:linear-gradient(90deg,#03070aa6 0%,#03070a45 34%,#03070a24 64%,#03070ad9 100%),linear-gradient(0deg,#03070af2 0%,#03070a96 19%,transparent 50%,#03070a75 100%); }
+#ghostScene .ghost-vignette { position:absolute; inset:0; box-shadow:inset 0 0 160px 36px #0009; background:linear-gradient(#04080a00 80%,#04080aba); }
+#ghostScene .ghost-beams { position:absolute; inset:-30% -25%; background:conic-gradient(from 150deg at 56% 0%,transparent 0deg,#99deeb0d 7deg,transparent 11deg,#bddae415 18deg,transparent 25deg); filter:blur(7px); transform-origin:56% 0; animation:ghost-lights 24s ease-in-out infinite alternate; }
+#ghostScene .ghost-fog { position:absolute; left:-40%; width:170%; height:520px; bottom:-200px; opacity:.3; filter:blur(35px); background:radial-gradient(ellipse at 20% 60%,rgba(var(--scene-accent),.22),transparent 48%),radial-gradient(ellipse at 65% 42%,rgba(var(--scene-accent),.15),transparent 43%),radial-gradient(ellipse at 48% 77%,#b8cbd829,transparent 42%); animation:ghost-fog 31s ease-in-out infinite alternate; }
+#ghostScene .fog-back { bottom:170px; height:220px; opacity:.24; animation-duration:43s; animation-direction:alternate-reverse; }
+#ghostEmbers { position:absolute; inset:0; }
+#ghostEmbers i { position:absolute; left:var(--x); bottom:-15px; width:var(--size); height:var(--size); border-radius:50%; background:#e6bb80; box-shadow:0 0 11px 2px #d18336; animation:ghost-ember var(--duration) linear var(--delay) infinite; opacity:0; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #bgart { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] > .rule { display:none; }
+
+/* Masthead and the stage's small, explicit atmosphere controls. */
+html[data-theme="gothic"] #stage[data-layout="landscape"] #logo { position:absolute; left:68px; top:26px; width:290px; height:145px; z-index:3; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-eyebrow,
+html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-caption { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #logo .ritual-wordmark { width:268px; margin:0; filter:sepia(.4) saturate(.6) brightness(1.2) drop-shadow(0 4px 18px #000); }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #sub { position:absolute; left:400px; top:63px; width:840px; height:54px; margin:0; justify-content:flex-start; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #sub i { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #sub b { font:500 40px/1.2 'Cinzel',Georgia,serif; letter-spacing:.14em; text-shadow:0 2px 20px #000; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostWelcome { position:absolute; left:402px; top:124px; color:#b8b9b0; font:400 14px 'Oswald',sans-serif; letter-spacing:.33em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostTools { position:absolute; right:68px; top:79px; display:flex; gap:12px; }
+#ghostTools button { background:#0c1418a8; border:1px solid #d6ba7a66; padding:14px 18px; color:#d5c8b0; font:400 13px 'Oswald',sans-serif; letter-spacing:.14em; cursor:pointer; }
+#ghostTools button:hover { background:#b9954f24; border-color:#d6ba7acc; }
+
+/* A square album sleeve in a turning celestial frame. */
+html[data-theme="gothic"] #stage[data-layout="landscape"] #np { position:absolute; left:94px; top:252px; width:1194px; height:456px; margin:0; padding:0; border:0; background:none; box-shadow:none; display:block; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #glow { position:absolute; left:10px; top:0; width:390px; height:390px; border-radius:0; background:none; box-shadow:0 22px 50px #0009; perspective:1300px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #rec { width:390px; height:390px; border-radius:2px; border:1px solid #c7ad7680; background:linear-gradient(125deg,#2f4148,#131a20); box-shadow:inset 0 0 0 7px #090b10,0 0 0 7px #080d13,0 0 0 8px #b99c5b73; animation:ghost-sleeve 12s ease-in-out infinite; animation-play-state:paused; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #rec.on { animation-play-state:running; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #rec .label.art { inset:7px; width:auto; height:auto; margin:0; border-radius:0; background-position:center; background-size:cover; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #rec .label:not(.art) { inset:7px; width:auto; height:auto; margin:0; border:0; border-radius:0; color:transparent; background:url('assets/ghost-cathedral.webp') center / cover; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #rec .hole { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #rec .sheen { border-radius:0; background:linear-gradient(125deg,#fff0 20%,#e5f5ff17 41%,#fff0 53%); }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostHalo { position:absolute; inset:-65px; color:#c2a36c; opacity:.57; animation:ghost-orbit 100s linear infinite; }
+#ghostHalo svg { width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 7px #b88a4d50); }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #npText { position:absolute; left:472px; top:13px; width:722px; min-width:0; display:flex; flex-direction:column; text-shadow:0 2px 15px #000,0 0 35px #000c; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #npHead { justify-content:flex-start; gap:24px; align-items:center; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #npHead b { font:500 16px 'Cinzel',Georgia,serif; letter-spacing:.25em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #eq { height:24px; gap:4px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #eq i { width:3px; height:8px; color:#d5c195; background:currentColor; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #eq.on i { animation-name:ghost-eq; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #title { font-family:'Bebas Neue',sans-serif; font-weight:400; letter-spacing:.01em; line-height:1.04; margin-top:24px; max-height:188px; white-space:normal; overflow:hidden; text-overflow:clip; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #artist { font:400 25px 'Oswald',sans-serif; letter-spacing:.2em; color:#d9c7a1; margin-top:16px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #bar { height:4px; margin-top:30px; background:#e3d3ab35; overflow:visible; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #bar i { background:linear-gradient(90deg,#a2864f,#f5dba4); box-shadow:0 0 20px #dfb56588; position:relative; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #bar i::after { content:''; position:absolute; right:-3px; top:-3px; width:10px; height:10px; border-radius:50%; background:#f4d9a0; box-shadow:0 0 17px #f7d9a0; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #times { margin-top:13px; font-size:15px; letter-spacing:.12em; color:#c7c9c3; }
+
+/* The controls use the board's existing rotating session. */
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostTransport { position:absolute; left:566px; top:626px; display:flex; gap:12px; width:722px; height:62px; }
+#ghostTransport button { display:flex; align-items:center; justify-content:center; gap:12px; background:#0a1218d6; color:#e6d4b2; border:1px solid #b69b687d; padding:0 24px; font:500 16px 'Oswald',sans-serif; letter-spacing:.12em; cursor:pointer; min-width:139px; }
+#ghostTransport button svg { width:22px; height:22px; fill:currentColor; flex:none; }
+#ghostTransport #ghostPlay { background:linear-gradient(130deg,#f2ddb0,#b49356); border-color:#e5ce9a; color:#161513; min-width:164px; }
+#ghostTransport #ghostBrowse { flex:1; }
+#ghostTransport button:hover { filter:brightness(1.22); box-shadow:0 0 30px #bca56b30; }
+#ghostTransport button:disabled { opacity:.45; cursor:default; filter:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostNotice { position:absolute; left:566px; top:707px; width:722px; min-height:24px; color:#ead0a5; font:400 16px 'Oswald',sans-serif; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #offline { top:170px; right:70px; z-index:5; font-size:16px; }
+
+/* Queue, house favourites and QR occupy a single glass side panel. */
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostQueueFrame { position:absolute; left:1376px; top:210px; width:472px; height:772px; border:1px solid #c2a56e52; background:linear-gradient(145deg,#101a1edb,#070c10ef); box-shadow:0 25px 80px #0009,inset 0 0 0 6px #0002; backdrop-filter:blur(14px); }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qHead { position:absolute; left:1404px; top:230px; width:416px; height:40px; margin:0; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qHead b { font:500 20px 'Cinzel',Georgia,serif; letter-spacing:.16em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qCount { font-size:12px; letter-spacing:.13em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue { position:absolute; left:1404px; top:287px; width:416px; height:290px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .row { height:70px; gap:12px; border-color:#dcc38f24; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .no { width:28px; font:400 20px 'Cinzel',Georgia,serif; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .t { font:600 28px/1.12 'Cormorant Garamond',Georgia,serif; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .a { font:400 15px 'Oswald',sans-serif; margin-top:5px; letter-spacing:.04em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .w { display:block; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .w span { display:block; font:400 9px 'Oswald',sans-serif; letter-spacing:.1em; margin-bottom:3px; text-align:right; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #queue .w b { display:block; font:400 20px 'Oswald',sans-serif; min-width:48px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qEmpty { height:210px; font:italic 27px/1.4 'Cormorant Garamond',Georgia,serif; color:#b7bab3; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #topHead { position:absolute; left:1404px; top:601px; width:416px; margin:0; height:26px; font:500 14px 'Cinzel',Georgia,serif; letter-spacing:.16em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #topGrid { position:absolute; left:1404px; top:642px; width:416px; height:125px; column-gap:20px; font:400 18px 'Cormorant Garamond',Georgia,serif; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #topGrid .tr { height:25px; gap:8px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #topGrid .tr span { font:400 11px 'Oswald',sans-serif; width:18px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #pick { position:absolute; left:1404px; top:794px; width:416px; height:164px; margin:0; display:flex; gap:18px; align-items:center; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #pickL { align-self:stretch; padding:4px 0; flex:1; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #pickL h2 { font:500 26px/1.15 'Cinzel',Georgia,serif; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #pickL p { font:italic 21px 'Cormorant Garamond',Georgia,serif; margin-top:10px; letter-spacing:.01em; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #tiers { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #fcfp { font:400 10px 'Oswald',sans-serif; letter-spacing:.1em; color:#c5bda8; margin-top:auto; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qrBox { width:164px; height:164px; padding:12px; box-shadow:0 0 0 4px #0b1014,0 0 0 5px #ad9158; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qr { width:140px; height:140px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qr img,
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qr canvas { width:140px !important; height:140px !important; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #qrMsg { font:500 14px/1.4 'Oswald',sans-serif; padding:12px; }
+
+/* Three actual visual modes, independently selectable from the music. */
+html[data-theme="gothic"] #stage[data-layout="landscape"] #ghostScenes { position:absolute; left:86px; top:785px; width:1202px; }
+.ghost-scenes-heading { display:flex; align-items:center; gap:24px; margin-bottom:22px; }
+.ghost-scenes-heading span { font:500 14px 'Cinzel',Georgia,serif; color:#d6bd87; letter-spacing:.22em; }
+.ghost-scenes-heading small { font:400 13px 'Oswald',sans-serif; color:#a6b0b1; letter-spacing:.1em; }
+.ghost-scene-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.ghost-scene-options button { display:flex; align-items:center; gap:18px; width:100%; height:128px; padding:10px; text-align:left; cursor:pointer; border:1px solid #d2b57542; color:#f5eddf; background:linear-gradient(115deg,#122026b8,#070d12e6); transition:background .25s,border-color .25s; }
+.ghost-scene-options button img { width:104px; height:104px; object-fit:cover; flex:none; border:1px solid #bfa36d70; }
+.ghost-scene-options button span { min-width:0; }
+.ghost-scene-options button small { display:block; color:#b29b72; font:400 10px 'Oswald',sans-serif; letter-spacing:.2em; }
+.ghost-scene-options button b { display:block; font:500 25px 'Cormorant Garamond',Georgia,serif; margin:7px 0 8px; }
+.ghost-scene-options button em { display:block; color:#abb8b9; font:400 9px 'Oswald',sans-serif; font-style:normal; letter-spacing:.1em; }
+.ghost-scene-options button[aria-pressed="true"] { border-color:#dac185; background:linear-gradient(115deg,#3b352499,#102027dd); box-shadow:inset 0 -2px #dac185; }
+.ghost-scene-options button:hover { border-color:#f0d9a5; background:#283832d9; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #tick { position:absolute; left:86px; top:1012px; width:1762px; height:32px; margin:0; border-top:1px solid #bfa16a33; border-bottom:0; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #tick b { font:500 11px 'Cinzel',Georgia,serif; letter-spacing:.14em; padding-right:24px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] #tickText { font:italic 20px 'Cormorant Garamond',Georgia,serif; }
+html[data-theme="gothic"] #stage[data-layout="landscape"] :is(button,a):focus-visible,
+#ghostLibrary button:focus-visible { outline:3px solid #f3d799; outline-offset:5px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-motion="off"] *,
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-playing="false"] #ghostHalo { animation-play-state:paused !important; }
+@keyframes ghost-camera { from { transform:scale(1) translateX(-.3%); } to { transform:scale(1.045) translateX(.7%); } }
+@keyframes ghost-lights { from { transform:rotate(-5deg); opacity:.5; } to { transform:rotate(7deg); opacity:1; } }
+@keyframes ghost-fog { from { transform:translateX(-6%) scale(1); } to { transform:translateX(9%) scale(1.12); } }
+@keyframes ghost-ember { 0% { transform:translate(0,0); opacity:0; } 10% { opacity:.65; } 85% { opacity:.35; } 100% { transform:translate(90px,-1050px); opacity:0; } }
+@keyframes ghost-sleeve { 0%,100% { transform:rotateY(-5deg) rotateZ(-1deg) translateY(0); } 50% { transform:rotateY(5deg) rotateZ(.6deg) translateY(-9px); } }
+@keyframes ghost-orbit { to { transform:rotate(360deg); } }
+@keyframes ghost-eq { 0%,100% { height:6px; } 50% { height:24px; } }
+@media (prefers-reduced-motion:reduce) {
+  html[data-theme="gothic"] #stage[data-layout="landscape"] * { animation:none !important; transition:none !important; }
+}
+
+/* Art view leaves the selected moving artwork and a discreet now-playing caption. */
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-immersive="true"] :is(#logo,#sub,#ghostWelcome,#ghostQueueFrame,#qHead,#queue,#topHead,#topGrid,#pick,#ghostScenes,#ghostTransport,#ghostNotice,#tick) { visibility:hidden; pointer-events:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-immersive="true"] #np { left:86px; top:880px; width:1200px; height:140px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-immersive="true"] #npText { left:0; top:0; width:1200px; }
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-immersive="true"] :is(#glow,#npHead,#bar,#times) { display:none; }
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-immersive="true"] #title { font-size:44px !important; max-height:94px; margin:0; }
+html[data-theme="gothic"] #stage[data-layout="landscape"][data-immersive="true"] #artist { font-size:18px; margin-top:10px; }

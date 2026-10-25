@@ -21,11 +21,13 @@
   }
   window.applyTheme = function (name) {
     if (!T[name]) name = 'classic';
+    const changed = document.documentElement.dataset.theme !== name;
     if (name === 'gothic') addIdentity();
     document.documentElement.setAttribute('data-theme', name);
     try { localStorage.setItem('ej_theme', name); } catch (e) {}
     document.querySelectorAll('[data-tx]').forEach(el => { const v = T[name][el.dataset.tx]; if (v) el.textContent = v; });
     const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = name === 'gothic' ? '#08040b' : '#050706';
+    if (changed) window.dispatchEvent(new CustomEvent('jukeboxthemechange'));
   };
   let saved = 'classic'; try { saved = localStorage.getItem('ej_theme') || 'classic'; } catch (e) {}
   document.documentElement.setAttribute('data-theme', T[saved] ? saved : 'classic');
