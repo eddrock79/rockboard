@@ -42,8 +42,8 @@
   #rec .label.art { width:100%; height:100%; margin:-140px 0 0 -140px; border:0; background-size:cover; background-position:center; color:transparent; }
   #rec .sheen { z-index:2; } #rec .hole { z-index:3; }
   #rec .hole { position:absolute; top:50%; left:50%; width:11px; height:11px; margin:-5px 0 0 -5px; border-radius:50%; background:var(--groove1); }
-  @keyframes drift { 0% { transform:scale(1.12) translate(-2.5%,-1.5%) rotate(0deg); } 50% { transform:scale(1.22) translate(2.5%,2%) rotate(1.5deg); } 100% { transform:scale(1.12) translate(-2.5%,-1.5%) rotate(0deg); } }
-  #bgart { animation:drift 38s ease-in-out infinite; position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(46px) brightness(.38) saturate(1.3); opacity:0; transition:opacity 1.2s; z-index:0; }
+  @keyframes drift { 0% { transform:scale(1.18) translate(-4%,-3%) rotate(0deg); } 33% { transform:scale(1.3) translate(3.5%,-1%) rotate(1.2deg); } 66% { transform:scale(1.24) translate(2%,3.5%) rotate(-1deg); } 100% { transform:scale(1.18) translate(-4%,-3%) rotate(0deg); } }
+  #bgart { animation:drift 45s ease-in-out infinite; position:absolute; inset:-40px; background-size:cover; background-position:center; filter:blur(12px) brightness(.5) saturate(1.25); opacity:0; transition:opacity 1.2s; z-index:0; }
   #bgart.on { opacity:1; }
   #stage > :where(:not(#bgart):not(#offline)) { position:relative; z-index:1; }
   #npText { flex:1; min-width:0; display:flex; flex-direction:column; }
