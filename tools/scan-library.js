@@ -55,7 +55,7 @@ const norm = s => clean(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       out.push({
         id: out.length, path: path.relative(root, file).split(path.sep).join('/'),
         artist, title, album: clean(tag.album), year: tag.year || null, track: tag.track && tag.track.no || null,
-        seconds: Math.round(duration), ext: path.extname(file).toLowerCase(), codec, source,
+        genre: clean((tag.genre || []).slice(0, 2).join(' / ')), seconds: Math.round(duration), ext: path.extname(file).toLowerCase(), codec, source,
         filenameArtist: fn.artist, filenameTitle: fn.title,
       });
       if (++done % 500 === 0) console.log('  ' + done + ' / ' + files.length);
