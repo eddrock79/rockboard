@@ -29,6 +29,7 @@ node build-catalogue.js; Check 'Catalogue'
 Step 3 'Artwork...'
 node build-art.js $root; Check 'Artwork'
 node fetch-art-online.js; Check 'Online artwork'
+node add-manual-art.js; Check 'Manual artwork'
 
 Step 4 'Uploading songs to the jukebox...'
 node player.js upload; Check 'Upload'
