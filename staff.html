@@ -82,7 +82,8 @@
     <div class="card a" style="margin-bottom:8px">One QR for every table. Each scan gives that phone an hour to pick songs.</div>
     <div id="tqrBox" style="background:#fff;border-radius:10px;padding:14px;width:min(100%,300px);margin:0 auto 12px"><canvas id="tqr" style="width:100%;display:block"></canvas></div>
     <div class="row"><button id="dlPng">DOWNLOAD PNG</button><button id="dlSvg">DOWNLOAD SVG</button></div>
-    <div class="card a" style="margin:8px 0">Just the QR code, ready for your own posters. Use the SVG for large prints, as it stays sharp at any size.</div>
+    <button id="dlPoster" style="width:100%;margin-top:8px">DOWNLOAD A4 POSTER</button>
+    <div class="card a" style="margin:8px 0">The poster is the Banshee logo, “The Underground Jukebox” and the QR, ready to print on A4. Or use the plain QR for your own posters. Use the SVG for large prints, as it stays sharp at any size.</div>
     <button class="ghost" id="rot" style="width:100%">STOP ALL TABLE QRS</button>
     <div class="card a" style="margin-top:8px">"Stop all" cancels every table pass and makes every printed card useless. Download the new QR afterwards and reprint. It doesn't affect the screen QR.</div>
     </div>
@@ -242,6 +243,28 @@
     const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#000';
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (dark(y, x)) g.fillRect((x + 4) * cell, (y + 4) * cell, cell, cell);
     c.toBlob(b => save(b, 'banshee-table-qr.png'), 'image/png');
+  };
+  $('dlPoster').onclick = async () => {
+    if (!tqModules) { say('QR not ready yet'); return; }
+    try { await Promise.all(['120px "Bebas Neue"', '500 60px Oswald'].map(f => document.fonts.load(f))); } catch (e) {}
+    const img = new Image(); img.src = 'assets/banshee-logo.png';
+    try { await img.decode(); } catch (e) { say('Could not load the logo'); return; }
+    const W = 2480, H = 3508, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+    g.fillStyle = '#050706'; g.fillRect(0, 0, W, H);
+    const gl = g.createRadialGradient(W / 2, 700, 100, W / 2, 700, 1700); gl.addColorStop(0, 'rgba(110,240,160,.22)'); gl.addColorStop(1, 'rgba(110,240,160,0)');
+    g.fillStyle = gl; g.fillRect(0, 0, W, H);
+    g.imageSmoothingQuality = 'high';
+    const lw = 1900, lh = lw * img.height / img.width; g.drawImage(img, (W - lw) / 2, 150, lw, lh);
+    g.textAlign = 'center'; g.fillStyle = '#6ef0a0';
+    const fit = (t, f, sz, mw, y) => { g.font = f.replace('#', sz); const w = g.measureText(t).width; if (w > mw) g.font = f.replace('#', Math.floor(sz * mw / w)); g.fillText(t, W / 2, y); };
+    fit('THE UNDERGROUND', '400 #px "Bebas Neue", Impact, sans-serif', 330, 2100, 150 + lh + 370);
+    g.fillStyle = '#f3f3f3'; fit('JUKEBOX', '400 #px "Bebas Neue", Impact, sans-serif', 420, 2100, 150 + lh + 710);
+    const qs = 1250, qx = (W - qs) / 2, qy = 150 + lh + 850, { n, dark } = tqModules, cell = Math.floor(qs / (n + 8));
+    g.fillStyle = '#fff'; g.beginPath(); g.roundRect(qx, qy, qs, qs, 60); g.fill();
+    const off = qx + (qs - cell * n) / 2, offy = qy + (qs - cell * n) / 2; g.fillStyle = '#000';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (dark(y, x)) g.fillRect(off + x * cell, offy + y * cell, cell, cell);
+    g.fillStyle = '#6ef0a0'; fit('SCAN TO CHOOSE THE NEXT SONG', '500 #px Oswald, sans-serif', 150, 2100, qy + qs + 240);
+    c.toBlob(b => save(b, 'banshee-underground-jukebox-poster.png'), 'image/png');
   };
   $('dlSvg').onclick = () => {
     if (!tqModules) { say('QR not ready yet'); return; }
