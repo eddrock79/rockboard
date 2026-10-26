@@ -1,6 +1,6 @@
 # Deploys the LIVE Banshee jukebox worker (banshee-jukebox) from GitHub. Keeps all secrets and settings.
 $ErrorActionPreference = 'Stop'
-$sha = 'c4a07c808cb52f0b559149ee4fb1f8369dcb8a1f'
+$sha = 'ffc7de76b66ca4c55c5038c183e478b708ceef1c'
 $tmp = Join-Path $env:TEMP 'banshee-live-deploy'
 if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
 New-Item -ItemType Directory $tmp | Out-Null
@@ -11,4 +11,4 @@ Push-Location $src
 npx wrangler deploy
 Pop-Location
 Remove-Item $tmp -Recurse -Force
-Write-Host "`nDone. The live Banshee jukebox now has the 7-minute cap and sharper artwork."
+Write-Host "`nDone. The live Banshee jukebox now adds BANSHEE to card statements."
