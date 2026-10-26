@@ -37,7 +37,7 @@
   .lt { flex:none; min-width:38px; height:38px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:var(--ink); font-weight:600; font-size:16px; }
   .lt.on { background:var(--g); color:#04110a; border-color:var(--g); }
   .lt:disabled { opacity:.22; }
-  #carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-padding-left:16px; padding:4px 2px 12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px; }
+  #carousel { position:relative; display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-padding-left:16px; padding:4px 2px 12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px; }
   #carousel .msg { padding:20px 0; width:100%; }
   #carousel.hold { scroll-snap-type:none; scroll-behavior:auto; }
   .bc { flex:0 0 calc((100% - 12px) / 2); align-self:flex-start; display:block; min-width:0; scroll-snap-align:start; background:none; border:0; color:var(--ink); text-align:left; padding:0; }
@@ -148,6 +148,7 @@
     document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => { bKind = b.dataset.k; bLetter = ''; bArtist = null; artist = null; albumCtx = null; results = []; paintResults(); loadLetters(); });
     $('bpillX').onclick = () => { bArtist = null; artist = null; albumCtx = null; results = []; paintResults(); loadLetters(); };
     holdScroll($('cPrev'), -1); holdScroll($('cNext'), 1);
+    $('carousel').addEventListener('click', onCarouselClick); $('carousel').addEventListener('scroll', onCarouselScroll, { passive: true });
     initBrowse();
     refreshBal(); pollState(); setInterval(pollState, 8000);
   }
@@ -217,19 +218,60 @@
     $('letters').querySelectorAll('.lt').forEach(b => b.onclick = () => { bLetter = b.dataset.l; albumCtx = null; results = []; paintResults(); paintLetters(); loadCards(); });
     const on = $('letters').querySelector('.on'); if (on) $('letters').scrollLeft = Math.max(0, on.offsetLeft - 90);
   }
+  // The strip runs on from letter to letter by itself; the letter buttons jump and follow along.
+  let cardItems = [], flowOrder = [], flowIdx = 0, flowSeq = 0, flowBusy = false, scrollRaf = 0;
+  const cardHtml = (x, i, L) => {
+    const isArtist = !bArtist && bKind === 'artists';
+    return `<button class="bc" data-i="${i}" data-l="${L || ''}">${x.image ? `<img${isArtist ? ' class="round"' : ''} src="${esc(x.image)}" alt="" loading="lazy">` : `<div class="ph${isArtist ? ' round' : ''}"></div>`}` +
+      `<div class="t">${esc(x.name)}</div><div class="a">${esc(isArtist ? (x.n ? x.n + (x.n === 1 ? ' album' : ' albums') : 'tap to see tracks') : (x.artist + (x.year ? ' · ' + x.year : '')))}</div></button>`;
+  };
   async function loadCards() {
-    const box = $('carousel');
-    if (!bArtist && !bLetter) { box.innerHTML = '<div class="msg">Nothing to browse yet.</div>'; return; }
+    const box = $('carousel'), seq = ++flowSeq; cardItems = [];
+    if (bArtist) {
+      box.innerHTML = '<div class="msg">Loading…</div>';
+      const r = await api('/browse/albums?artist_id=' + encodeURIComponent(bArtist.id));
+      if (r.status === 401) return gate();
+      if (seq !== flowSeq) return;
+      cardItems = r.items || [];
+      box.innerHTML = cardItems.length ? cardItems.map((x, i) => cardHtml(x, i, '')).join('') : '<div class="msg">No albums listed. Their tracks are below.</div>';
+      box.scrollLeft = 0; return;
+    }
+    if (!bLetter) { box.innerHTML = '<div class="msg">Nothing to browse yet.</div>'; return; }
+    flowOrder = LETTERS.filter(l => bLetters[l]); flowIdx = Math.max(0, flowOrder.indexOf(bLetter));
     box.innerHTML = '<div class="msg">Loading…</div>';
-    const r = await api(bArtist ? '/browse/albums?artist_id=' + encodeURIComponent(bArtist.id) : '/browse/' + bKind + '?letter=' + encodeURIComponent(bLetter));
-    if (r.status === 401) return gate();
-    const items = r.items || [], isArtist = !bArtist && bKind === 'artists';
-    box.innerHTML = items.length ? items.map((x, i) =>
-      `<button class="bc" data-i="${i}">${x.image ? `<img${isArtist ? ' class="round"' : ''} src="${esc(x.image)}" alt="" loading="lazy">` : `<div class="ph${isArtist ? ' round' : ''}"></div>`}` +
-      `<div class="t">${esc(x.name)}</div><div class="a">${esc(isArtist ? (x.n ? x.n + (x.n === 1 ? ' album' : ' albums') : 'tap to see tracks') : (x.artist + (x.year ? ' · ' + x.year : '')))}</div></button>`).join('')
-      : `<div class="msg">${bArtist ? 'No albums listed. Their tracks are below.' : 'Nothing here.'}</div>`;
-    box.scrollLeft = 0;
-    box.querySelectorAll('.bc').forEach(b => b.onclick = () => isArtist ? browseArtist(items[b.dataset.i]) : openAlbum(items[b.dataset.i], b));
+    flowBusy = false; await flowMore(seq, true);
+  }
+  async function flowMore(seq, first) {
+    const box = $('carousel'); if (flowBusy) return; flowBusy = true;
+    try {
+      while (seq === flowSeq && flowIdx < flowOrder.length && (first || box.scrollWidth - box.scrollLeft < box.clientWidth * 3)) {
+        const L = flowOrder[flowIdx];
+        const r = await api('/browse/' + bKind + '?letter=' + encodeURIComponent(L));
+        if (seq !== flowSeq) return;
+        if (r.status === 401) return gate();
+        flowIdx++;
+        const items = r.items || [];
+        if (first) { box.innerHTML = ''; box.scrollLeft = 0; first = false; }
+        const start = cardItems.length; cardItems.push(...items);
+        box.insertAdjacentHTML('beforeend', items.map((x, i) => cardHtml(x, start + i, L)).join(''));
+      }
+      if (first && seq === flowSeq) box.innerHTML = '<div class="msg">Nothing here.</div>';
+    } finally { flowBusy = false; }
+  }
+  function onCarouselClick(e) {
+    const b = e.target.closest('.bc'); if (!b) return;
+    const x = cardItems[+b.dataset.i]; if (!x) return;
+    if (!bArtist && bKind === 'artists') browseArtist(x); else openAlbum(x, b);
+  }
+  function onCarouselScroll() {
+    if (bArtist || scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0; const box = $('carousel');
+      if (box.scrollWidth - box.scrollLeft - box.clientWidth < box.clientWidth * 2) flowMore(flowSeq, false);
+      for (const c of box.querySelectorAll('.bc')) {
+        if (c.offsetLeft + c.offsetWidth > box.scrollLeft + 24) { const L = c.dataset.l; if (L && L !== bLetter) { bLetter = L; paintLetters(); } break; }
+      }
+    });
   }
   // hold-to-scroll buttons: tap = one page, hold = glide
   function holdScroll(btn, dir) {
