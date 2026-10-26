@@ -75,8 +75,11 @@
     <div class="tab" data-tab="tables">
     <h3>TABLE QR</h3>
     <div class="card a" style="margin-bottom:8px">One QR for every table. Each scan gives that phone an hour to pick songs.</div>
-    <div class="row"><a href="table-card.html" target="_blank" style="text-decoration:none"><button style="width:100%">PRINT TABLE CARD</button></a><button class="ghost" id="rot">STOP ALL TABLE QRS</button></div>
-    <div class="card a" style="margin-top:8px">"Stop all" cancels every table pass and makes every printed card useless. Print new cards afterwards. It doesn't affect the screen QR.</div>
+    <div id="tqrBox" style="background:#fff;border-radius:10px;padding:14px;width:min(100%,300px);margin:0 auto 12px"><canvas id="tqr" style="width:100%;display:block"></canvas></div>
+    <div class="row"><button id="dlPng">DOWNLOAD PNG</button><button id="dlSvg">DOWNLOAD SVG</button></div>
+    <div class="card a" style="margin:8px 0">Just the QR code, ready for your own posters. Use the SVG for large prints, as it stays sharp at any size.</div>
+    <button class="ghost" id="rot" style="width:100%">STOP ALL TABLE QRS</button>
+    <div class="card a" style="margin-top:8px">"Stop all" cancels every table pass and makes every printed card useless. Download the new QR afterwards and reprint. It doesn't affect the screen QR.</div>
     </div>
     <div class="tab" data-tab="block">
     <h3>BLOCKED ARTISTS</h3>
@@ -111,6 +114,7 @@
   </div>
 </div>
 <script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 (function () {
   const W = window.BANSHEE.workerUrl, $ = id => document.getElementById(id);
@@ -124,7 +128,7 @@
   }
   async function unlock() {
     const r = await api('/staff/check');
-    if (r.ok) { try { sessionStorage.setItem('bb_pin', pin); } catch (e) {} $('login').style.display = 'none'; $('panel').style.display = 'block'; refresh(); paintBlocked(); setInterval(refresh, 10000); }
+    if (r.ok) { try { sessionStorage.setItem('bb_pin', pin); } catch (e) {} $('login').style.display = 'none'; $('panel').style.display = 'block'; refresh(); paintBlocked(); paintTableQr(); setInterval(refresh, 10000); }
     else { $('pin').value = ''; $('pin').placeholder = 'Wrong PIN'; }
   }
   $('go').onclick = () => { pin = $('pin').value; unlock(); };
@@ -206,12 +210,39 @@
     });
   }
   $('qb').oninput = deb(findBlock);
+  // ── table QR: drawn from the QR's own modules so the downloads are crisp ──
+  let tqModules = null;
+  async function paintTableQr() {
+    const r = await api('/staff/table-key'); if (!r.key) return;
+    const link = new URL('./?table=' + r.key, location.href).href;
+    const holder = document.createElement('div'); const q = new QRCode(holder, { text: link, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.M });
+    const m = q._oQRCode, n = m.getModuleCount(); tqModules = { n, dark: (y, x) => m.isDark(y, x) };
+    const px = 640, cell = Math.floor(px / (n + 8)), size = cell * (n + 8), c = $('tqr'); c.width = c.height = size;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#000';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (m.isDark(y, x)) g.fillRect((x + 4) * cell, (y + 4) * cell, cell, cell);
+  }
+  function save(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+  $('dlPng').onclick = () => {
+    if (!tqModules) { say('QR not ready yet'); return; }
+    const { n, dark } = tqModules, cell = Math.ceil(1600 / (n + 8)), size = cell * (n + 8), c = document.createElement('canvas'); c.width = c.height = size;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#000';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (dark(y, x)) g.fillRect((x + 4) * cell, (y + 4) * cell, cell, cell);
+    c.toBlob(b => save(b, 'banshee-table-qr.png'), 'image/png');
+  };
+  $('dlSvg').onclick = () => {
+    if (!tqModules) { say('QR not ready yet'); return; }
+    const { n, dark } = tqModules; let d = '';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (dark(y, x)) d += `M${x + 4} ${y + 4}h1v1h-1z`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n + 8} ${n + 8}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+    save(new Blob([svg], { type: 'image/svg+xml' }), 'banshee-table-qr.svg');
+  };
   let rotArm = 0;
   $('rot').onclick = async () => {
     if (!rotArm) { rotArm = setTimeout(() => { rotArm = 0; $('rot').textContent = 'STOP ALL TABLE QRS'; }, 5000); $('rot').textContent = 'TAP AGAIN TO CONFIRM'; return; }
     clearTimeout(rotArm); rotArm = 0; $('rot').textContent = 'STOP ALL TABLE QRS';
     const r = await api('/staff/rotate-table', { method: 'POST' });
-    say(r.ok ? 'All table passes and old cards stopped. Print new cards.' : 'Not saved. The jukebox needs updating first.');
+    say(r.ok ? 'All table passes and old QR codes stopped. Download the new QR and reprint.' : 'Not saved. The jukebox needs updating first.');
+    if (r.ok) paintTableQr();
   };
   const toBlock = t => ({ uri: t.uri, name: t.name, artists: t.artists });
   async function findBlockSong() {
