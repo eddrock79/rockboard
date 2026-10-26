@@ -339,7 +339,7 @@
     const idx = seedIdx();
     const seeding = !!($('seed') && $('seed').disabled);
     if (!seeding) {
-      $('bseed').innerHTML = idx >= STARTER.length ? '' : `<div class="card"><div class="t" style="font-size:16px">Starter list: ${STARTER.length} rock, punk, goth, grunge and metal artists</div><div class="a" style="margin:4px 0 10px">${idx ? `Loaded ${idx} of ${STARTER.length} so far.` : 'Press the button and the jukebox will look each one up on Spotify. It takes about a minute.'} Anything you remove stays removed.</div><button id="seed" style="width:100%">${idx ? 'CONTINUE LOADING' : 'LOAD STARTER LIST'}</button><div id="seedMsg" class="a" style="margin-top:8px"></div></div>`;
+      $('bseed').innerHTML = idx >= STARTER.length ? '' : `<div class="card"><div class="t" style="font-size:16px">Starter list: ${STARTER.length} rock, punk, goth, grunge and metal artists</div><div class="a" style="margin:4px 0 10px">${idx ? `Loaded ${idx} of ${STARTER.length} so far.` : 'Press the button and the jukebox will find and load each one. It takes about a minute.'} Anything you remove stays removed.</div><button id="seed" style="width:100%">${idx ? 'CONTINUE LOADING' : 'LOAD STARTER LIST'}</button><div id="seedMsg" class="a" style="margin-top:8px"></div></div>`;
       if ($('seed')) $('seed').onclick = loadStarter;
     }
     let html = '', cur = ''; const letters = [];
