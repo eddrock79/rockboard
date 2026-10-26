@@ -398,6 +398,7 @@ export default {
           'metadata[venue]': VENUE,
           'metadata[device_id]': device_id,
           'metadata[tier]': tier,
+          'payment_intent_data[statement_descriptor_suffix]': 'BANSHEE',
           success_url: `${site}/?paid=1`,
           cancel_url: `${site}/`,
         });
