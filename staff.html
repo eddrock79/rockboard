@@ -32,7 +32,7 @@
   .pill span { flex:1; font-weight:600; font-size:17px; }
   .pill button { background:transparent; color:var(--ink); padding:2px 8px; font-size:18px; }
   .lbl { margin:4px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
-  #msg { min-height:22px; color:var(--g); font-size:15px; margin:8px 2px; }
+  #msg { min-height:22px; color:var(--g); font-size:15px; margin:8px 2px; position:sticky; top:0; z-index:5; background:#050706; padding:6px 2px; }
   .sale { display:flex; justify-content:space-between; font-size:15px; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.08); color:var(--mute); }
 </style>
 </head>
@@ -88,7 +88,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   const mmss = ms => { ms = Math.max(0, Math.round(ms / 1000)); return Math.floor(ms / 60) + ':' + String(ms % 60).padStart(2, '0'); };
   let pin = ''; try { pin = sessionStorage.getItem('bb_pin') || ''; } catch (e) {}
-  const say = m => { $('msg').textContent = m; setTimeout(() => { if ($('msg').textContent === m) $('msg').textContent = ''; }, 5000); };
+  const say = m => { $('msg').textContent = m; setTimeout(() => { if ($('msg').textContent === m) $('msg').textContent = ''; }, 9000); };
   async function api(path, opts = {}) {
     const r = await fetch(W + path, { ...opts, headers: { 'Content-Type': 'application/json', 'X-Staff-Pin': pin } });
     return { status: r.status, ...(await r.json().catch(() => ({}))) };
