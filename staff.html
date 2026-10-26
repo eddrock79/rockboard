@@ -89,7 +89,9 @@
     <div class="tab" data-tab="browse">
     <h3 id="bcount">BROWSE LIST</h3>
     <div class="card a" style="margin-bottom:8px">These artists will fill the guest Browse screen, A to Z. Add more with the box at the top. Tap the cross to remove one.</div>
+    <div class="card" id="bswitch"></div>
     <div id="bseed"></div>
+    <div id="balb"></div>
     <div id="jump"></div>
     <div id="blist"></div>
     </div>
@@ -329,11 +331,16 @@
   };
   // ── browse list ──
   const STARTER = ["Ramones", "Sex Pistols", "The Clash", "Buzzcocks", "The Damned", "The Stranglers", "Stiff Little Fingers", "The Undertones", "UK Subs", "Cockney Rejects", "Discharge", "Misfits", "Dead Kennedys", "Black Flag", "Bad Brains", "Minor Threat", "Descendents", "Social Distortion", "Bad Religion", "NOFX", "Pennywise", "Rancid", "Green Day", "blink-182", "Sum 41", "The Offspring", "Alkaline Trio", "Anti-Flag", "Dropkick Murphys", "Flogging Molly", "Against Me!", "The Vandals", "Propagandhi", "Gallows", "Frank Turner", "IDLES", "The Adicts", "The Exploited", "Suicidal Tendencies", "The Cure", "Siouxsie and the Banshees", "Bauhaus", "The Sisters of Mercy", "Fields of the Nephilim", "The Mission", "Joy Division", "New Order", "Echo & the Bunnymen", "The Jesus and Mary Chain", "Killing Joke", "Christian Death", "Alien Sex Fiend", "Peter Murphy", "Depeche Mode", "The Cult", "Love and Rockets", "Dead Can Dance", "Cocteau Twins", "Nick Cave & the Bad Seeds", "Type O Negative", "HIM", "Lacuna Coil", "Evanescence", "Ghost", "Wire", "Gang of Four", "Public Image Ltd.", "The Fall", "Television", "Talking Heads", "Blondie", "Patti Smith", "The Smiths", "The Psychedelic Furs", "Interpol", "Editors", "Fontaines D.C.", "R.E.M.", "Pixies", "Sonic Youth", "Dinosaur Jr.", "The Replacements", "Hüsker Dü", "The Smashing Pumpkins", "Pavement", "Weezer", "Pearl Jam", "Nirvana", "Soundgarden", "Alice In Chains", "Stone Temple Pilots", "Screaming Trees", "Mudhoney", "Melvins", "Hole", "L7", "Garbage", "Foo Fighters", "Queens of the Stone Age", "Rage Against The Machine", "Faith No More", "Red Hot Chili Peppers", "Jane's Addiction", "Primus", "Living Colour", "Bush", "Radiohead", "Oasis", "Blur", "Pulp", "Suede", "The Stone Roses", "My Bloody Valentine", "Manic Street Preachers", "The Charlatans", "The Verve", "Placebo", "Muse", "Arctic Monkeys", "The Libertines", "The Killers", "The Strokes", "Yeah Yeah Yeahs", "The White Stripes", "Nine Inch Nails", "Ministry", "Metallica", "Megadeth", "Slayer", "Anthrax", "Testament", "Exodus", "Overkill", "Sepultura", "Pantera", "Machine Head", "Lamb of God", "Slipknot", "Korn", "System Of A Down", "Disturbed", "Godsmack", "Deftones", "Tool", "Mastodon", "Gojira", "Opeth", "Iron Maiden", "Judas Priest", "Black Sabbath", "Ozzy Osbourne", "Motörhead", "Saxon", "Diamond Head", "Venom", "Dio", "Rainbow", "Deep Purple", "Led Zeppelin", "AC/DC", "Guns N' Roses", "Aerosmith", "Van Halen", "Def Leppard", "Whitesnake", "Scorpions", "Thin Lizzy", "Alice Cooper", "KISS", "Skid Row", "Mötley Crüe", "Twisted Sister", "Bullet For My Valentine", "Trivium", "Avenged Sevenfold", "Architects", "Bring Me The Horizon", "Skindred", "Rammstein", "Marilyn Manson", "Rob Zombie", "White Zombie", "Fear Factory", "Papa Roach", "Linkin Park", "Dimmu Borgir", "Cradle Of Filth", "Paradise Lost", "Carcass", "Napalm Death", "Cannibal Corpse", "Kreator", "Amon Amarth", "Behemoth", "Volbeat", "Clutch", "Monster Magnet", "Kyuss", "Electric Wizard", "Corrosion of Conformity"];
-  let browse = [];
+  let browse = [], counts = {}, albBusy = false, browseLive = false;
   const bKey = a => String(a.name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
   const avatar = a => a.image ? `<img class="av" loading="lazy" src="${esc(a.image)}" alt="">` : '<div class="av"></div>';
   const seedIdx = () => { try { return +localStorage.getItem('bb_seed') || 0; } catch (e) { return 0; } };
+  function paintSwitch() {
+    $('bswitch').innerHTML = `<div class="t" style="font-size:16px">Guest Browse screen: <span style="color:${browseLive ? 'var(--g)' : '#f88'}">${browseLive ? 'ON' : 'OFF'}</span></div><div class="a" style="margin:4px 0 10px">${browseLive ? 'Guests see the Browse button first on their phones.' : 'Guests can\'t see it yet. Switch it on when you are happy with the list.'}</div><button id="bsw" class="${browseLive ? 'ghost' : ''}" style="width:100%">${browseLive ? 'SWITCH OFF' : 'SWITCH ON FOR GUESTS'}</button>`;
+    $('bsw').onclick = async () => { const r = await api('/staff/browse-switch', { method: 'POST', body: JSON.stringify({ on: !browseLive }) }); if (!r.ok) { say('Not saved. The jukebox needs updating first.'); return; } browseLive = r.on; paintSwitch(); say(browseLive ? 'Browse is now ON for guests' : 'Browse is now OFF for guests'); };
+  }
   function paintBrowse() {
+    paintSwitch();
     const list = [...browse].sort((a, b) => bKey(a).localeCompare(bKey(b)));
     $('bcount').textContent = `BROWSE LIST · ${list.length} ARTIST${list.length === 1 ? '' : 'S'}`;
     const idx = seedIdx();
@@ -346,8 +353,11 @@
     for (const a of list) {
       const L = (bKey(a)[0] || '#').toUpperCase(), ch = /[A-Z]/.test(L) ? L : '#';
       if (ch !== cur) { cur = ch; letters.push(ch); html += `<div class="lbl" id="bl-${ch === '#' ? 'num' : ch}">${ch}</div>`; }
-      html += `<div class="card res" style="padding:8px 12px"><div style="display:flex;align-items:center;gap:12px;min-width:0">${avatar(a)}<div style="min-width:0"><div class="t" style="font-size:17px">${esc(a.name)}</div>${a.genre ? `<div class="a">${esc(a.genre)}</div>` : ''}</div></div><button class="ghost" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}" style="font-size:16px;padding:8px 14px">&#10005;</button></div>`;
+      html += `<div class="card res" style="padding:8px 12px"><div style="display:flex;align-items:center;gap:12px;min-width:0">${avatar(a)}<div style="min-width:0"><div class="t" style="font-size:17px">${esc(a.name)}</div><div class="a">${[a.genre, counts[a.id] === undefined ? 'albums not loaded' : counts[a.id] + ' album' + (counts[a.id] === 1 ? '' : 's')].filter(Boolean).map(esc).join(' · ')}</div></div></div><button class="ghost" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}" style="font-size:16px;padding:8px 14px">&#10005;</button></div>`;
     }
+    const need = browse.filter(a => counts[a.id] === undefined).length;
+    if (!albBusy) $('balb').innerHTML = need ? `<div class="card"><div class="a" style="margin-bottom:8px">${need} artist${need === 1 ? ' still needs its' : 's still need their'} albums loading. Guests need these to browse by album.</div><button id="alb" style="width:100%">LOAD ALBUMS</button><div id="albMsg" class="a" style="margin-top:8px"></div></div>` : '';
+    if ($('alb')) $('alb').onclick = loadAlbums;
     $('blist').innerHTML = html || '<div class="card a">Nothing here yet.</div>';
     $('jump').innerHTML = letters.map(l => `<button data-l="${l === '#' ? 'num' : l}">${l}</button>`).join('');
     $('jump').querySelectorAll('button').forEach(b => b.onclick = () => { const el = $('bl-' + b.dataset.l); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
@@ -361,7 +371,7 @@
       setTimeout(() => { if ($('undo')) $('msg').textContent = ''; }, 9000);
     });
   }
-  async function loadBrowse() { const r = await api('/staff/browse'); if (r.artists) { browse = r.artists; paintBrowse(); } else { $('blist').innerHTML = '<div class="card a">Not available yet. The jukebox needs updating first.</div>'; } }
+  async function loadBrowse() { const r = await api('/staff/browse'); if (r.artists) { browse = r.artists; counts = r.counts || {}; browseLive = !!r.on; paintBrowse(); } else { $('blist').innerHTML = '<div class="card a">Not available yet. The jukebox needs updating first.</div>'; } }
   async function loadStarter() {
     $('seed').disabled = true; const missing = [];
     for (let i = seedIdx(); i < STARTER.length; i += 8) {
@@ -371,10 +381,26 @@
       if (!r.ok) { $('seedMsg').textContent = r.error || 'Stopped. Press the button to carry on.'; $('seed').disabled = false; return; }
       missing.push(...(r.missing || []));
       try { localStorage.setItem('bb_seed', String(upto)); } catch (e) {}
-      const lr = await api('/staff/browse'); if (lr.artists) { browse = lr.artists; paintBrowse(); }
+      const lr = await api('/staff/browse'); if (lr.artists) { browse = lr.artists; counts = lr.counts || {}; paintBrowse(); }
     }
     $('bseed').innerHTML = '';
+    loadAlbums();
     say(missing.length ? `Loaded. ${missing.length} not matched exactly: ${missing.join(', ')}. Add them with the box at the top.` : 'Starter list loaded');
+  }
+  async function loadAlbums() {
+    if (albBusy) return; albBusy = true;
+    const ids = browse.filter(a => counts[a.id] === undefined).map(a => a.id); const failed = [];
+    if ($('alb')) $('alb').disabled = true;
+    for (let i = 0; i < ids.length; i += 4) {
+      if ($('albMsg')) $('albMsg').textContent = `Loading albums: ${Math.min(i + 4, ids.length)} of ${ids.length}…`;
+      else $('balb').innerHTML = `<div class="card a">Loading albums: ${Math.min(i + 4, ids.length)} of ${ids.length}…</div>`;
+      const r = await api('/staff/browse-albums', { method: 'POST', body: JSON.stringify({ ids: ids.slice(i, i + 4) }) });
+      if (!r.ok) { albBusy = false; $('balb').innerHTML = `<div class="card a">Stopped. ${esc(r.error || 'Press LOAD ALBUMS to carry on.')}</div>`; await loadBrowse(); return; }
+      failed.push(...(r.failed || []));
+      if ((i / 4) % 5 === 4) { const lr = await api('/staff/browse'); if (lr.artists) { counts = lr.counts || {}; } }
+    }
+    albBusy = false; await loadBrowse();
+    if (ids.length) say(failed.length ? `Albums loaded. Could not load: ${failed.join(', ')}` : 'Albums loaded');
   }
   let bqTimer;
   $('bq').oninput = () => { clearTimeout(bqTimer); bqTimer = setTimeout(searchBrowse, 350); };
@@ -385,7 +411,7 @@
     $('bres').querySelectorAll('button:not([disabled])').forEach(b => b.onclick = async () => {
       const a = list[b.dataset.i]; const r2 = await api('/staff/browse-add', { method: 'POST', body: JSON.stringify({ artists: [{ id: a.id, name: a.name, image: a.image }] }) });
       if (!r2.ok) { say('Not saved. The jukebox needs updating first.'); return; }
-      browse = r2.artists; paintBrowse(); b.textContent = 'ADDED'; b.className = 'ghost'; b.disabled = true; say(`Added ${a.name}`);
+      browse = r2.artists; paintBrowse(); b.textContent = 'ADDED'; b.className = 'ghost'; b.disabled = true; say(`Added ${a.name}`); loadAlbums();
     });
   }
   function showTab(t) {

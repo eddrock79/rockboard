@@ -114,6 +114,14 @@ export class Ledger extends DurableObject {
   }
   async tableEpoch() { return (await this.ctx.storage.get('tableEpoch')) || 0; }
   async rotateTable() { const e = (await this.tableEpoch()) + 1; await this.ctx.storage.put('tableEpoch', e); return e; }
+  async browseOn() { return !!(await this.ctx.storage.get('browseOn')); }
+  async setBrowseOn(on) { await this.ctx.storage.put('browseOn', !!on); return !!on; }
+  async setAlbums(id, list) { await this.ctx.storage.put('alb:' + id, list); this.albCache = null; }
+  async allAlbums() {
+    if (this.albCache) return this.albCache;
+    const out = {}; for (const [k, v] of await this.ctx.storage.list({ prefix: 'alb:' })) out[k.slice(4)] = v;
+    this.albCache = out; return out;
+  }
   async getBrowse() { return (await this.ctx.storage.get('browseArtists')) || []; }
   async browseAdd(entries) {
     const list = await this.getBrowse();
@@ -179,7 +187,7 @@ async function tokenValid(env, token) {
 let spotifyToken = { value: null, exp: 0 };
 async function getAccessToken(env) {
   if (spotifyToken.value && Date.now() < spotifyToken.exp) return spotifyToken.value;
-  const res = await fetch('https://accounts.spotify.com/api/token', {
+  const res = await fetch(env.SPOTIFY_TOKEN_URL || 'https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
       Authorization: 'Basic ' + btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`),
@@ -194,7 +202,7 @@ async function getAccessToken(env) {
 }
 async function spotify(env, path, init = {}) {
   const token = await getAccessToken(env);
-  return fetch('https://api.spotify.com/v1' + path, {
+  return fetch((env.SPOTIFY_API_BASE || 'https://api.spotify.com/v1') + path, {
     ...init,
     headers: { Authorization: 'Bearer ' + token, ...(init.headers || {}) },
   });
@@ -293,6 +301,34 @@ async function artistSearch(env, qRaw) {
 }
 // Artists the staff have blocked: guests can't find them or request them. Staff can still add them.
 const isBlocked = (artists, blocked) => !!blocked.length && (artists || []).some(a => blocked.some(b => b.id === a.id));
+// ── BROWSE helpers ──
+const ALBUM_JUNK = /\b(karaoke|instrumental|commentary|tribute)\b/i;
+async function fetchArtistAlbums(env, artistId) {
+  const get = async off => { const r = await spotify(env, `/artists/${artistId}/albums?include_groups=album,compilation&market=GB&limit=50&offset=${off}`); if (!r.ok) throw new Error('albums ' + r.status); return r.json(); };
+  const first = await get(0); let items = first.items || [];
+  if ((first.total || 0) > 50) items = items.concat((await get(50)).items || []);
+  const best = new Map(); // one entry per album title: the plainest name wins (no Deluxe / Remastered duplicates)
+  for (const a of items) {
+    if (ALBUM_JUNK.test(a.name)) continue;
+    const k = normTitle(a.name); if (!k) continue;
+    const cur = best.get(k); if (!cur || a.name.length < cur.name.length) best.set(k, a);
+  }
+  return [...best.values()].map(a => ({ id: a.id, name: a.name, image: a.images?.[1]?.url || a.images?.[0]?.url || '', year: (a.release_date || '').slice(0, 4) }));
+}
+const sortKey = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+const initial = n => { const c = (sortKey(n)[0] || '#').toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; };
+async function albumTracks(env, albumId, lists) {
+  const res = await spotify(env, `/albums/${albumId}?market=GB`);
+  if (!res.ok) return [];
+  const al = await res.json(), seen = new Set(), items = [];
+  for (const t of al.tracks?.items || []) {
+    const full = { ...t, type: 'track', album: { images: al.images } };
+    if (!playable(full) || isHidden(full, lists)) continue;
+    const sh = trackShape(full), key = sh.name.toLowerCase() + '|' + sh.artist.toLowerCase();
+    if (seen.has(key)) continue; seen.add(key); items.push(sh);
+  }
+  return items;
+}
 // Picks the artist whose name matches exactly (ignoring case, accents and punctuation); the most popular if several share the name.
 const normName = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 function pickArtist(items, name) {
@@ -426,7 +462,43 @@ export default {
       }
       if (path === '/search') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        const albumId = url.searchParams.get('album_id');
+        if (albumId) {
+          if (!/^[A-Za-z0-9]{10,40}$/.test(albumId)) return json({ items: [] });
+          return json({ items: await albumTracks(env, albumId, await ledger.blockLists()) });
+        }
         return json({ items: await trackSearch(env, url.searchParams, await ledger.blockLists()) });
+      }
+      if (path.startsWith('/browse/')) {
+        if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
+        if (!(await ledger.browseOn())) return json(path === '/browse/letters' ? { letters: {} } : { items: [] });
+        const [browse, lists, albums] = await Promise.all([ledger.getBrowse(), ledger.blockLists(), ledger.allAlbums()]);
+        const live = browse.filter(a => !lists.artists.some(b => b.id === a.id));
+        const kind = url.searchParams.get('kind') || '', letter = (url.searchParams.get('letter') || '').slice(0, 1).toUpperCase();
+        if (path === '/browse/letters') {
+          const letters = {};
+          if (kind === 'artists') for (const a of live) letters[initial(a.name)] = (letters[initial(a.name)] || 0) + 1;
+          else for (const a of live) for (const al of albums[a.id] || []) letters[initial(al.name)] = (letters[initial(al.name)] || 0) + 1;
+          return json({ letters });
+        }
+        if (path === '/browse/artists') {
+          const items = live.filter(a => initial(a.name) === letter).sort((x, y) => sortKey(x.name).localeCompare(sortKey(y.name)))
+            .map(a => ({ id: a.id, name: a.name, image: a.image, n: (albums[a.id] || []).length }));
+          return json({ items });
+        }
+        if (path === '/browse/albums') {
+          const artistId = url.searchParams.get('artist_id');
+          if (artistId) {
+            const a = live.find(x => x.id === artistId); if (!a) return json({ items: [] });
+            let list = albums[a.id];
+            if (!list) { try { list = await fetchArtistAlbums(env, a.id); await ledger.setAlbums(a.id, list); } catch (e) { return json({ items: [] }); } }
+            return json({ items: [...list].sort((x, y) => String(x.year).localeCompare(String(y.year))).map(al => ({ ...al, artist: a.name, artistId: a.id })) });
+          }
+          const items = [];
+          for (const a of live) for (const al of albums[a.id] || []) if (initial(al.name) === letter) items.push({ ...al, artist: a.name, artistId: a.id });
+          items.sort((x, y) => sortKey(x.name).localeCompare(sortKey(y.name)));
+          return json({ items });
+        }
       }
       if (path === '/balance') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
@@ -516,7 +588,25 @@ export default {
           await bustState();
           return json({ ok: true, track });
         }
-        if (path === '/staff/browse') return json({ artists: await ledger.getBrowse() });
+        if (path === '/staff/browse') {
+          const [artists, albums, on] = await Promise.all([ledger.getBrowse(), ledger.allAlbums(), ledger.browseOn()]);
+          const counts = {}; for (const a of artists) if (albums[a.id]) counts[a.id] = albums[a.id].length;
+          return json({ artists, counts, on });
+        }
+        if (path === '/staff/browse-switch' && request.method === 'POST') {
+          const { on } = await request.json();
+          return json({ ok: true, on: await ledger.setBrowseOn(!!on) });
+        }
+        if (path === '/staff/browse-albums' && request.method === 'POST') {
+          // Fetches and stores the album list for a few artists at a time.
+          const { ids } = await request.json();
+          const browse = await ledger.getBrowse(), failed = []; let loaded = 0;
+          await Promise.all((Array.isArray(ids) ? ids : []).slice(0, 4).map(async id => {
+            const a = browse.find(x => x.id === id); if (!a) return;
+            try { await ledger.setAlbums(a.id, await fetchArtistAlbums(env, a.id)); loaded++; } catch (e) { failed.push(a.name); }
+          }));
+          return json({ ok: true, loaded, failed });
+        }
         if (path === '/staff/browse-add' && request.method === 'POST') {
           const { artists } = await request.json();
           const ok = (Array.isArray(artists) ? artists : []).slice(0, 40).filter(a => /^[A-Za-z0-9]{10,40}$/.test(a.id || '')).map(a => ({ id: a.id, name: String(a.name || '').slice(0, 100), image: String(a.image || '').slice(0, 300), genre: String(a.genre || '').slice(0, 40) }));
