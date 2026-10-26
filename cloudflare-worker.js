@@ -93,6 +93,18 @@ export class Ledger extends DurableObject {
     await this.ctx.storage.put('blocked', list);
     return list;
   }
+  async blockLists() { return { artists: await this.getBlocked(), tracks: (await this.ctx.storage.get('blockedTracks')) || [] }; }
+  async blockTracks(entries) {
+    const list = (await this.ctx.storage.get('blockedTracks')) || [];
+    for (const e of entries) if (!list.some(x => x.uri === e.uri)) list.push(e);
+    await this.ctx.storage.put('blockedTracks', list);
+    return list;
+  }
+  async unblockTrack(uri) {
+    const list = ((await this.ctx.storage.get('blockedTracks')) || []).filter(x => x.uri !== uri);
+    await this.ctx.storage.put('blockedTracks', list);
+    return list;
+  }
   async top(n = 10) {
     const top = (await this.ctx.storage.get('top')) || {};
     return Object.values(top).sort((a, b) => b.count - a.count).slice(0, n);
@@ -250,7 +262,11 @@ async function artistSearch(env, qRaw) {
 }
 // Artists the staff have blocked: guests can't find them or request them. Staff can still add them.
 const isBlocked = (artists, blocked) => !!blocked.length && (artists || []).some(a => blocked.some(b => b.id === a.id));
-async function trackSearch(env, params, blocked = []) {
+// Blocked songs match by exact track, or by the same title from the same artist (so remasters and reissues are caught too).
+const normTitle = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s[-–—]\s.*$/, '').replace(/[\(\[].*?[\)\]]/g, '').replace(/[^a-z0-9]/g, '');
+const isBlockedSong = (t, tracks) => !!tracks.length && tracks.some(b => b.uri === t.uri || (b.title && normTitle(t.name) === b.title && (t.artists || []).some(a => (b.artistIds || []).includes(a.id))));
+const isHidden = (t, lists) => isBlocked(t.artists, lists.artists) || isBlockedSong(t, lists.tracks);
+async function trackSearch(env, params, lists = { artists: [], tracks: [] }) {
   const q = (params.get('q') || '').trim().slice(0, 100).replace(/"/g, '');
   const artistId = (params.get('artist_id') || '').slice(0, 40);
   const artist = (params.get('artist') || '').trim().slice(0, 100).replace(/"/g, '');
@@ -268,7 +284,7 @@ async function trackSearch(env, params, blocked = []) {
   const seen = new Set(), items = [];
   for (const t of raw) {
     if (!playable(t)) continue; // no tracks over 7 minutes, no local files
-    if (isBlocked(t.artists, blocked)) continue;
+    if (isHidden(t, lists)) continue;
     const sh = trackShape(t);
     const key = sh.name.toLowerCase() + '|' + sh.artist.toLowerCase();
     if (seen.has(key)) continue;
@@ -361,12 +377,12 @@ export default {
       // ── Guest endpoints (need the screen-QR session token) ──
       if (path === '/search-artists') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
-        const blocked = await ledger.getBlocked();
+        const blocked = (await ledger.blockLists()).artists;
         return json({ items: (await artistSearch(env, url.searchParams.get('q'))).filter(a => !blocked.some(b => b.id === a.id)) });
       }
       if (path === '/search') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
-        return json({ items: await trackSearch(env, url.searchParams, await ledger.getBlocked()) });
+        return json({ items: await trackSearch(env, url.searchParams, await ledger.blockLists()) });
       }
       if (path === '/balance') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
@@ -386,7 +402,7 @@ export default {
         if (!tRes.ok) { await ledger.refund(device_id); return json({ error: 'Track not found' }, 404); }
         const full = await tRes.json();
         if (!playable(full)) { await ledger.refund(device_id); return json({ error: 'Sorry, tracks over 7 minutes can’t be requested. You haven’t been charged a play.' }, 422); }
-        if (isBlocked(full.artists, await ledger.getBlocked())) { await ledger.refund(device_id); return json({ error: 'Sorry, that artist isn’t available on this jukebox. You haven’t been charged a play.' }, 422); }
+        if (isHidden(full, await ledger.blockLists())) { await ledger.refund(device_id); return json({ error: 'Sorry, that one isn’t available on this jukebox. You haven’t been charged a play.' }, 422); }
         const track = trackShape(full);
         const qRes = await spotify(env, '/me/player/queue?uri=' + encodeURIComponent(uri), { method: 'POST' });
         if (qRes.status !== 204 && qRes.status !== 200) {
@@ -456,7 +472,37 @@ export default {
           await bustState();
           return json({ ok: true, track });
         }
-        if (path === '/staff/blocked') return json({ blocked: await ledger.getBlocked() });
+        if (path === '/staff/blocked') { const l = await ledger.blockLists(); return json({ blocked: l.artists, blockedTracks: l.tracks }); }
+        if (path === '/staff/block-tracks' && request.method === 'POST') {
+          const { tracks } = await request.json();
+          const entries = [];
+          for (const t of (Array.isArray(tracks) ? tracks : []).slice(0, 60)) {
+            const ids = (t.artists || []).map(a => a.id).filter(id => /^[A-Za-z0-9]{10,40}$/.test(id || ''));
+            if (!TRACK_URI.test(t.uri || '') || !ids.length) continue;
+            entries.push({ uri: t.uri, title: normTitle(t.name), name: String(t.name || '').slice(0, 150), artist: (t.artists || []).map(a => String(a.name || '')).join(', ').slice(0, 150), artistIds: ids });
+          }
+          if (!entries.length) return json({ error: 'Nothing to block' }, 400);
+          return json({ ok: true, blockedTracks: await ledger.blockTracks(entries) });
+        }
+        if (path === '/staff/unblock-track' && request.method === 'POST') {
+          const { uri } = await request.json();
+          return json({ ok: true, blockedTracks: await ledger.unblockTrack(String(uri || '')) });
+        }
+        if (path === '/staff/lookup' && request.method === 'POST') {
+          // Finds the likely Spotify matches for pasted "song / artist" pairs. Saves nothing.
+          const { lines } = await request.json();
+          const out = [];
+          for (const l of (Array.isArray(lines) ? lines : []).slice(0, 8)) {
+            const name = String(l.name || '').slice(0, 150), artist = String(l.artist || '').slice(0, 100);
+            const short = name.replace(/[\(\[].*?[\)\]]/g, ' ').replace(/\s[-–—]\s.*$/, '').replace(/["]/g, '').replace(/\s+/g, ' ').trim() || name;
+            const a = artist.replace(/["]/g, '').trim();
+            const find = async q => (await (await spotify(env, `/search?q=${encodeURIComponent(q)}&type=track&limit=5`)).json()).tracks?.items || [];
+            let items = await find(`track:"${short}" artist:"${a}"`);
+            if (!items.length) items = await find(`${short} ${a}`);
+            out.push({ name, artist, matches: items.slice(0, 4).map(trackShape) });
+          }
+          return json({ results: out });
+        }
         if (path === '/staff/block' && request.method === 'POST') {
           const { id, name } = await request.json();
           if (!/^[A-Za-z0-9]{10,40}$/.test(id || '')) return json({ error: 'Bad artist' }, 400);

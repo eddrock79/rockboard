@@ -15,7 +15,11 @@
   h3 { margin:22px 2px 8px; font-size:13px; letter-spacing:.34em; font-weight:600; color:var(--g); }
   .card { background:var(--card); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
   .card .t { font-weight:600; font-size:18px; } .card .a { color:var(--mute); font-size:14px; }
-  input { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:13px 14px; font:500 17px 'Oswald',sans-serif; outline:none; margin-bottom:8px; }
+  input, textarea { width:100%; background:var(--card); color:var(--ink); border:1px solid rgba(255,255,255,.2); border-radius:10px; padding:13px 14px; font:500 17px 'Oswald',sans-serif; outline:none; margin-bottom:8px; }
+  textarea { resize:vertical; font-size:15px; }
+  details summary { cursor:pointer; color:var(--g); font-weight:600; letter-spacing:.1em; padding:6px 2px 10px; }
+  .chk { display:flex; align-items:center; gap:10px; } .chk input { width:auto; margin:0; flex:none; transform:scale(1.3); }
+  .chk select { width:100%; background:#050706; color:var(--ink); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:6px; font:500 14px 'Oswald',sans-serif; margin-top:4px; }
   button { font-family:inherit; cursor:pointer; background:var(--g); color:#04110a; border:0; border-radius:10px; padding:12px 16px; font-weight:700; font-size:15px; letter-spacing:.08em; }
   button.ghost { background:transparent; color:var(--ink); border:1px solid rgba(255,255,255,.3); }
   .row { display:flex; gap:8px; } .row > * { flex:1; }
@@ -61,6 +65,18 @@
     <div id="blocked"></div>
     <input id="qb" type="search" placeholder="Search an artist to block" autocomplete="off">
     <div id="bList"></div>
+    <h3>BLOCKED SONGS</h3>
+    <div class="card a" style="margin-bottom:8px">Single songs guests can't find or request. The band's other songs stay available.</div>
+    <details id="bsDet"><summary id="bsSum">Show blocked songs</summary><div id="blockedSongs"></div></details>
+    <input id="qbs" type="search" placeholder="Search a song to block" autocomplete="off">
+    <div id="bsList"></div>
+    <details><summary>Import a list of songs</summary>
+      <div class="card a" style="margin-bottom:8px">Paste song names, with the song on one line and the artist on the next. Then check the matches before blocking.</div>
+      <textarea id="imp" rows="7" placeholder="Wonderwall&#10;Oasis&#10;Walk&#10;Pantera"></textarea>
+      <button id="impGo" style="width:100%;margin-bottom:10px">FIND MATCHES</button>
+      <div id="impRes"></div>
+      <button id="impBlock" style="display:none;width:100%">BLOCK TICKED SONGS</button>
+    </details>
     <h3>ARTISTS PLAYED SO FAR</h3><div id="artists"></div>
     <h3>RECENT SALES</h3><div id="sales"></div>
   </div>
@@ -144,6 +160,10 @@
     const r = await api('/staff/blocked'); const list = r.blocked || [];
     $('blocked').innerHTML = list.length ? list.map(a => `<div class="card res"><div class="t">${esc(a.name)}</div><button class="ghost" data-id="${esc(a.id)}">UNBLOCK</button></div>`).join('') : '<div class="card a">No artists blocked</div>';
     $('blocked').querySelectorAll('button').forEach(b => b.onclick = async () => { await api('/staff/unblock', { method: 'POST', body: JSON.stringify({ id: b.dataset.id }) }); say('Unblocked'); paintBlocked(); });
+    const bt = r.blockedTracks || [];
+    $('bsSum').textContent = bt.length ? `Show ${bt.length} blocked song${bt.length === 1 ? '' : 's'}` : 'No songs blocked';
+    $('blockedSongs').innerHTML = bt.map(x => `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><button class="ghost" data-u="${esc(x.uri)}">UNBLOCK</button></div>`).join('');
+    $('blockedSongs').querySelectorAll('button').forEach(b => b.onclick = async () => { await api('/staff/unblock-track', { method: 'POST', body: JSON.stringify({ uri: b.dataset.u }) }); say('Unblocked'); paintBlocked(); });
   }
   async function findBlock() {
     const q = $('qb').value.trim(); if (q.length < 2) { $('bList').innerHTML = ''; return; }
@@ -156,6 +176,49 @@
     });
   }
   $('qb').oninput = deb(findBlock);
+  const toBlock = t => ({ uri: t.uri, name: t.name, artists: t.artists });
+  async function findBlockSong() {
+    const q = $('qbs').value.trim(); if (q.length < 2) { $('bsList').innerHTML = ''; return; }
+    const r = await api('/staff/search?q=' + encodeURIComponent(q)); const list = r.items || [];
+    $('bsList').innerHTML = list.length ? list.map((x, i) => `<div class="card res"><div><div class="t">${esc(x.name)}</div><div class="a">${esc(x.artist)}</div></div><button data-i="${i}">BLOCK</button></div>`).join('') : '<div class="card a">No songs found</div>';
+    $('bsList').querySelectorAll('button').forEach(b => b.onclick = async () => {
+      const x = list[b.dataset.i]; const br = await api('/staff/block-tracks', { method: 'POST', body: JSON.stringify({ tracks: [toBlock(x)] }) });
+      if (!br.ok) { say('Not saved. The jukebox needs updating first.'); return; }
+      say(`Blocked "${x.name}"`); $('qbs').value = ''; $('bsList').innerHTML = ''; paintBlocked();
+    });
+  }
+  $('qbs').oninput = deb(findBlockSong);
+  const nt = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s[-–—]\s.*$/, '').replace(/[\(\[].*?[\)\]]/g, '').replace(/[^a-z0-9]/g, '');
+  let impRows = [];
+  $('impGo').onclick = async () => {
+    const ls = $('imp').value.split(/\r?\n/).map(x => x.trim()).filter(x => x && !/unban/i.test(x));
+    const lines = []; for (let i = 0; i + 1 < ls.length; i += 2) lines.push({ name: ls[i], artist: ls[i + 1] });
+    if (!lines.length) { say('Paste the songs first'); return; }
+    $('impRes').innerHTML = '<div class="card a">Finding matches…</div>'; $('impBlock').style.display = 'none'; impRows = [];
+    for (let i = 0; i < lines.length; i += 8) {
+      const r = await api('/staff/lookup', { method: 'POST', body: JSON.stringify({ lines: lines.slice(i, i + 8) }) });
+      if (!r.results) { $('impRes').innerHTML = '<div class="card a">Lookup failed. The jukebox may need updating first.</div>'; return; }
+      impRows.push(...r.results);
+    }
+    $('impRes').innerHTML = impRows.map((row, i) => {
+      const m = row.matches || [];
+      const best = Math.max(0, m.findIndex(x => nt(x.name) === nt(row.name)));
+      const first = nt(row.artist.replace(/^the /i, '')).slice(0, 4);
+      const sure = m.length && nt(m[best].name) === nt(row.name) && nt(m[best].artist).includes(first);
+      row.pick = best;
+      return `<div class="card"><div class="chk"><input type="checkbox" data-i="${i}" ${sure ? 'checked' : ''} ${m.length ? '' : 'disabled'}><div style="flex:1"><div class="a">${esc(row.name)} · ${esc(row.artist)}${sure ? '' : ' <span style="color:var(--g)">CHECK</span>'}</div>` +
+        (m.length ? `<select data-i="${i}">${m.map((x, j) => `<option value="${j}" ${j === best ? 'selected' : ''}>${esc(x.name)} · ${esc(x.artist)}</option>`).join('')}</select>` : '<div class="a">No match found</div>') + '</div></div></div>';
+    }).join('');
+    $('impRes').querySelectorAll('select').forEach(sel => sel.onchange = () => { impRows[sel.dataset.i].pick = +sel.value; });
+    $('impBlock').style.display = '';
+  };
+  $('impBlock').onclick = async () => {
+    const picked = [...$('impRes').querySelectorAll('input[type=checkbox]:checked')].map(c => { const row = impRows[c.dataset.i]; return toBlock(row.matches[row.pick]); });
+    if (!picked.length) { say('Nothing ticked'); return; }
+    const br = await api('/staff/block-tracks', { method: 'POST', body: JSON.stringify({ tracks: picked }) });
+    if (!br.ok) { say(br.error || 'Not saved. The jukebox needs updating first.'); return; }
+    say(`Blocked ${picked.length} song${picked.length === 1 ? '' : 's'}`); $('impRes').innerHTML = ''; $('impBlock').style.display = 'none'; $('imp').value = ''; impRows = []; paintBlocked();
+  };
   if (pin) unlock();
 })();
 </script>
