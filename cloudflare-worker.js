@@ -311,6 +311,7 @@ async function fetchArtistAlbums(env, artistId) {
     const r = await spotify(env, `/artists/${artistId}/albums?include_groups=album,compilation${market ? '&market=GB' : ''}&limit=${limit}&offset=${off}`);
     if (r.status === 400 && limit > 10) { limit = 10; continue; }
     if (r.status === 400 && market) { market = false; continue; }
+    if (r.status === 429) throw Object.assign(new Error('Spotify asked us to slow down (429)'), { rate: true, retryAfter: Math.max(5, +r.headers.get('retry-after') || 60) });
     if (!r.ok) throw new Error(`Spotify said ${r.status} ${(await r.text().catch(() => '')).slice(0, 140)}`);
     const d = await r.json(), got = d.items || [];
     items = items.concat(got); total = typeof d.total === 'number' ? d.total : items.length;
@@ -500,7 +501,7 @@ export default {
           if (artistId) {
             const a = live.find(x => x.id === artistId); if (!a) return json({ items: [] });
             let list = albums[a.id];
-            if (!list || !list.length) { try { list = (await fetchArtistAlbums(env, a.id)).list; await ledger.setAlbums(a.id, list); } catch (e) { return json({ items: [] }); } }
+            if (!list || !list.length) { try { list = (await fetchArtistAlbums(env, a.id)).list; await ledger.setAlbums(a.id, list); } catch (e) { return json({ items: [], busy: !!e.rate }); } }
             return json({ items: [...list].sort((x, y) => String(x.year).localeCompare(String(y.year))).map(al => ({ ...al, artist: a.name, artistId: a.id })) });
           }
           const items = [];
@@ -614,7 +615,10 @@ export default {
             if (calls >= 28) break;
             const a = browse.find(x => x.id === id); if (!a) { done.push(id); continue; }
             try { const r = await fetchArtistAlbums(env, id); calls += r.calls; await ledger.setAlbums(id, r.list); done.push(id); }
-            catch (e) { calls += 2; done.push(id); failed.push({ name: a.name, error: String(e.message || e).slice(0, 200) }); }
+            catch (e) {
+              if (e.rate) return json({ ok: true, done, failed, rateLimited: e.retryAfter }); // stop at once: Spotify asked us to wait
+              calls += 2; done.push(id); failed.push({ name: a.name, error: String(e.message || e).slice(0, 200) });
+            }
           }
           return json({ ok: true, done, failed });
         }

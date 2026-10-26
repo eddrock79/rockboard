@@ -233,7 +233,7 @@
       if (r.status === 401) return gate();
       if (seq !== flowSeq) return;
       cardItems = r.items || [];
-      box.innerHTML = cardItems.length ? cardItems.map((x, i) => cardHtml(x, i, '')).join('') : '<div class="msg">No albums listed. Their tracks are below.</div>';
+      box.innerHTML = cardItems.length ? cardItems.map((x, i) => cardHtml(x, i, '')).join('') : `<div class="msg">${r.busy ? 'Albums are slow to load just now. Their tracks are below.' : 'No albums listed. Their tracks are below.'}</div>`;
       box.scrollLeft = 0; return;
     }
     if (!bLetter) { box.innerHTML = '<div class="msg">Nothing to browse yet.</div>'; return; }

@@ -384,27 +384,31 @@
       const lr = await api('/staff/browse'); if (lr.artists) { browse = lr.artists; counts = lr.counts || {}; paintBrowse(); }
     }
     $('bseed').innerHTML = '';
-    loadAlbums();
     say(missing.length ? `Loaded. ${missing.length} not matched exactly: ${missing.join(', ')}. Add them with the box at the top.` : 'Starter list loaded');
   }
   async function loadAlbums() {
-    if (albBusy) return; albBusy = true;
-    const todo = browse.filter(a => !counts[a.id]).map(a => a.id), total = todo.length, failed = []; let n = 0;
+    if (albBusy) return; albBusy = true; albNote = '';
+    const todo = browse.filter(a => !counts[a.id]).map(a => a.id), total = todo.length, failed = []; let n = 0, wait = 0;
     if ($('alb')) $('alb').disabled = true;
     while (todo.length) {
-      const msg = `Loading albums: ${n} of ${total}…`;
+      const msg = `Loading albums: ${n} of ${total}. This runs slowly on purpose, so Spotify doesn't block us. You can leave it running.`;
       if ($('albMsg')) $('albMsg').textContent = msg; else $('balb').innerHTML = `<div class="card a">${msg}</div>`;
-      const batch = todo.splice(0, 8);
-      const r = await api('/staff/browse-albums', { method: 'POST', body: JSON.stringify({ ids: batch }) });
-      if (!r.ok) { albBusy = false; $('balb').innerHTML = `<div class="card a">Stopped. ${esc(r.error || 'Press LOAD ALBUMS to carry on.')}</div>`; await loadBrowse(); return; }
-      const done = new Set(r.done || []); n += done.size;
-      todo.unshift(...batch.filter(id => !done.has(id)));
-      failed.push(...(r.failed || []));
-      if (!done.size) break;
+      const id = todo.shift();
+      const r = await api('/staff/browse-albums', { method: 'POST', body: JSON.stringify({ ids: [id] }) });
+      if (!r.ok) { albBusy = false; albNote = esc(r.error || 'Stopped.'); await loadBrowse(); return; }
+      if (r.rateLimited) { wait = r.rateLimited; break; }
+      n++; failed.push(...(r.failed || []));
+      if (n % 6 === 0) { const lr = await api('/staff/browse'); if (lr.artists) counts = lr.counts || {}; }
+      await new Promise(res => setTimeout(res, 2000));
     }
-    albBusy = false; albNote = failed.length ? `Could not load albums for ${failed.length} artist${failed.length === 1 ? '' : 's'} (${esc(failed.slice(0, 3).map(f => f.name).join(', '))}). Spotify said: ${esc(failed[0].error)}` : ''; await loadBrowse();
-    if (failed.length) { say(`${failed.length} artist${failed.length === 1 ? '' : 's'} have no albums yet. See the BROWSE tab.`); }
-    else if (total) say('Albums loaded');
+    albBusy = false;
+    if (wait) {
+      const at = new Date(Date.now() + wait * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const howLong = wait >= 7200 ? `about ${Math.round(wait / 3600)} hours` : wait >= 120 ? `about ${Math.ceil(wait / 60)} minutes` : 'a moment';
+      albNote = `Spotify has asked us to pause for ${howLong}. ${n} artist${n === 1 ? '' : 's'} loaded so far. Press LOAD ALBUMS again after ${at} and it carries on.`;
+    } else if (failed.length) albNote = `Could not load albums for ${failed.length} artist${failed.length === 1 ? '' : 's'} (${esc(failed.slice(0, 3).map(f => f.name).join(', '))}). Spotify said: ${esc(failed[0].error)}`;
+    await loadBrowse();
+    say(wait ? 'Paused: Spotify asked us to wait. See the BROWSE tab.' : failed.length ? `${failed.length} artist${failed.length === 1 ? '' : 's'} have no albums yet. See the BROWSE tab.` : total ? 'Albums loaded' : '');
   }
   let bqTimer;
   $('bq').oninput = () => { clearTimeout(bqTimer); bqTimer = setTimeout(searchBrowse, 350); };
