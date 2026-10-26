@@ -331,7 +331,7 @@
   };
   // ── browse list ──
   const STARTER = ["Ramones", "Sex Pistols", "The Clash", "Buzzcocks", "The Damned", "The Stranglers", "Stiff Little Fingers", "The Undertones", "UK Subs", "Cockney Rejects", "Discharge", "Misfits", "Dead Kennedys", "Black Flag", "Bad Brains", "Minor Threat", "Descendents", "Social Distortion", "Bad Religion", "NOFX", "Pennywise", "Rancid", "Green Day", "blink-182", "Sum 41", "The Offspring", "Alkaline Trio", "Anti-Flag", "Dropkick Murphys", "Flogging Molly", "Against Me!", "The Vandals", "Propagandhi", "Gallows", "Frank Turner", "IDLES", "The Adicts", "The Exploited", "Suicidal Tendencies", "The Cure", "Siouxsie and the Banshees", "Bauhaus", "The Sisters of Mercy", "Fields of the Nephilim", "The Mission", "Joy Division", "New Order", "Echo & the Bunnymen", "The Jesus and Mary Chain", "Killing Joke", "Christian Death", "Alien Sex Fiend", "Peter Murphy", "Depeche Mode", "The Cult", "Love and Rockets", "Dead Can Dance", "Cocteau Twins", "Nick Cave & the Bad Seeds", "Type O Negative", "HIM", "Lacuna Coil", "Evanescence", "Ghost", "Wire", "Gang of Four", "Public Image Ltd.", "The Fall", "Television", "Talking Heads", "Blondie", "Patti Smith", "The Smiths", "The Psychedelic Furs", "Interpol", "Editors", "Fontaines D.C.", "R.E.M.", "Pixies", "Sonic Youth", "Dinosaur Jr.", "The Replacements", "Hüsker Dü", "The Smashing Pumpkins", "Pavement", "Weezer", "Pearl Jam", "Nirvana", "Soundgarden", "Alice In Chains", "Stone Temple Pilots", "Screaming Trees", "Mudhoney", "Melvins", "Hole", "L7", "Garbage", "Foo Fighters", "Queens of the Stone Age", "Rage Against The Machine", "Faith No More", "Red Hot Chili Peppers", "Jane's Addiction", "Primus", "Living Colour", "Bush", "Radiohead", "Oasis", "Blur", "Pulp", "Suede", "The Stone Roses", "My Bloody Valentine", "Manic Street Preachers", "The Charlatans", "The Verve", "Placebo", "Muse", "Arctic Monkeys", "The Libertines", "The Killers", "The Strokes", "Yeah Yeah Yeahs", "The White Stripes", "Nine Inch Nails", "Ministry", "Metallica", "Megadeth", "Slayer", "Anthrax", "Testament", "Exodus", "Overkill", "Sepultura", "Pantera", "Machine Head", "Lamb of God", "Slipknot", "Korn", "System Of A Down", "Disturbed", "Godsmack", "Deftones", "Tool", "Mastodon", "Gojira", "Opeth", "Iron Maiden", "Judas Priest", "Black Sabbath", "Ozzy Osbourne", "Motörhead", "Saxon", "Diamond Head", "Venom", "Dio", "Rainbow", "Deep Purple", "Led Zeppelin", "AC/DC", "Guns N' Roses", "Aerosmith", "Van Halen", "Def Leppard", "Whitesnake", "Scorpions", "Thin Lizzy", "Alice Cooper", "KISS", "Skid Row", "Mötley Crüe", "Twisted Sister", "Bullet For My Valentine", "Trivium", "Avenged Sevenfold", "Architects", "Bring Me The Horizon", "Skindred", "Rammstein", "Marilyn Manson", "Rob Zombie", "White Zombie", "Fear Factory", "Papa Roach", "Linkin Park", "Dimmu Borgir", "Cradle Of Filth", "Paradise Lost", "Carcass", "Napalm Death", "Cannibal Corpse", "Kreator", "Amon Amarth", "Behemoth", "Volbeat", "Clutch", "Monster Magnet", "Kyuss", "Electric Wizard", "Corrosion of Conformity"];
-  let browse = [], counts = {}, albBusy = false, browseLive = false;
+  let browse = [], counts = {}, albBusy = false, browseLive = false, albNote = '';
   const bKey = a => String(a.name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
   const avatar = a => a.image ? `<img class="av" loading="lazy" src="${esc(a.image)}" alt="">` : '<div class="av"></div>';
   const seedIdx = () => { try { return +localStorage.getItem('bb_seed') || 0; } catch (e) { return 0; } };
@@ -355,8 +355,8 @@
       if (ch !== cur) { cur = ch; letters.push(ch); html += `<div class="lbl" id="bl-${ch === '#' ? 'num' : ch}">${ch}</div>`; }
       html += `<div class="card res" style="padding:8px 12px"><div style="display:flex;align-items:center;gap:12px;min-width:0">${avatar(a)}<div style="min-width:0"><div class="t" style="font-size:17px">${esc(a.name)}</div><div class="a">${[a.genre, counts[a.id] === undefined ? 'albums not loaded' : counts[a.id] + ' album' + (counts[a.id] === 1 ? '' : 's')].filter(Boolean).map(esc).join(' · ')}</div></div></div><button class="ghost" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}" style="font-size:16px;padding:8px 14px">&#10005;</button></div>`;
     }
-    const need = browse.filter(a => counts[a.id] === undefined).length;
-    if (!albBusy) $('balb').innerHTML = need ? `<div class="card"><div class="a" style="margin-bottom:8px">${need} artist${need === 1 ? ' still needs its' : 's still need their'} albums loading. Guests need these to browse by album.</div><button id="alb" style="width:100%">LOAD ALBUMS</button><div id="albMsg" class="a" style="margin-top:8px"></div></div>` : '';
+    const need = browse.filter(a => !counts[a.id]).length;
+    if (!albBusy) $('balb').innerHTML = (albNote ? `<div class="card a" style="margin-bottom:8px">${albNote}</div>` : '') + (need ? `<div class="card"><div class="a" style="margin-bottom:8px">${need} artist${need === 1 ? ' still needs its' : 's still need their'} albums loading. Guests need these to browse by album.</div><button id="alb" style="width:100%">LOAD ALBUMS</button><div id="albMsg" class="a" style="margin-top:8px"></div></div>` : '');
     if ($('alb')) $('alb').onclick = loadAlbums;
     $('blist').innerHTML = html || '<div class="card a">Nothing here yet.</div>';
     $('jump').innerHTML = letters.map(l => `<button data-l="${l === '#' ? 'num' : l}">${l}</button>`).join('');
@@ -389,18 +389,22 @@
   }
   async function loadAlbums() {
     if (albBusy) return; albBusy = true;
-    const ids = browse.filter(a => counts[a.id] === undefined).map(a => a.id); const failed = [];
+    const todo = browse.filter(a => !counts[a.id]).map(a => a.id), total = todo.length, failed = []; let n = 0;
     if ($('alb')) $('alb').disabled = true;
-    for (let i = 0; i < ids.length; i += 4) {
-      if ($('albMsg')) $('albMsg').textContent = `Loading albums: ${Math.min(i + 4, ids.length)} of ${ids.length}…`;
-      else $('balb').innerHTML = `<div class="card a">Loading albums: ${Math.min(i + 4, ids.length)} of ${ids.length}…</div>`;
-      const r = await api('/staff/browse-albums', { method: 'POST', body: JSON.stringify({ ids: ids.slice(i, i + 4) }) });
+    while (todo.length) {
+      const msg = `Loading albums: ${n} of ${total}…`;
+      if ($('albMsg')) $('albMsg').textContent = msg; else $('balb').innerHTML = `<div class="card a">${msg}</div>`;
+      const batch = todo.splice(0, 8);
+      const r = await api('/staff/browse-albums', { method: 'POST', body: JSON.stringify({ ids: batch }) });
       if (!r.ok) { albBusy = false; $('balb').innerHTML = `<div class="card a">Stopped. ${esc(r.error || 'Press LOAD ALBUMS to carry on.')}</div>`; await loadBrowse(); return; }
+      const done = new Set(r.done || []); n += done.size;
+      todo.unshift(...batch.filter(id => !done.has(id)));
       failed.push(...(r.failed || []));
-      if ((i / 4) % 5 === 4) { const lr = await api('/staff/browse'); if (lr.artists) { counts = lr.counts || {}; } }
+      if (!done.size) break;
     }
-    albBusy = false; await loadBrowse();
-    if (ids.length) say(failed.length ? `Albums loaded. Could not load: ${failed.join(', ')}` : 'Albums loaded');
+    albBusy = false; albNote = failed.length ? `Could not load albums for ${failed.length} artist${failed.length === 1 ? '' : 's'} (${esc(failed.slice(0, 3).map(f => f.name).join(', '))}). Spotify said: ${esc(failed[0].error)}` : ''; await loadBrowse();
+    if (failed.length) { say(`${failed.length} artist${failed.length === 1 ? '' : 's'} have no albums yet. See the BROWSE tab.`); }
+    else if (total) say('Albums loaded');
   }
   let bqTimer;
   $('bq').oninput = () => { clearTimeout(bqTimer); bqTimer = setTimeout(searchBrowse, 350); };

@@ -303,17 +303,26 @@ async function artistSearch(env, qRaw) {
 const isBlocked = (artists, blocked) => !!blocked.length && (artists || []).some(a => blocked.some(b => b.id === a.id));
 // ── BROWSE helpers ──
 const ALBUM_JUNK = /\b(karaoke|instrumental|commentary|tribute)\b/i;
+// Fetches an artist's albums, adapting if Spotify refuses large pages or the market filter. Returns { list, calls }.
 async function fetchArtistAlbums(env, artistId) {
-  const get = async off => { const r = await spotify(env, `/artists/${artistId}/albums?include_groups=album,compilation&market=GB&limit=50&offset=${off}`); if (!r.ok) throw new Error('albums ' + r.status); return r.json(); };
-  const first = await get(0); let items = first.items || [];
-  if ((first.total || 0) > 50) items = items.concat((await get(50)).items || []);
+  let limit = 50, market = true, off = 0, total = Infinity, calls = 0, items = [];
+  while (off < total && off < 200 && calls < 20) {
+    calls++;
+    const r = await spotify(env, `/artists/${artistId}/albums?include_groups=album,compilation${market ? '&market=GB' : ''}&limit=${limit}&offset=${off}`);
+    if (r.status === 400 && limit > 10) { limit = 10; continue; }
+    if (r.status === 400 && market) { market = false; continue; }
+    if (!r.ok) throw new Error(`Spotify said ${r.status} ${(await r.text().catch(() => '')).slice(0, 140)}`);
+    const d = await r.json(), got = d.items || [];
+    items = items.concat(got); total = typeof d.total === 'number' ? d.total : items.length;
+    if (!got.length) break; off += got.length;
+  }
   const best = new Map(); // one entry per album title: the plainest name wins (no Deluxe / Remastered duplicates)
   for (const a of items) {
     if (ALBUM_JUNK.test(a.name)) continue;
     const k = normTitle(a.name); if (!k) continue;
     const cur = best.get(k); if (!cur || a.name.length < cur.name.length) best.set(k, a);
   }
-  return [...best.values()].map(a => ({ id: a.id, name: a.name, image: a.images?.[1]?.url || a.images?.[0]?.url || '', year: (a.release_date || '').slice(0, 4) }));
+  return { calls, list: [...best.values()].map(a => ({ id: a.id, name: a.name, image: a.images?.[1]?.url || a.images?.[0]?.url || '', year: (a.release_date || '').slice(0, 4) })) };
 }
 const sortKey = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
 const initial = n => { const c = (sortKey(n)[0] || '#').toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; };
@@ -491,7 +500,7 @@ export default {
           if (artistId) {
             const a = live.find(x => x.id === artistId); if (!a) return json({ items: [] });
             let list = albums[a.id];
-            if (!list) { try { list = await fetchArtistAlbums(env, a.id); await ledger.setAlbums(a.id, list); } catch (e) { return json({ items: [] }); } }
+            if (!list || !list.length) { try { list = (await fetchArtistAlbums(env, a.id)).list; await ledger.setAlbums(a.id, list); } catch (e) { return json({ items: [] }); } }
             return json({ items: [...list].sort((x, y) => String(x.year).localeCompare(String(y.year))).map(al => ({ ...al, artist: a.name, artistId: a.id })) });
           }
           const items = [];
@@ -598,14 +607,16 @@ export default {
           return json({ ok: true, on: await ledger.setBrowseOn(!!on) });
         }
         if (path === '/staff/browse-albums' && request.method === 'POST') {
-          // Fetches and stores the album list for a few artists at a time.
+          // Fetches and stores album lists for as many of the given artists as fit in one request; says which it got to.
           const { ids } = await request.json();
-          const browse = await ledger.getBrowse(), failed = []; let loaded = 0;
-          await Promise.all((Array.isArray(ids) ? ids : []).slice(0, 4).map(async id => {
-            const a = browse.find(x => x.id === id); if (!a) return;
-            try { await ledger.setAlbums(a.id, await fetchArtistAlbums(env, a.id)); loaded++; } catch (e) { failed.push(a.name); }
-          }));
-          return json({ ok: true, loaded, failed });
+          const browse = await ledger.getBrowse(), done = [], failed = []; let calls = 0;
+          for (const id of (Array.isArray(ids) ? ids : []).slice(0, 8)) {
+            if (calls >= 28) break;
+            const a = browse.find(x => x.id === id); if (!a) { done.push(id); continue; }
+            try { const r = await fetchArtistAlbums(env, id); calls += r.calls; await ledger.setAlbums(id, r.list); done.push(id); }
+            catch (e) { calls += 2; done.push(id); failed.push({ name: a.name, error: String(e.message || e).slice(0, 200) }); }
+          }
+          return json({ ok: true, done, failed });
         }
         if (path === '/staff/browse-add' && request.method === 'POST') {
           const { artists } = await request.json();
