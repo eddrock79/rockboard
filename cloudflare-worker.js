@@ -12,6 +12,7 @@ const TIERS = {
 };
 const VENUE = 'banshee';
 const SESSION_WINDOW_MS = 2 * 60 * 60 * 1000; // screen QR token lasts 2-4 hours
+const TABLE_PASS_MS = 60 * 60 * 1000; // a scan of the table QR gives that phone one hour
 const TRACK_URI = /^spotify:track:[A-Za-z0-9]{22}$/;
 const MAX_TRACK_MS = 7 * 60 * 1000; // guests can't pick anything longer than 7 minutes
 const playable = t => !!t && (t.type === undefined || t.type === 'track') && !t.is_local && (t.duration_ms || 0) > 0 && t.duration_ms <= MAX_TRACK_MS;
@@ -111,6 +112,8 @@ export class Ledger extends DurableObject {
     await this.ctx.storage.put('blockedTracks', list);
     return list;
   }
+  async tableEpoch() { return (await this.ctx.storage.get('tableEpoch')) || 0; }
+  async rotateTable() { const e = (await this.tableEpoch()) + 1; await this.ctx.storage.put('tableEpoch', e); return e; }
   async top(n = 10) {
     const top = (await this.ctx.storage.get('top')) || {};
     return Object.values(top).sort((a, b) => b.count - a.count).slice(0, n);
@@ -141,6 +144,16 @@ function safeEqual(a, b) {
 }
 async function makeToken(env, windowIndex) {
   return windowIndex + '.' + (await hmacHex(env.SESSION_SECRET, 'session:' + windowIndex)).slice(0, 32);
+}
+async function makeTableToken(env, epoch) {
+  const exp = Date.now() + TABLE_PASS_MS;
+  return { token: `t.${exp}.${epoch}.` + (await hmacHex(env.SESSION_SECRET, `table:${exp}:${epoch}`)).slice(0, 32), expiresAt: exp };
+}
+const tableKey = async (env, epoch) => (await hmacHex(env.SESSION_SECRET, 'tablekey:' + epoch)).slice(0, 20);
+async function tableTokenValid(env, token, epoch) {
+  const p = String(token || '').split('.');
+  if (p.length !== 4 || p[0] !== 't' || !(Number(p[1]) > Date.now()) || p[2] !== String(epoch)) return false;
+  return safeEqual(p[3], (await hmacHex(env.SESSION_SECRET, `table:${p[1]}:${p[2]}`)).slice(0, 32));
 }
 async function tokenValid(env, token) {
   if (!token) return false;
@@ -316,7 +329,8 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const ledger = env.LEDGER.get(env.LEDGER.idFromName(VENUE));
-    const needSession = async () => tokenValid(env, request.headers.get('X-Session'));
+    const sessionOk = async tok => (await tokenValid(env, tok)) || (String(tok || '').startsWith('t.') && tableTokenValid(env, tok, await ledger.tableEpoch()));
+    const needSession = async () => sessionOk(request.headers.get('X-Session'));
     const isStaff = () => env.STAFF_PIN && safeEqual(request.headers.get('X-Staff-Pin') || '', env.STAFF_PIN);
     const isDisplay = () => env.DISPLAY_KEY && safeEqual(request.headers.get('X-Display-Key') || '', env.DISPLAY_KEY);
 
@@ -346,8 +360,13 @@ export default {
         const w = Math.floor(Date.now() / SESSION_WINDOW_MS);
         return json({ token: await makeToken(env, w), expiresAt: (w + 1) * SESSION_WINDOW_MS });
       }
+      if (path === '/table-pass') {
+        const epoch = await ledger.tableEpoch();
+        if (!safeEqual(url.searchParams.get('k') || '', await tableKey(env, epoch))) return json({ error: 'This table QR has been retired' }, 403);
+        return json(await makeTableToken(env, epoch));
+      }
       if (path === '/check-session') {
-        return json({ ok: await tokenValid(env, url.searchParams.get('s')) });
+        return json({ ok: await sessionOk(url.searchParams.get('s')) });
       }
 
       // Public display data
@@ -478,6 +497,8 @@ export default {
           await bustState();
           return json({ ok: true, track });
         }
+        if (path === '/staff/table-key') return json({ key: await tableKey(env, await ledger.tableEpoch()) });
+        if (path === '/staff/rotate-table' && request.method === 'POST') return json({ ok: true, epoch: await ledger.rotateTable() });
         if (path === '/staff/blocked') { const l = await ledger.blockLists(); return json({ blocked: l.artists, blockedTracks: l.tracks }); }
         if (path === '/staff/block-artists' && request.method === 'POST') {
           const { artists } = await request.json();

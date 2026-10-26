@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Banshee Jukebox · Table card</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @page { size: A6 portrait; margin: 0; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#222; font-family:'Oswald',sans-serif; display:flex; flex-direction:column; align-items:center; gap:16px; padding:20px; }
+  .card { width:105mm; height:148mm; background:#050706; color:#f3efe4; border:2px solid #6ef0a0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8mm; gap:5mm; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  h1 { font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:15mm; line-height:.95; margin:0; color:#6ef0a0; letter-spacing:.03em; }
+  .sub { font-size:4.2mm; letter-spacing:.28em; color:#aab6af; font-weight:500; }
+  #qr { background:#fff; padding:4mm; width:62mm; height:62mm; }
+  #qr img, #qr canvas { width:54mm !important; height:54mm !important; display:block; }
+  .how { font-size:4mm; line-height:1.4; color:#f3efe4; font-weight:400; }
+  button { font:600 16px 'Oswald',sans-serif; letter-spacing:.1em; background:#6ef0a0; color:#04110a; border:0; border-radius:10px; padding:12px 28px; cursor:pointer; }
+  @media print { body { background:none; padding:0; display:block; } .card { border:0; } button { display:none; } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="sub">THE BANSHEE LABYRINTH</div>
+    <h1>PICK THE NEXT SONG</h1>
+    <div id="qr"></div>
+    <div class="how">Scan with your phone camera.<br>Choose a track and pay for plays.<br>Each scan gives you an hour.</div>
+  </div>
+  <button onclick="window.print()">PRINT</button>
+<script>
+  (async function () {
+    let pin = ''; try { pin = sessionStorage.getItem('bb_pin') || ''; } catch (e) {}
+    const r = await fetch(window.BANSHEE.workerUrl + '/staff/table-key', { headers: { 'X-Staff-Pin': pin } }).then(x => x.json()).catch(() => ({}));
+    if (!r.key) { document.getElementById('qr').outerHTML = '<div class="how" style="color:#f88">Open this page from the staff page, after unlocking it with your PIN.</div>'; return; }
+    new QRCode(document.getElementById('qr'), { text: new URL('./?table=' + r.key, location.href).href, width: 540, height: 540, correctLevel: QRCode.CorrectLevel.M });
+  })();
+</script>
+</body>
+</html>

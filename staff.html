@@ -60,6 +60,10 @@
     <h3>GIVE A GUEST PLAYS</h3>
     <div class="row"><input id="gcode" placeholder="Guest code" autocapitalize="characters"><input id="gn" type="number" min="1" max="20" value="1"></div>
     <button id="grant" style="width:100%">GIVE PLAYS</button>
+    <h3>TABLE QR</h3>
+    <div class="card a" style="margin-bottom:8px">One QR for every table. Each scan gives that phone an hour to pick songs.</div>
+    <div class="row"><a href="table-card.html" target="_blank" style="text-decoration:none"><button style="width:100%">PRINT TABLE CARD</button></a><button class="ghost" id="rot">STOP ALL TABLE QRS</button></div>
+    <div class="card a" style="margin-top:8px">"Stop all" cancels every table pass and makes every printed card useless. Print new cards afterwards. It doesn't affect the screen QR.</div>
     <h3>BLOCKED ARTISTS</h3>
     <div class="card a" style="margin-bottom:8px">Guests can't find or request these. You can still add them yourself above.</div>
     <details><summary id="baSum">Show blocked artists</summary><div id="blocked"></div></details>
@@ -184,6 +188,13 @@
     });
   }
   $('qb').oninput = deb(findBlock);
+  let rotArm = 0;
+  $('rot').onclick = async () => {
+    if (!rotArm) { rotArm = setTimeout(() => { rotArm = 0; $('rot').textContent = 'STOP ALL TABLE QRS'; }, 5000); $('rot').textContent = 'TAP AGAIN TO CONFIRM'; return; }
+    clearTimeout(rotArm); rotArm = 0; $('rot').textContent = 'STOP ALL TABLE QRS';
+    const r = await api('/staff/rotate-table', { method: 'POST' });
+    say(r.ok ? 'All table passes and old cards stopped. Print new cards.' : 'Not saved. The jukebox needs updating first.');
+  };
   const toBlock = t => ({ uri: t.uri, name: t.name, artists: t.artists });
   async function findBlockSong() {
     const q = $('qbs').value.trim(); if (q.length < 2) { $('bsList').innerHTML = ''; return; }

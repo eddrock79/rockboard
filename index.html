@@ -82,6 +82,8 @@
   const fromQr = u.searchParams.get('s');
   if (fromQr) { ls.set('bb_session', fromQr); u.searchParams.delete('s'); history.replaceState(null, '', u.pathname + u.search); }
   let session = ls.get('bb_session') || '';
+  const fromTable = u.searchParams.get('table');
+  if (fromTable) { u.searchParams.delete('table'); history.replaceState(null, '', u.pathname + u.search); }
   let device = ls.get('bb_device');
   if (!device) { device = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); ls.set('bb_device', device); }
 
@@ -95,7 +97,7 @@
   const mine = new Set(JSON.parse(ls.get('bb_mine') || '[]'));
   function toast(msg, ms = 4500) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
   function gate(msg) {
-    $('app').innerHTML = `<div class="gate"><h2>Scan the screen</h2><div class="msg">${esc(msg || 'Scan the QR code on the jukebox screen to start picking tracks.')}</div></div>`;
+    $('app').innerHTML = `<div class="gate"><h2>Scan to start</h2><div class="msg">${esc(msg || 'Scan the QR code on your table or the jukebox screen to start picking tracks.')}</div></div>`;
   }
 
   function shell() {
@@ -259,9 +261,14 @@
 
   // ── start ──
   (async function init() {
+    if (fromTable) {
+      const tp = await (await fetch(W + '/table-pass?k=' + encodeURIComponent(fromTable))).json().catch(() => ({}));
+      if (tp.token) { session = tp.token; ls.set('bb_session', session); }
+      else return gate('This table QR is out of date. Scan the QR code on the screen, or ask the bar staff.');
+    }
     if (!session) return gate();
     const ok = await (await fetch(W + '/check-session?s=' + encodeURIComponent(session))).json().catch(() => ({}));
-    if (!ok.ok) return gate('That code has expired. Scan the QR code on the screen again.');
+    if (!ok.ok) return gate('Your hour has ended. Scan the QR code on your table or the screen to carry on. Your plays are kept.');
     shell();
     if (u.searchParams.get('paid') === '1') { u.searchParams.delete('paid'); history.replaceState(null, '', u.pathname + u.search); afterPayment(); }
   })();
