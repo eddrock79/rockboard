@@ -371,7 +371,7 @@
       setTimeout(() => { if ($('undo')) $('msg').textContent = ''; }, 9000);
     });
   }
-  async function loadBrowse() { const r = await api('/staff/browse'); if (r.artists) { browse = r.artists; counts = r.counts || {}; browseLive = !!r.on; paintBrowse(); } else { $('blist').innerHTML = '<div class="card a">Not available yet. The jukebox needs updating first.</div>'; } }
+  async function loadBrowse() { const r = await api('/staff/browse'); if (r.artists) { browse = r.artists; counts = r.counts || {}; browseLive = !!r.on; paintBrowse(); } else { $('blist').innerHTML = `<div class="card a">Not available yet. ${esc(r.error || ('The jukebox needs updating first (code ' + r.status + ').'))} Wait a minute, then refresh.</div>`; } }
   async function loadStarter() {
     $('seed').disabled = true; const missing = [];
     for (let i = seedIdx(); i < STARTER.length; i += 8) {
