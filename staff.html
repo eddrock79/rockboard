@@ -39,6 +39,10 @@
   #tabs button { flex:1 1 auto; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); padding:10px 6px; font-size:12px; letter-spacing:.06em; }
   #tabs button.on { background:rgba(110,240,160,.14); color:var(--g); border-color:var(--g); }
   .tab { display:none; } .tab.on { display:block; }
+  .av { width:42px; height:42px; border-radius:50%; object-fit:cover; background:#1b2520; flex:none; }
+  .lbl { scroll-margin-top:200px; }
+  #bres { max-height:36vh; overflow-y:auto; }
+  #jump { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 10px; } #jump button { background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); padding:5px 0; width:30px; font-size:13px; letter-spacing:0; }
   .sale { display:flex; justify-content:space-between; font-size:15px; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.08); color:var(--mute); }
 </style>
 </head>
@@ -51,7 +55,8 @@
   </div>
   <div id="panel" style="display:none">
     <div id="stick"><div id="msg"></div>
-      <div id="tabs"><button data-t="now" class="on">PLAYING</button><button data-t="add">ADD</button><button data-t="block">BLOCKED</button><button data-t="tables">TABLES</button><button data-t="reports">REPORTS</button></div>
+      <div id="tabs"><button data-t="now" class="on">PLAYING</button><button data-t="add">ADD</button><button data-t="browse">BROWSE</button><button data-t="block">BLOCKED</button><button data-t="more">MORE</button></div>
+      <div id="bbar" style="display:none;padding-bottom:8px"><input id="bq" type="search" placeholder="Add an artist: start typing a name" autocomplete="off" style="margin-bottom:6px"><div id="bres"></div></div>
     </div>
     <div class="tab on" data-tab="now">
     <h3>NOW PLAYING</h3><div id="now" class="card">…</div>
@@ -72,7 +77,7 @@
     <div class="row"><input id="gcode" placeholder="Guest code" autocapitalize="characters"><input id="gn" type="number" min="1" max="20" value="1"></div>
     <button id="grant" style="width:100%">GIVE PLAYS</button>
     </div>
-    <div class="tab" data-tab="tables">
+    <div class="tab" data-tab="more">
     <h3>TABLE QR</h3>
     <div class="card a" style="margin-bottom:8px">One QR for every table. Each scan gives that phone an hour to pick songs.</div>
     <div id="tqrBox" style="background:#fff;border-radius:10px;padding:14px;width:min(100%,300px);margin:0 auto 12px"><canvas id="tqr" style="width:100%;display:block"></canvas></div>
@@ -80,6 +85,13 @@
     <div class="card a" style="margin:8px 0">Just the QR code, ready for your own posters. Use the SVG for large prints, as it stays sharp at any size.</div>
     <button class="ghost" id="rot" style="width:100%">STOP ALL TABLE QRS</button>
     <div class="card a" style="margin-top:8px">"Stop all" cancels every table pass and makes every printed card useless. Download the new QR afterwards and reprint. It doesn't affect the screen QR.</div>
+    </div>
+    <div class="tab" data-tab="browse">
+    <h3 id="bcount">BROWSE LIST</h3>
+    <div class="card a" style="margin-bottom:8px">These artists will fill the guest Browse screen, A to Z. Add more with the box at the top. Tap the cross to remove one.</div>
+    <div id="bseed"></div>
+    <div id="jump"></div>
+    <div id="blist"></div>
     </div>
     <div class="tab" data-tab="block">
     <h3>BLOCKED ARTISTS</h3>
@@ -107,7 +119,7 @@
       <button id="impBlock" style="display:none;width:100%">BLOCK TICKED SONGS</button>
     </details>
     </div>
-    <div class="tab" data-tab="reports">
+    <div class="tab" data-tab="more">
     <h3>ARTISTS PLAYED SO FAR</h3><div id="artists"></div>
     <h3>RECENT SALES</h3><div id="sales"></div>
     </div>
@@ -128,7 +140,7 @@
   }
   async function unlock() {
     const r = await api('/staff/check');
-    if (r.ok) { try { sessionStorage.setItem('bb_pin', pin); } catch (e) {} $('login').style.display = 'none'; $('panel').style.display = 'block'; refresh(); paintBlocked(); paintTableQr(); setInterval(refresh, 10000); }
+    if (r.ok) { try { sessionStorage.setItem('bb_pin', pin); } catch (e) {} $('login').style.display = 'none'; $('panel').style.display = 'block'; refresh(); paintBlocked(); paintTableQr(); loadBrowse(); setInterval(refresh, 10000); }
     else { $('pin').value = ''; $('pin').placeholder = 'Wrong PIN'; }
   }
   $('go').onclick = () => { pin = $('pin').value; unlock(); };
@@ -315,7 +327,69 @@
     if (!br.ok) { say(br.error || 'Not saved. The jukebox needs updating first.'); return; }
     say(`Blocked ${picked.length} song${picked.length === 1 ? '' : 's'}`); $('impRes').innerHTML = ''; $('impBlock').style.display = 'none'; $('imp').value = ''; impRows = []; paintBlocked();
   };
+  // ── browse list ──
+  const STARTER = ["Ramones", "Sex Pistols", "The Clash", "Buzzcocks", "The Damned", "The Stranglers", "Stiff Little Fingers", "The Undertones", "UK Subs", "Cockney Rejects", "Discharge", "Misfits", "Dead Kennedys", "Black Flag", "Bad Brains", "Minor Threat", "Descendents", "Social Distortion", "Bad Religion", "NOFX", "Pennywise", "Rancid", "Green Day", "blink-182", "Sum 41", "The Offspring", "Alkaline Trio", "Anti-Flag", "Dropkick Murphys", "Flogging Molly", "Against Me!", "The Vandals", "Propagandhi", "Gallows", "Frank Turner", "IDLES", "The Adicts", "The Exploited", "Suicidal Tendencies", "The Cure", "Siouxsie and the Banshees", "Bauhaus", "The Sisters of Mercy", "Fields of the Nephilim", "The Mission", "Joy Division", "New Order", "Echo & the Bunnymen", "The Jesus and Mary Chain", "Killing Joke", "Christian Death", "Alien Sex Fiend", "Peter Murphy", "Depeche Mode", "The Cult", "Love and Rockets", "Dead Can Dance", "Cocteau Twins", "Nick Cave & the Bad Seeds", "Type O Negative", "HIM", "Lacuna Coil", "Evanescence", "Ghost", "Wire", "Gang of Four", "Public Image Ltd.", "The Fall", "Television", "Talking Heads", "Blondie", "Patti Smith", "The Smiths", "The Psychedelic Furs", "Interpol", "Editors", "Fontaines D.C.", "R.E.M.", "Pixies", "Sonic Youth", "Dinosaur Jr.", "The Replacements", "Hüsker Dü", "The Smashing Pumpkins", "Pavement", "Weezer", "Pearl Jam", "Nirvana", "Soundgarden", "Alice In Chains", "Stone Temple Pilots", "Screaming Trees", "Mudhoney", "Melvins", "Hole", "L7", "Garbage", "Foo Fighters", "Queens of the Stone Age", "Rage Against The Machine", "Faith No More", "Red Hot Chili Peppers", "Jane's Addiction", "Primus", "Living Colour", "Bush", "Radiohead", "Oasis", "Blur", "Pulp", "Suede", "The Stone Roses", "My Bloody Valentine", "Manic Street Preachers", "The Charlatans", "The Verve", "Placebo", "Muse", "Arctic Monkeys", "The Libertines", "The Killers", "The Strokes", "Yeah Yeah Yeahs", "The White Stripes", "Nine Inch Nails", "Ministry", "Metallica", "Megadeth", "Slayer", "Anthrax", "Testament", "Exodus", "Overkill", "Sepultura", "Pantera", "Machine Head", "Lamb of God", "Slipknot", "Korn", "System Of A Down", "Disturbed", "Godsmack", "Deftones", "Tool", "Mastodon", "Gojira", "Opeth", "Iron Maiden", "Judas Priest", "Black Sabbath", "Ozzy Osbourne", "Motörhead", "Saxon", "Diamond Head", "Venom", "Dio", "Rainbow", "Deep Purple", "Led Zeppelin", "AC/DC", "Guns N' Roses", "Aerosmith", "Van Halen", "Def Leppard", "Whitesnake", "Scorpions", "Thin Lizzy", "Alice Cooper", "KISS", "Skid Row", "Mötley Crüe", "Twisted Sister", "Bullet For My Valentine", "Trivium", "Avenged Sevenfold", "Architects", "Bring Me The Horizon", "Skindred", "Rammstein", "Marilyn Manson", "Rob Zombie", "White Zombie", "Fear Factory", "Papa Roach", "Linkin Park", "Dimmu Borgir", "Cradle Of Filth", "Paradise Lost", "Carcass", "Napalm Death", "Cannibal Corpse", "Kreator", "Amon Amarth", "Behemoth", "Volbeat", "Clutch", "Monster Magnet", "Kyuss", "Electric Wizard", "Corrosion of Conformity"];
+  let browse = [];
+  const bKey = a => String(a.name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+  const avatar = a => a.image ? `<img class="av" loading="lazy" src="${esc(a.image)}" alt="">` : '<div class="av"></div>';
+  const seedIdx = () => { try { return +localStorage.getItem('bb_seed') || 0; } catch (e) { return 0; } };
+  function paintBrowse() {
+    const list = [...browse].sort((a, b) => bKey(a).localeCompare(bKey(b)));
+    $('bcount').textContent = `BROWSE LIST · ${list.length} ARTIST${list.length === 1 ? '' : 'S'}`;
+    const idx = seedIdx();
+    const seeding = !!($('seed') && $('seed').disabled);
+    if (!seeding) {
+      $('bseed').innerHTML = idx >= STARTER.length ? '' : `<div class="card"><div class="t" style="font-size:16px">Starter list: ${STARTER.length} rock, punk, goth, grunge and metal artists</div><div class="a" style="margin:4px 0 10px">${idx ? `Loaded ${idx} of ${STARTER.length} so far.` : 'Press the button and the jukebox will look each one up on Spotify. It takes about a minute.'} Anything you remove stays removed.</div><button id="seed" style="width:100%">${idx ? 'CONTINUE LOADING' : 'LOAD STARTER LIST'}</button><div id="seedMsg" class="a" style="margin-top:8px"></div></div>`;
+      if ($('seed')) $('seed').onclick = loadStarter;
+    }
+    let html = '', cur = ''; const letters = [];
+    for (const a of list) {
+      const L = (bKey(a)[0] || '#').toUpperCase(), ch = /[A-Z]/.test(L) ? L : '#';
+      if (ch !== cur) { cur = ch; letters.push(ch); html += `<div class="lbl" id="bl-${ch === '#' ? 'num' : ch}">${ch}</div>`; }
+      html += `<div class="card res" style="padding:8px 12px"><div style="display:flex;align-items:center;gap:12px;min-width:0">${avatar(a)}<div style="min-width:0"><div class="t" style="font-size:17px">${esc(a.name)}</div>${a.genre ? `<div class="a">${esc(a.genre)}</div>` : ''}</div></div><button class="ghost" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}" style="font-size:16px;padding:8px 14px">&#10005;</button></div>`;
+    }
+    $('blist').innerHTML = html || '<div class="card a">Nothing here yet.</div>';
+    $('jump').innerHTML = letters.map(l => `<button data-l="${l === '#' ? 'num' : l}">${l}</button>`).join('');
+    $('jump').querySelectorAll('button').forEach(b => b.onclick = () => { const el = $('bl-' + b.dataset.l); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    $('blist').querySelectorAll('button').forEach(b => b.onclick = async () => {
+      const a = browse.find(x => x.id === b.dataset.id); if (!a) return;
+      const r = await api('/staff/browse-remove', { method: 'POST', body: JSON.stringify({ id: a.id }) });
+      if (!r.ok) { say('Not saved. The jukebox needs updating first.'); return; }
+      browse = r.artists; paintBrowse();
+      $('msg').innerHTML = `Removed ${esc(a.name)} <button class="ghost" id="undo" style="padding:2px 10px;font-size:12px;margin-left:8px">UNDO</button>`;
+      $('undo').onclick = async () => { const u = await api('/staff/browse-add', { method: 'POST', body: JSON.stringify({ artists: [a] }) }); if (u.ok) { browse = u.artists; paintBrowse(); say('Put back ' + a.name); } };
+      setTimeout(() => { if ($('undo')) $('msg').textContent = ''; }, 9000);
+    });
+  }
+  async function loadBrowse() { const r = await api('/staff/browse'); if (r.artists) { browse = r.artists; paintBrowse(); } else { $('blist').innerHTML = '<div class="card a">Not available yet. The jukebox needs updating first.</div>'; } }
+  async function loadStarter() {
+    $('seed').disabled = true; const missing = [];
+    for (let i = seedIdx(); i < STARTER.length; i += 8) {
+      const upto = Math.min(i + 8, STARTER.length);
+      $('seedMsg').textContent = `Loading ${upto} of ${STARTER.length}…`;
+      const r = await api('/staff/browse-seed', { method: 'POST', body: JSON.stringify({ names: STARTER.slice(i, i + 8) }) });
+      if (!r.ok) { $('seedMsg').textContent = r.error || 'Stopped. Press the button to carry on.'; $('seed').disabled = false; return; }
+      missing.push(...(r.missing || []));
+      try { localStorage.setItem('bb_seed', String(upto)); } catch (e) {}
+      const lr = await api('/staff/browse'); if (lr.artists) { browse = lr.artists; paintBrowse(); }
+    }
+    $('bseed').innerHTML = '';
+    say(missing.length ? `Loaded. ${missing.length} not matched exactly: ${missing.join(', ')}. Add them with the box at the top.` : 'Starter list loaded');
+  }
+  let bqTimer;
+  $('bq').oninput = () => { clearTimeout(bqTimer); bqTimer = setTimeout(searchBrowse, 350); };
+  async function searchBrowse() {
+    const q = $('bq').value.trim(); if (q.length < 2) { $('bres').innerHTML = ''; return; }
+    const r = await api('/staff/search-artists?q=' + encodeURIComponent(q)); const list = r.items || [];
+    $('bres').innerHTML = list.length ? list.map((a, i) => { const have = browse.some(x => x.id === a.id); return `<div class="card res" style="padding:8px 12px"><div style="display:flex;align-items:center;gap:12px;min-width:0">${avatar(a)}<div class="t" style="font-size:17px">${esc(a.name)}</div></div><button data-i="${i}" ${have ? 'class="ghost" disabled' : ''}>${have ? 'ADDED' : 'ADD'}</button></div>`; }).join('') : '<div class="card a">No artists found</div>';
+    $('bres').querySelectorAll('button:not([disabled])').forEach(b => b.onclick = async () => {
+      const a = list[b.dataset.i]; const r2 = await api('/staff/browse-add', { method: 'POST', body: JSON.stringify({ artists: [{ id: a.id, name: a.name, image: a.image }] }) });
+      if (!r2.ok) { say('Not saved. The jukebox needs updating first.'); return; }
+      browse = r2.artists; paintBrowse(); b.textContent = 'ADDED'; b.className = 'ghost'; b.disabled = true; say(`Added ${a.name}`);
+    });
+  }
   function showTab(t) {
+    $('bbar').style.display = t === 'browse' ? 'block' : 'none';
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
     document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
     try { sessionStorage.setItem('bb_tab', t); } catch (e) {}

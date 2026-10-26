@@ -114,6 +114,18 @@ export class Ledger extends DurableObject {
   }
   async tableEpoch() { return (await this.ctx.storage.get('tableEpoch')) || 0; }
   async rotateTable() { const e = (await this.tableEpoch()) + 1; await this.ctx.storage.put('tableEpoch', e); return e; }
+  async getBrowse() { return (await this.ctx.storage.get('browseArtists')) || []; }
+  async browseAdd(entries) {
+    const list = await this.getBrowse();
+    for (const e of entries) if (!list.some(x => x.id === e.id)) list.push(e);
+    await this.ctx.storage.put('browseArtists', list);
+    return list;
+  }
+  async browseRemove(id) {
+    const list = (await this.getBrowse()).filter(x => x.id !== id);
+    await this.ctx.storage.put('browseArtists', list);
+    return list;
+  }
   async top(n = 10) {
     const top = (await this.ctx.storage.get('top')) || {};
     return Object.values(top).sort((a, b) => b.count - a.count).slice(0, n);
@@ -281,6 +293,13 @@ async function artistSearch(env, qRaw) {
 }
 // Artists the staff have blocked: guests can't find them or request them. Staff can still add them.
 const isBlocked = (artists, blocked) => !!blocked.length && (artists || []).some(a => blocked.some(b => b.id === a.id));
+// Picks the artist whose name matches exactly (ignoring case, accents and punctuation); the most popular if several share the name.
+const normName = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function pickArtist(items, name) {
+  const want = normName(name);
+  const same = (items || []).filter(a => normName(a.name) === want);
+  return same.sort((a, b) => (b.popularity || 0) - (a.popularity || 0))[0] || null;
+}
 // Blocked songs match by exact track, or by the same title from the same artist (so remasters and reissues are caught too).
 const normTitle = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s[-–—]\s.*$/, '').replace(/[\(\[].*?[\)\]]/g, '').replace(/[^a-z0-9]/g, '');
 const isBlockedSong = (t, tracks) => !!tracks.length && tracks.some(b => b.uri === t.uri || (b.title && normTitle(t.name) === b.title && (t.artists || []).some(a => (b.artistIds || []).includes(a.id))));
@@ -496,6 +515,32 @@ export default {
           await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]);
           await bustState();
           return json({ ok: true, track });
+        }
+        if (path === '/staff/browse') return json({ artists: await ledger.getBrowse() });
+        if (path === '/staff/browse-add' && request.method === 'POST') {
+          const { artists } = await request.json();
+          const ok = (Array.isArray(artists) ? artists : []).slice(0, 40).filter(a => /^[A-Za-z0-9]{10,40}$/.test(a.id || '')).map(a => ({ id: a.id, name: String(a.name || '').slice(0, 100), image: String(a.image || '').slice(0, 300), genre: String(a.genre || '').slice(0, 40) }));
+          if (!ok.length) return json({ error: 'Nothing to add' }, 400);
+          return json({ ok: true, artists: await ledger.browseAdd(ok) });
+        }
+        if (path === '/staff/browse-remove' && request.method === 'POST') {
+          const { id } = await request.json();
+          return json({ ok: true, artists: await ledger.browseRemove(String(id || '')) });
+        }
+        if (path === '/staff/browse-seed' && request.method === 'POST') {
+          // Looks each name up on Spotify and adds the exact-name match. Names with no exact match are reported, not guessed.
+          const { names } = await request.json();
+          const found = [], missing = [];
+          await Promise.all((Array.isArray(names) ? names : []).slice(0, 8).map(async n => {
+            const name = String(n || '').replace(/"/g, '').trim().slice(0, 100);
+            if (name.length < 2) return;
+            const data = await (await spotify(env, `/search?q=${encodeURIComponent(name)}&type=artist&limit=5`)).json();
+            const a = pickArtist(data.artists?.items || [], name);
+            if (!a) { missing.push(name); return; }
+            found.push({ id: a.id, name: a.name, image: a.images?.[2]?.url || a.images?.[0]?.url || '', genre: (a.genres || [])[0] || '' });
+          }));
+          if (found.length) await ledger.browseAdd(found);
+          return json({ ok: true, added: found.length, missing });
         }
         if (path === '/staff/table-key') return json({ key: await tableKey(env, await ledger.tableEpoch()) });
         if (path === '/staff/rotate-table' && request.method === 'POST') return json({ ok: true, epoch: await ledger.rotateTable() });
