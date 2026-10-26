@@ -62,9 +62,16 @@
     <button id="grant" style="width:100%">GIVE PLAYS</button>
     <h3>BLOCKED ARTISTS</h3>
     <div class="card a" style="margin-bottom:8px">Guests can't find or request these. You can still add them yourself above.</div>
-    <div id="blocked"></div>
+    <details><summary id="baSum">Show blocked artists</summary><div id="blocked"></div></details>
     <input id="qb" type="search" placeholder="Search an artist to block" autocomplete="off">
     <div id="bList"></div>
+    <details><summary>Import a list of artists</summary>
+      <div class="card a" style="margin-bottom:8px">Paste artist names, one per line. Then check the matches before blocking.</div>
+      <textarea id="impA" rows="7" placeholder="Vengaboys&#10;Steps&#10;Spice Girls"></textarea>
+      <button id="impAGo" style="width:100%;margin-bottom:10px">FIND MATCHES</button>
+      <div id="impARes"></div>
+      <button id="impABlock" style="display:none;width:100%">BLOCK TICKED ARTISTS</button>
+    </details>
     <h3>BLOCKED SONGS</h3>
     <div class="card a" style="margin-bottom:8px">Single songs guests can't find or request. The band's other songs stay available.</div>
     <details id="bsDet"><summary id="bsSum">Show blocked songs</summary><div id="blockedSongs"></div></details>
@@ -158,6 +165,7 @@
   };
   async function paintBlocked() {
     const r = await api('/staff/blocked'); const list = r.blocked || [];
+    $('baSum').textContent = list.length ? `Show ${list.length} blocked artist${list.length === 1 ? '' : 's'}` : 'No artists blocked';
     $('blocked').innerHTML = list.length ? list.map(a => `<div class="card res"><div class="t">${esc(a.name)}</div><button class="ghost" data-id="${esc(a.id)}">UNBLOCK</button></div>`).join('') : '<div class="card a">No artists blocked</div>';
     $('blocked').querySelectorAll('button').forEach(b => b.onclick = async () => { await api('/staff/unblock', { method: 'POST', body: JSON.stringify({ id: b.dataset.id }) }); say('Unblocked'); paintBlocked(); });
     const bt = r.blockedTracks || [];
@@ -188,6 +196,34 @@
     });
   }
   $('qbs').oninput = deb(findBlockSong);
+  let impA = [];
+  $('impAGo').onclick = async () => {
+    const names = [...new Set($('impA').value.split(/\r?\n/).map(x => x.trim()).filter(x => x.length > 1))];
+    if (!names.length) { say('Paste the artists first'); return; }
+    $('impARes').innerHTML = '<div class="card a">Finding matches…</div>'; $('impABlock').style.display = 'none'; impA = [];
+    for (let i = 0; i < names.length; i += 10) {
+      const r = await api('/staff/lookup-artists', { method: 'POST', body: JSON.stringify({ names: names.slice(i, i + 10) }) });
+      if (!r.results) { $('impARes').innerHTML = '<div class="card a">Lookup failed. The jukebox may need updating first.</div>'; return; }
+      impA.push(...r.results);
+    }
+    $('impARes').innerHTML = impA.map((row, i) => {
+      const m = row.matches || [];
+      const best = Math.max(0, m.findIndex(x => nt(x.name) === nt(row.name)));
+      const sure = m.length && nt(m[best].name) === nt(row.name);
+      row.pick = best;
+      return `<div class="card"><div class="chk"><input type="checkbox" data-i="${i}" ${sure ? 'checked' : ''} ${m.length ? '' : 'disabled'}><div style="flex:1"><div class="a">${esc(row.name)}${sure ? '' : ' <span style="color:var(--g)">CHECK</span>'}</div>` +
+        (m.length ? `<select data-i="${i}">${m.map((x, j) => `<option value="${j}" ${j === best ? 'selected' : ''}>${esc(x.name)}${x.genre ? ' · ' + esc(x.genre) : ''}</option>`).join('')}</select>` : '<div class="a">No match found</div>') + '</div></div></div>';
+    }).join('');
+    $('impARes').querySelectorAll('select').forEach(sel => sel.onchange = () => { impA[sel.dataset.i].pick = +sel.value; });
+    $('impABlock').style.display = '';
+  };
+  $('impABlock').onclick = async () => {
+    const picked = [...$('impARes').querySelectorAll('input[type=checkbox]:checked')].map(c => { const row = impA[c.dataset.i]; const m = row.matches[row.pick]; return { id: m.id, name: m.name }; });
+    if (!picked.length) { say('Nothing ticked'); return; }
+    const br = await api('/staff/block-artists', { method: 'POST', body: JSON.stringify({ artists: picked }) });
+    if (!br.ok) { say(br.error || 'Not saved. The jukebox needs updating first.'); return; }
+    say(`Blocked ${picked.length} artist${picked.length === 1 ? '' : 's'}`); $('impARes').innerHTML = ''; $('impABlock').style.display = 'none'; $('impA').value = ''; impA = []; paintBlocked();
+  };
   const nt = n => String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s[-–—]\s.*$/, '').replace(/[\(\[].*?[\)\]]/g, '').replace(/[^a-z0-9]/g, '');
   let impRows = [];
   $('impGo').onclick = async () => {

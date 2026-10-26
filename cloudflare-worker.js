@@ -88,6 +88,12 @@ export class Ledger extends DurableObject {
     if (!list.some(x => x.id === a.id)) { list.push({ id: a.id, name: a.name }); await this.ctx.storage.put('blocked', list); }
     return list;
   }
+  async blockMany(artists) {
+    const list = await this.getBlocked();
+    for (const a of artists) if (!list.some(x => x.id === a.id)) list.push({ id: a.id, name: a.name });
+    await this.ctx.storage.put('blocked', list);
+    return list;
+  }
   async unblock(id) {
     const list = (await this.getBlocked()).filter(x => x.id !== id);
     await this.ctx.storage.put('blocked', list);
@@ -473,6 +479,24 @@ export default {
           return json({ ok: true, track });
         }
         if (path === '/staff/blocked') { const l = await ledger.blockLists(); return json({ blocked: l.artists, blockedTracks: l.tracks }); }
+        if (path === '/staff/block-artists' && request.method === 'POST') {
+          const { artists } = await request.json();
+          const ok = (Array.isArray(artists) ? artists : []).slice(0, 80).filter(a => /^[A-Za-z0-9]{10,40}$/.test(a.id || '')).map(a => ({ id: a.id, name: String(a.name || '').slice(0, 100) }));
+          if (!ok.length) return json({ error: 'Nothing to block' }, 400);
+          return json({ ok: true, blocked: await ledger.blockMany(ok) });
+        }
+        if (path === '/staff/lookup-artists' && request.method === 'POST') {
+          // Finds likely Spotify artists for pasted names. Saves nothing.
+          const { names } = await request.json();
+          const out = [];
+          for (const n of (Array.isArray(names) ? names : []).slice(0, 10)) {
+            const q = String(n || '').replace(/"/g, '').trim().slice(0, 100);
+            if (q.length < 2) { out.push({ name: q, matches: [] }); continue; }
+            const data = await (await spotify(env, `/search?q=${encodeURIComponent(q)}&type=artist&limit=4`)).json();
+            out.push({ name: q, matches: (data.artists?.items || []).slice(0, 4).map(a => ({ id: a.id, name: a.name, genre: (a.genres || [])[0] || '' })) });
+          }
+          return json({ results: out });
+        }
         if (path === '/staff/block-tracks' && request.method === 'POST') {
           const { tracks } = await request.json();
           const entries = [];
