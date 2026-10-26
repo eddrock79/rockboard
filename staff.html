@@ -32,7 +32,13 @@
   .pill span { flex:1; font-weight:600; font-size:17px; }
   .pill button { background:transparent; color:var(--ink); padding:2px 8px; font-size:18px; }
   .lbl { margin:4px 2px 8px; font-size:12px; letter-spacing:.3em; color:var(--g); font-weight:600; }
-  #msg { min-height:22px; color:var(--g); font-size:15px; margin:8px 2px; position:sticky; top:0; z-index:5; background:#050706; padding:6px 2px; }
+  #stick { position:sticky; top:0; z-index:5; background:#050706; margin:0 -16px; padding:0 16px; }
+  #msg { min-height:22px; color:var(--g); font-size:15px; margin:0 2px; padding:6px 0 2px; }
+  #tabs { display:flex; gap:6px; overflow-x:auto; padding:4px 0 10px; scrollbar-width:none; }
+  #tabs::-webkit-scrollbar { display:none; }
+  #tabs button { flex:1 1 auto; background:transparent; color:var(--mute); border:1px solid rgba(255,255,255,.2); padding:10px 6px; font-size:12px; letter-spacing:.06em; }
+  #tabs button.on { background:rgba(110,240,160,.14); color:var(--g); border-color:var(--g); }
+  .tab { display:none; } .tab.on { display:block; }
   .sale { display:flex; justify-content:space-between; font-size:15px; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.08); color:var(--mute); }
 </style>
 </head>
@@ -44,10 +50,15 @@
     <button id="go" style="width:100%">UNLOCK</button>
   </div>
   <div id="panel" style="display:none">
-    <div id="msg"></div>
+    <div id="stick"><div id="msg"></div>
+      <div id="tabs"><button data-t="now" class="on">PLAYING</button><button data-t="add">ADD</button><button data-t="block">BLOCKED</button><button data-t="tables">TABLES</button><button data-t="reports">REPORTS</button></div>
+    </div>
+    <div class="tab on" data-tab="now">
     <h3>NOW PLAYING</h3><div id="now" class="card">…</div>
     <div class="row"><button id="skip">SKIP</button><button class="ghost" id="pause">PAUSE</button><button class="ghost" id="play">PLAY</button></div>
     <h3>QUEUE</h3><div id="queue"></div>
+    </div>
+    <div class="tab" data-tab="add">
     <h3>ADD A TRACK (FREE)</h3>
     <div class="modes"><button class="on" id="mArtist">BY ARTIST</button><button id="mSong">BY SONG</button></div>
     <div id="aBox">
@@ -60,12 +71,16 @@
     <h3>GIVE A GUEST PLAYS</h3>
     <div class="row"><input id="gcode" placeholder="Guest code" autocapitalize="characters"><input id="gn" type="number" min="1" max="20" value="1"></div>
     <button id="grant" style="width:100%">GIVE PLAYS</button>
+    </div>
+    <div class="tab" data-tab="tables">
     <h3>TABLE QR</h3>
     <div class="card a" style="margin-bottom:8px">One QR for every table. Each scan gives that phone an hour to pick songs.</div>
     <div class="row"><a href="table-card.html" target="_blank" style="text-decoration:none"><button style="width:100%">PRINT TABLE CARD</button></a><button class="ghost" id="rot">STOP ALL TABLE QRS</button></div>
     <div class="card a" style="margin-top:8px">"Stop all" cancels every table pass and makes every printed card useless. Print new cards afterwards. It doesn't affect the screen QR.</div>
+    </div>
+    <div class="tab" data-tab="block">
     <h3>BLOCKED ARTISTS</h3>
-    <div class="card a" style="margin-bottom:8px">Guests can't find or request these. You can still add them yourself above.</div>
+    <div class="card a" style="margin-bottom:8px">Guests can't find or request these. You can still add them yourself from the Add tab.</div>
     <details><summary id="baSum">Show blocked artists</summary><div id="blocked"></div></details>
     <input id="qb" type="search" placeholder="Search an artist to block" autocomplete="off">
     <div id="bList"></div>
@@ -88,8 +103,11 @@
       <div id="impRes"></div>
       <button id="impBlock" style="display:none;width:100%">BLOCK TICKED SONGS</button>
     </details>
+    </div>
+    <div class="tab" data-tab="reports">
     <h3>ARTISTS PLAYED SO FAR</h3><div id="artists"></div>
     <h3>RECENT SALES</h3><div id="sales"></div>
+    </div>
   </div>
 </div>
 <script src="config.js"></script>
@@ -266,6 +284,14 @@
     if (!br.ok) { say(br.error || 'Not saved. The jukebox needs updating first.'); return; }
     say(`Blocked ${picked.length} song${picked.length === 1 ? '' : 's'}`); $('impRes').innerHTML = ''; $('impBlock').style.display = 'none'; $('imp').value = ''; impRows = []; paintBlocked();
   };
+  function showTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
+    document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+    try { sessionStorage.setItem('bb_tab', t); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+  try { const t = sessionStorage.getItem('bb_tab'); if (t && document.querySelector(`.tab[data-tab="${t}"]`)) showTab(t); } catch (e) {}
   if (pin) unlock();
 })();
 </script>
