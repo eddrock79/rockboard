@@ -150,7 +150,8 @@
     const r = await api('/staff/search-artists?q=' + encodeURIComponent(q)); const list = r.items || [];
     $('bList').innerHTML = list.length ? list.map((a, i) => `<div class="card res"><div class="t">${esc(a.name)}</div><button data-i="${i}">BLOCK</button></div>`).join('') : '<div class="card a">No artists found</div>';
     $('bList').querySelectorAll('button').forEach(b => b.onclick = async () => {
-      const a = list[b.dataset.i]; await api('/staff/block', { method: 'POST', body: JSON.stringify({ id: a.id, name: a.name }) });
+      const a = list[b.dataset.i]; const br = await api('/staff/block', { method: 'POST', body: JSON.stringify({ id: a.id, name: a.name }) });
+      if (!br.ok) { say('Not saved. The jukebox needs updating first.'); return; }
       say(`Blocked ${a.name}`); $('qb').value = ''; $('bList').innerHTML = ''; paintBlocked();
     });
   }
