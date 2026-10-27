@@ -1,6 +1,6 @@
 # Deploys the LIVE Banshee jukebox worker (banshee-jukebox) from GitHub. Keeps all secrets and settings.
 $ErrorActionPreference = 'Stop'
-$sha = '26a0af03b174da25aab84ec64ac67f5b516b4e06'
+$sha = 'abe26aaab34d6b370cf0e56aac9a21e86d960591'
 $tmp = Join-Path $env:TEMP 'banshee-live-deploy'
 if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
 New-Item -ItemType Directory $tmp | Out-Null
@@ -11,4 +11,4 @@ Push-Location $src
 npx wrangler deploy
 Pop-Location
 Remove-Item $tmp -Recurse -Force
-Write-Host "`nDone. The live Banshee jukebox now loads albums gently and respects Spotify's limits."
+Write-Host "`nDone. The live Banshee jukebox now has a closing time, so songs that would run past it can't be requested."
