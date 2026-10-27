@@ -633,6 +633,24 @@ export default {
           await bustState();
           return json({ ok: true, track });
         }
+        if (path === '/staff/diag') {
+          const out = [];
+          const probe = async (label, pth) => {
+            try {
+              const r = await spotify(env, pth); let note = '';
+              const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
+              if (r.status === 429) note = ' (Spotify says wait ' + (r.headers.get('retry-after') || '?') + 's)';
+              else if (j?.error) note = ' (' + (j.error.reason || j.error.message || JSON.stringify(j.error)) + ')';
+              else if (label === 'Player' && r.status === 200) note = j?.item ? (j.is_playing ? ' playing: ' : ' paused: ') + j.item.name + ' on "' + (j.device?.name || '?') + '"' : ' no track';
+              else if (label === 'Player' && r.status === 204) note = ' (no active player)';
+              else if (label === 'Devices' && j?.devices) note = ' ' + (j.devices.map(d => d.name + (d.is_active ? ' [active]' : '')).join(', ') || 'none');
+              else if (label === 'Account' && j) note = ' ' + (j.product || '') + ' ' + (j.display_name || '');
+              out.push(label + ': ' + r.status + note);
+            } catch (e) { out.push(label + ': failed (' + String(e.message || e).slice(0, 120) + ')'); }
+          };
+          await probe('Account', '/me'); await probe('Player', '/me/player'); await probe('Devices', '/me/player/devices');
+          return json({ lines: out });
+        }
         if (path === '/staff/hours') return json(await ledger.hours());
         if (path === '/staff/hours-set' && request.method === 'POST') {
           const b = await request.json(), ok = x => /^([01]\d|2[0-3]):[0-5]\d$/.test(x || '');

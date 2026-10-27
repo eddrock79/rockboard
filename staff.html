@@ -78,6 +78,9 @@
     <button id="grant" style="width:100%">GIVE PLAYS</button>
     </div>
     <div class="tab" data-tab="more">
+    <h3>SPOTIFY CHECK</h3>
+    <button id="diag" class="ghost" style="width:100%">CHECK SPOTIFY CONNECTION</button>
+    <pre id="diagOut" style="white-space:pre-wrap;font:500 14px 'Oswald',sans-serif;margin:8px 0 18px"></pre>
     <h3>CLOSING TIME</h3>
     <div class="card a" style="margin-bottom:8px">Songs can only be requested if they would finish before closing time. Between closing and opening, requests and buying plays are off. Unused plays stay on guests' phones for next time.</div>
     <div class="row"><label class="chk" style="flex:1">CLOSES<input type="time" id="hClose" value="02:30"></label><label class="chk" style="flex:1">REOPENS<input type="time" id="hOpen" value="08:00"></label></div>
@@ -231,6 +234,11 @@
   }
   $('qb').oninput = deb(findBlock);
   // ── table QR: drawn from the QR's own modules so the downloads are crisp ──
+  $('diag').onclick = async () => {
+    $('diagOut').textContent = 'Checking...';
+    const r = await api('/staff/diag');
+    $('diagOut').textContent = r.lines ? r.lines.join('\n') : 'Not available yet. The jukebox needs updating first.';
+  };
   async function loadHours() { const r = await api('/staff/hours'); if (!r.close) return; $('hClose').value = r.close; $('hOpen').value = r.open; $('hOn').checked = !!r.on; }
   $('hSave').onclick = async () => {
     const r = await api('/staff/hours-set', { method: 'POST', body: JSON.stringify({ close: $('hClose').value, open: $('hOpen').value, on: $('hOn').checked }) });
