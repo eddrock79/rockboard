@@ -202,12 +202,20 @@ async function getAccessToken(env) {
   spotifyToken = { value: data.access_token, exp: Date.now() + (data.expires_in - 60) * 1000 };
   return data.access_token;
 }
+let spotifyHoldUntil = 0;
 async function spotify(env, path, init = {}) {
+  const { force, ...rest } = init;
+  // When Spotify has said "wait", stop asking until then. Asking again can make the wait longer.
+  if (!force && Date.now() < spotifyHoldUntil) {
+    return new Response('{"error":{"status":429,"message":"held"}}', { status: 429, headers: { 'retry-after': String(Math.ceil((spotifyHoldUntil - Date.now()) / 1000)), 'content-type': 'application/json' } });
+  }
   const token = await getAccessToken(env);
-  return fetch((env.SPOTIFY_API_BASE || 'https://api.spotify.com/v1') + path, {
-    ...init,
-    headers: { Authorization: 'Bearer ' + token, ...(init.headers || {}) },
+  const r = await fetch((env.SPOTIFY_API_BASE || 'https://api.spotify.com/v1') + path, {
+    ...rest,
+    headers: { Authorization: 'Bearer ' + token, ...(rest.headers || {}) },
   });
+  if (r.status === 429) { const ra = Number(r.headers.get('retry-after')) || 30; spotifyHoldUntil = Date.now() + Math.min(ra, 12 * 3600) * 1000; }
+  return r;
 }
 function cleanName(n) {
   return String(n || '').replace(/\s*(?:-|\u2013|\(|\[)\s*(?:\d{4}\s+)?(?:digital\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*[)\]]?\s*$/i, '').trim();
@@ -637,7 +645,7 @@ export default {
           const out = [];
           const probe = async (label, pth) => {
             try {
-              const r = await spotify(env, pth); let note = '';
+              const r = await spotify(env, pth, { force: true }); let note = '';
               const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
               if (r.status === 429) note = ' (Spotify says wait ' + (r.headers.get('retry-after') || '?') + 's)';
               else if (j?.error) note = ' (' + (j.error.reason || j.error.message || JSON.stringify(j.error)) + ')';
