@@ -397,7 +397,7 @@
       html += `<div class="card res" style="padding:8px 12px"><div style="display:flex;align-items:center;gap:12px;min-width:0">${avatar(a)}<div style="min-width:0"><div class="t" style="font-size:17px">${esc(a.name)}</div><div class="a">${[a.genre, counts[a.id] === undefined ? 'albums not loaded' : counts[a.id] + ' album' + (counts[a.id] === 1 ? '' : 's')].filter(Boolean).map(esc).join(' · ')}</div></div></div><button class="ghost" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}" style="font-size:16px;padding:8px 14px">&#10005;</button></div>`;
     }
     const need = browse.filter(a => !counts[a.id]).length;
-    if (!albBusy) $('balb').innerHTML = (albNote ? `<div class="card a" style="margin-bottom:8px">${albNote}</div>` : '') + (need ? `<div class="card"><div class="a" style="margin-bottom:8px">${need} artist${need === 1 ? ' still needs its' : 's still need their'} albums loading. Guests need these to browse by album.</div><button id="alb" style="width:100%">LOAD ALBUMS</button><div id="albMsg" class="a" style="margin-top:8px"></div></div>` : '');
+    if (false) $('balb').innerHTML = (albNote ? `<div class="card a" style="margin-bottom:8px">${albNote}</div>` : '') + (need ? `<div class="card"><div class="a" style="margin-bottom:8px">${need} artist${need === 1 ? ' still needs its' : 's still need their'} albums loading. Guests need these to browse by album.</div><button id="alb" style="width:100%">LOAD ALBUMS</button><div id="albMsg" class="a" style="margin-top:8px"></div></div>` : '');
     if ($('alb')) $('alb').onclick = loadAlbums;
     $('blist').innerHTML = html || '<div class="card a">Nothing here yet.</div>';
     $('jump').innerHTML = letters.map(l => `<button data-l="${l === '#' ? 'num' : l}">${l}</button>`).join('');
@@ -460,7 +460,7 @@
     $('bres').querySelectorAll('button:not([disabled])').forEach(b => b.onclick = async () => {
       const a = list[b.dataset.i]; const r2 = await api('/staff/browse-add', { method: 'POST', body: JSON.stringify({ artists: [{ id: a.id, name: a.name, image: a.image }] }) });
       if (!r2.ok) { say('Not saved. The jukebox needs updating first.'); return; }
-      browse = r2.artists; paintBrowse(); b.textContent = 'ADDED'; b.className = 'ghost'; b.disabled = true; say(`Added ${a.name}`); loadAlbums();
+      browse = r2.artists; paintBrowse(); b.textContent = 'ADDED'; b.className = 'ghost'; b.disabled = true; say(`Added ${a.name}`);
     });
   }
   function showTab(t) {

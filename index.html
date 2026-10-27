@@ -205,7 +205,7 @@
     if (r.letters && Object.keys(r.letters).length) { $('mBrowse').style.display = ''; setMode('browse'); }
   }
   async function loadLetters() {
-    $('bpill').style.display = 'none'; $('bnav').style.display = ''; $('letters').style.display = '';
+    $('bpill').style.display = 'none'; $('bnav').style.display = 'none'; $('letters').style.display = ''; $('carousel').style.display = ''; $('cnav').style.display = '';
     document.querySelectorAll('#bnav button').forEach(b => b.classList.toggle('on', b.dataset.k === bKind));
     const r = await api('/browse/letters?kind=' + bKind);
     if (r.status === 401) return gate();
@@ -223,18 +223,13 @@
   const cardHtml = (x, i, L) => {
     const isArtist = !bArtist && bKind === 'artists';
     return `<button class="bc" data-i="${i}" data-l="${L || ''}">${x.image ? `<img${isArtist ? ' class="round"' : ''} src="${esc(x.image)}" alt="" loading="lazy">` : `<div class="ph${isArtist ? ' round' : ''}"></div>`}` +
-      `<div class="t">${esc(x.name)}</div><div class="a">${esc(isArtist ? (x.n ? x.n + (x.n === 1 ? ' album' : ' albums') : 'tap to see tracks') : (x.artist + (x.year ? ' · ' + x.year : '')))}</div></button>`;
+      `<div class="t">${esc(x.name)}</div><div class="a">${esc(isArtist ? 'tap to see songs' : (x.artist + (x.year ? ' · ' + x.year : '')))}</div></button>`;
   };
   async function loadCards() {
     const box = $('carousel'), seq = ++flowSeq; cardItems = [];
     if (bArtist) {
-      box.innerHTML = '<div class="msg">Loading…</div>';
-      const r = await api('/browse/albums?artist_id=' + encodeURIComponent(bArtist.id));
-      if (r.status === 401) return gate();
-      if (seq !== flowSeq) return;
-      cardItems = r.items || [];
-      box.innerHTML = cardItems.length ? cardItems.map((x, i) => cardHtml(x, i, '')).join('') : `<div class="msg">${r.busy ? 'Albums are slow to load just now. Their tracks are below.' : 'No albums listed. Their tracks are below.'}</div>`;
-      box.scrollLeft = 0; return;
+      // No album lists: go straight to the artist's tracks.
+      box.innerHTML = ''; box.style.display = 'none'; $('cnav').style.display = 'none'; return;
     }
     if (!bLetter) { box.innerHTML = '<div class="msg">Nothing to browse yet.</div>'; return; }
     flowOrder = LETTERS.filter(l => bLetters[l]); flowIdx = Math.max(0, flowOrder.indexOf(bLetter));
