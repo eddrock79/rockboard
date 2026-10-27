@@ -113,6 +113,7 @@
     return { status: res.status, ...data };
   }
 
+  let searchBusy = false;
   let plays = 0, code = '', state = null, results = [];
   const mine = new Set(JSON.parse(ls.get('bb_mine') || '[]'));
   function toast(msg, ms = 4500) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
@@ -296,7 +297,7 @@
     $('bnav').style.display = 'none'; $('letters').style.display = 'none';
     $('bpill').style.display = 'flex'; $('bpillName').textContent = a.name;
     await loadCards();
-    const r = await api('/search?artist_id=' + encodeURIComponent(a.id) + '&artist=' + encodeURIComponent(a.name));
+    const r = await api('/search?artist_id=' + encodeURIComponent(a.id) + '&artist=' + encodeURIComponent(a.name)); searchBusy = !!r.busy;
     results = r.items || []; paintResults('top');
   }
   async function searchArtists() {
@@ -307,7 +308,7 @@
     const list = r.items || [];
     $('artistList').innerHTML = list.length ? list.map((a, i) =>
       `<button class="item" data-i="${i}">${a.image ? `<img class="round" src="${esc(a.image)}" alt="">` : '<div class="ph round"></div>'}<div class="nm"><div class="t">${esc(a.name)}</div></div></button>`).join('')
-      : '<div class="msg">No artists found. Try another spelling.</div>';
+      : '<div class="msg">' + (r.busy ? 'Spotify is busy just now. Please try again in a minute.' : 'No artists found. Try another spelling.') + '</div>';
     $('artistList').querySelectorAll('.item').forEach(b => b.onclick = () => pickArtist(list[b.dataset.i]));
   }
   function pickArtist(a) {
@@ -327,20 +328,20 @@
     if (!artist) return;
     const q = $('qt').value.trim();
     $('results').innerHTML = '<div class="msg">Loading…</div>';
-    const r = await api('/search?artist_id=' + encodeURIComponent(artist.id) + '&artist=' + encodeURIComponent(artist.name) + (q.length >= 2 ? '&q=' + encodeURIComponent(q) : ''));
+    const r = await api('/search?artist_id=' + encodeURIComponent(artist.id) + '&artist=' + encodeURIComponent(artist.name) + (q.length >= 2 ? '&q=' + encodeURIComponent(q) : '')); searchBusy = !!r.busy;
     if (r.status === 401) return gate();
     results = r.items || []; paintResults(q.length >= 2 ? 'search' : 'top');
   }
   async function searchSongs() {
     const q = $('qs').value.trim();
     if (q.length < 2) { results = []; paintResults(); return; }
-    const r = await api('/search?q=' + encodeURIComponent(q));
+    const r = await api('/search?q=' + encodeURIComponent(q)); searchBusy = !!r.busy;
     if (r.status === 401) return gate();
     results = r.items || []; paintResults('search');
   }
   function paintResults(kind) {
     const el = $('results'); if (!el) return;
-    if (!results.length) { el.innerHTML = kind ? '<div class="msg">No tracks found. Try another spelling.</div>' : ''; return; }
+    if (!results.length) { el.innerHTML = kind ? '<div class="msg">' + (searchBusy ? 'Spotify is busy just now. Please try again in a minute.' : 'No tracks found. Try another spelling.') + '</div>' : ''; return; }
     const w = waits(); const end = w ? w.end : null;
     el.innerHTML = (kind === 'top' && artist ? `<div class="lbl">TOP TRACKS BY ${esc(artist.name.toUpperCase())}</div>` : kind === 'album' && albumCtx ? `<div class="lbl">${esc(albumCtx.name.toUpperCase())}</div>` : '') + results.map((x, i) =>
       `<button class="item" data-i="${i}">${x.image ? `<img src="${esc(x.image)}" alt="">` : '<div class="ph"></div>'}` +

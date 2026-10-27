@@ -328,7 +328,9 @@ async function verifyStripeSignature(env, body, header) {
 async function artistSearch(env, qRaw) {
   const q = (qRaw || '').trim().slice(0, 100);
   if (q.length < 2) return [];
-  const data = await (await spotify(env, `/search?q=${encodeURIComponent(q)}&type=artist&limit=8`)).json();
+  const r = await spotify(env, `/search?q=${encodeURIComponent(q)}&type=artist&limit=8`);
+  if (r.status === 429) throw Object.assign(new Error('busy'), { busy: true });
+  const data = await r.json().catch(() => ({}));
   return (data.artists?.items || []).map(a => ({ id: a.id, name: a.name, image: a.images?.[2]?.url || a.images?.[0]?.url || '' }));
 }
 // Artists the staff have blocked: guests can't find them or request them. Staff can still add them.
@@ -386,7 +388,11 @@ async function trackSearch(env, params, lists = { artists: [], tracks: [] }) {
   const q = (params.get('q') || '').trim().slice(0, 100).replace(/"/g, '');
   const artistId = (params.get('artist_id') || '').slice(0, 40);
   const artist = (params.get('artist') || '').trim().slice(0, 100).replace(/"/g, '');
-  const get = async (query, offset) => (await (await spotify(env, `/search?q=${encodeURIComponent(query)}&type=track&limit=10&offset=${offset}`)).json()).tracks?.items || [];
+  const get = async (query, offset) => {
+    const r = await spotify(env, `/search?q=${encodeURIComponent(query)}&type=track&limit=10&offset=${offset}`);
+    if (r.status === 429) throw Object.assign(new Error('busy'), { busy: true });
+    return (await r.json().catch(() => ({}))).tracks?.items || [];
+  };
   let raw = [];
   if (artistId && artist) {
     // By artist: this artist's tracks, most relevant first. Filtering by artist id drops covers and other bands.
@@ -500,7 +506,8 @@ export default {
       if (path === '/search-artists') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
         const blocked = (await ledger.blockLists()).artists;
-        return json({ items: (await artistSearch(env, url.searchParams.get('q'))).filter(a => !blocked.some(b => b.id === a.id)) });
+        try { return json({ items: (await artistSearch(env, url.searchParams.get('q'))).filter(a => !blocked.some(b => b.id === a.id)) }); }
+        catch (e) { if (e.busy) return json({ items: [], busy: true }); throw e; }
       }
       if (path === '/search') {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
@@ -509,7 +516,8 @@ export default {
           if (!/^[A-Za-z0-9]{10,40}$/.test(albumId)) return json({ items: [] });
           return json({ items: await albumTracks(env, albumId, await ledger.blockLists()) });
         }
-        return json({ items: await trackSearch(env, url.searchParams, await ledger.blockLists()) });
+        try { return json({ items: await trackSearch(env, url.searchParams, await ledger.blockLists()) }); }
+        catch (e) { if (e.busy) return json({ items: [], busy: true }); throw e; }
       }
       if (path.startsWith('/browse/')) {
         if (!(await needSession())) return json({ error: 'Scan the QR code on the screen to start' }, 401);
@@ -656,6 +664,8 @@ export default {
               out.push(label + ': ' + r.status + note);
             } catch (e) { out.push(label + ': failed (' + String(e.message || e).slice(0, 120) + ')'); }
           };
+          out.push('Held until: ' + (spotifyHoldUntil > Date.now() ? new Date(spotifyHoldUntil).toISOString().slice(11, 19) + ' UTC' : 'not held'));
+          await probe('Search', '/search?q=thunderstruck&type=track&limit=1');
           await probe('Account', '/me'); await probe('Player', '/me/player'); await probe('Devices', '/me/player/devices');
           return json({ lines: out });
         }
