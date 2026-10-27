@@ -114,6 +114,8 @@ export class Ledger extends DurableObject {
   }
   async tableEpoch() { return (await this.ctx.storage.get('tableEpoch')) || 0; }
   async rotateTable() { const e = (await this.tableEpoch()) + 1; await this.ctx.storage.put('tableEpoch', e); return e; }
+  async hours() { const h = (await this.ctx.storage.get('hours')) || {}; return { close: h.close || '02:30', open: h.open || '08:00', on: h.on !== false }; }
+  async setHours(h) { await this.ctx.storage.put('hours', h); return this.hours(); }
   async browseOn() { return !!(await this.ctx.storage.get('browseOn')); }
   async setBrowseOn(on) { await this.ctx.storage.put('browseOn', !!on); return !!on; }
   async setAlbums(id, list) { await this.ctx.storage.put('alb:' + id, list); this.albCache = null; }
@@ -226,6 +228,28 @@ function trackShape(t) {
     duration: t.duration_ms,
     explicit: !!t.explicit,
   };
+}
+
+// ── Closing time (UK clock) ──────────────────────────────────
+function londonParts(ms) {
+  const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const o = {}; for (const x of f.formatToParts(new Date(ms))) o[x.type] = +x.value; if (o.hour === 24) o.hour = 0; return o;
+}
+function londonOffset(ms) { const o = londonParts(ms); return Date.UTC(o.year, o.month - 1, o.day, o.hour, o.minute) - Math.floor(ms / 60000) * 60000; }
+// The next time the London clock shows hh:mm, after `ms`.
+function nextClock(ms, hhmm) {
+  const [h, m] = hhmm.split(':').map(Number), o = londonParts(ms);
+  let t = Date.UTC(o.year, o.month - 1, o.day, h, m); t -= londonOffset(t);
+  if (t <= ms) { t = Date.UTC(o.year, o.month - 1, o.day + 1, h, m); t -= londonOffset(t); }
+  return t;
+}
+// null if fine, otherwise the message to show.
+function closingProblem(hours, now, finishMs) {
+  if (!hours.on) return null;
+  const nextOpen = nextClock(now, hours.open), nextClose = nextClock(now, hours.close);
+  if (nextOpen < nextClose) return 'The jukebox has finished for tonight. See you next time! You haven’t been charged a play.';
+  if (finishMs > nextClose) return 'Sorry, that song wouldn’t finish before closing time. Try a shorter one. You haven’t been charged a play.';
+  return null;
 }
 
 // ── STATE: now playing + our paid queue ──────────────────────
@@ -529,6 +553,16 @@ export default {
         const full = await tRes.json();
         if (!playable(full)) { await ledger.refund(device_id); return json({ error: 'Sorry, tracks over 7 minutes can’t be requested. You haven’t been charged a play.' }, 422); }
         if (isHidden(full, await ledger.blockLists())) { await ledger.refund(device_id); return json({ error: 'Sorry, that one isn’t available on this jukebox. You haven’t been charged a play.' }, 422); }
+        {
+          const hours = await ledger.hours();
+          if (hours.on) {
+            const st = await readState(env, ledger), now = Date.now();
+            const left = st.track ? Math.max(0, (st.track.duration || 0) - (st.track.progress || 0)) : 0;
+            const ahead = st.queue.reduce((a, q) => a + (q.duration || 0), 0);
+            const why = closingProblem(hours, now, now + left + ahead + (full.duration_ms || 0));
+            if (why) { await ledger.refund(device_id); return json({ error: why }, 422); }
+          }
+        }
         const track = trackShape(full);
         const qRes = await spotify(env, '/me/player/queue?uri=' + encodeURIComponent(uri), { method: 'POST' });
         if (qRes.status !== 204 && qRes.status !== 200) {
@@ -546,6 +580,7 @@ export default {
         const { device_id, tier } = await request.json();
         const t = TIERS[tier];
         if (!device_id || !t) return json({ error: 'Bad request' }, 400);
+        { const hours = await ledger.hours(); if (hours.on && nextClock(Date.now(), hours.open) < nextClock(Date.now(), hours.close)) return json({ error: 'The jukebox has finished for tonight. See you next time!' }, 422); }
         const site = env.SITE_URL;
         const s = await stripe(env, '/checkout/sessions', {
           mode: 'payment',
@@ -597,6 +632,12 @@ export default {
           await ledger.setPending([...pending, { ...track, addedAt: Date.now() }]);
           await bustState();
           return json({ ok: true, track });
+        }
+        if (path === '/staff/hours') return json(await ledger.hours());
+        if (path === '/staff/hours-set' && request.method === 'POST') {
+          const b = await request.json(), ok = x => /^([01]\d|2[0-3]):[0-5]\d$/.test(x || '');
+          if (!ok(b.close) || !ok(b.open)) return json({ error: 'Bad time' }, 400);
+          return json({ ok: true, ...(await ledger.setHours({ close: b.close, open: b.open, on: !!b.on })) });
         }
         if (path === '/staff/browse') {
           const [artists, albums, on] = await Promise.all([ledger.getBrowse(), ledger.allAlbums(), ledger.browseOn()]);
