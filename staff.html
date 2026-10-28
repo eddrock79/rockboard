@@ -98,6 +98,7 @@
     <div class="tab" data-tab="browse">
     <h3 id="bcount">BROWSE LIST</h3>
     <div class="card a" style="margin-bottom:8px">These artists will fill the guest Browse screen, A to Z. Add more with the box at the top. Tap the cross to remove one.</div>
+    <div class="card" style="margin-bottom:8px"><button class="ghost" id="bcopy">COPY NAMES (for other jukeboxes)</button><textarea id="bcopyBox" readonly style="display:none;width:100%;height:120px;margin-top:8px;background:#111;color:#eee;border:1px solid #444;border-radius:8px;padding:8px;font:13px/1.4 sans-serif"></textarea></div>
     <div class="card" id="bswitch"></div>
     <div id="bseed"></div>
     <div id="balb"></div>
@@ -412,6 +413,12 @@
       setTimeout(() => { if ($('undo')) $('msg').textContent = ''; }, 9000);
     });
   }
+  $('bcopy').onclick = async () => {
+    const box = $('bcopyBox'), names = [...browse].sort((a, b) => bKey(a).localeCompare(bKey(b))).map(a => a.name).join('\n');
+    box.value = names; box.style.display = 'block'; box.focus(); box.select();
+    let ok = false; try { await navigator.clipboard.writeText(names); ok = true; } catch (e) {}
+    say(ok ? `Copied ${browse.length} names` : 'Select the box and copy it');
+  };
   async function loadBrowse() { const r = await api('/staff/browse'); if (r.artists) { browse = r.artists; counts = r.counts || {}; browseLive = !!r.on; paintBrowse(); } else { $('blist').innerHTML = `<div class="card a">Not available yet. ${esc(r.error || ('The jukebox needs updating first (code ' + r.status + ').'))} Wait a minute, then refresh.</div>`; } }
   async function loadStarter() {
     $('seed').disabled = true; const missing = [];
