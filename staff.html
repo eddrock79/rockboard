@@ -82,8 +82,9 @@
     <button id="diag" class="ghost" style="width:100%">CHECK SPOTIFY CONNECTION</button>
     <pre id="diagOut" style="white-space:pre-wrap;font:500 14px 'Oswald',sans-serif;margin:8px 0 18px"></pre>
     <h3>CLOSING TIME</h3>
-    <div class="card a" style="margin-bottom:8px">Songs can only be requested if they would finish before closing time. Between closing and opening, requests and buying plays are off. Unused plays stay on guests' phones for next time.</div>
+    <div class="card a" style="margin-bottom:8px">Songs can only be requested if they would finish before closing time. From the buying cut-off until opening, buying plays is off (so nobody pays when there's no time left to play a song). Between closing and opening, requests are off too. Unused plays stay on guests' phones for next time.</div>
     <div class="row"><label class="chk" style="flex:1">CLOSES<input type="time" id="hClose" value="02:30"></label><label class="chk" style="flex:1">REOPENS<input type="time" id="hOpen" value="08:00"></label></div>
+    <div class="row"><label class="chk" style="flex:1">STOP BUYING PLAYS AT<input type="time" id="hBuy" value="02:15"></label></div>
     <label class="chk" style="display:block;margin:6px 0"><input type="checkbox" id="hOn" checked style="width:auto;margin:0 8px 0 0"> Closing time is on</label>
     <button id="hSave" style="width:100%;margin-bottom:18px">SAVE CLOSING TIME</button>
     <h3>TABLE QR</h3>
@@ -239,10 +240,10 @@
     const r = await api('/staff/diag');
     $('diagOut').textContent = r.lines ? r.lines.join('\n') : 'Not available yet. The jukebox needs updating first.';
   };
-  async function loadHours() { const r = await api('/staff/hours'); if (!r.close) return; $('hClose').value = r.close; $('hOpen').value = r.open; $('hOn').checked = !!r.on; }
+  async function loadHours() { const r = await api('/staff/hours'); if (!r.close) return; $('hClose').value = r.close; $('hOpen').value = r.open; $('hBuy').value = r.buyStop || '02:15'; $('hOn').checked = !!r.on; }
   $('hSave').onclick = async () => {
-    const r = await api('/staff/hours-set', { method: 'POST', body: JSON.stringify({ close: $('hClose').value, open: $('hOpen').value, on: $('hOn').checked }) });
-    say(r.ok ? 'Saved. Closing ' + r.close + ', reopening ' + r.open + (r.on ? '.' : ' (switched off).') : 'Not saved. The jukebox needs updating first.');
+    const r = await api('/staff/hours-set', { method: 'POST', body: JSON.stringify({ close: $('hClose').value, open: $('hOpen').value, buyStop: $('hBuy').value, on: $('hOn').checked }) });
+    say(r.ok ? 'Saved. Buying stops ' + r.buyStop + ', closing ' + r.close + ', reopening ' + r.open + (r.on ? '.' : ' (switched off).') : 'Not saved. The jukebox needs updating first.');
   };
   let tqModules = null;
   async function paintTableQr() {

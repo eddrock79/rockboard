@@ -114,7 +114,7 @@ export class Ledger extends DurableObject {
   }
   async tableEpoch() { return (await this.ctx.storage.get('tableEpoch')) || 0; }
   async rotateTable() { const e = (await this.tableEpoch()) + 1; await this.ctx.storage.put('tableEpoch', e); return e; }
-  async hours() { const h = (await this.ctx.storage.get('hours')) || {}; return { close: h.close || '02:30', open: h.open || '08:00', on: h.on !== false }; }
+  async hours() { const h = (await this.ctx.storage.get('hours')) || {}; return { close: h.close || '02:30', open: h.open || '08:00', buyStop: h.buyStop || '02:15', on: h.on !== false }; }
   async setHours(h) { await this.ctx.storage.put('hours', h); return this.hours(); }
   async browseOn() { return !!(await this.ctx.storage.get('browseOn')); }
   async setBrowseOn(on) { await this.ctx.storage.put('browseOn', !!on); return !!on; }
@@ -596,7 +596,9 @@ export default {
         const { device_id, tier } = await request.json();
         const t = TIERS[tier];
         if (!device_id || !t) return json({ error: 'Bad request' }, 400);
-        { const hours = await ledger.hours(); if (hours.on && nextClock(Date.now(), hours.open) < nextClock(Date.now(), hours.close)) return json({ error: 'The jukebox has finished for tonight. See you next time!' }, 422); }
+        { // No buying from the buy cut-off (default 02:15) until reopening, so nobody pays when there is no time left to play a song.
+          const hours = await ledger.hours(), now = Date.now(), stop = hours.buyStop <= hours.close ? hours.buyStop : hours.close;
+          if (hours.on && nextClock(now, hours.open) < nextClock(now, stop)) return json({ error: 'Buying plays has stopped for tonight, so there is no time left to play a song. See you next time! You have not been charged.' }, 422); }
         const site = env.SITE_URL;
         const s = await stripe(env, '/checkout/sessions', {
           mode: 'payment',
@@ -673,7 +675,8 @@ export default {
         if (path === '/staff/hours-set' && request.method === 'POST') {
           const b = await request.json(), ok = x => /^([01]\d|2[0-3]):[0-5]\d$/.test(x || '');
           if (!ok(b.close) || !ok(b.open)) return json({ error: 'Bad time' }, 400);
-          return json({ ok: true, ...(await ledger.setHours({ close: b.close, open: b.open, on: !!b.on })) });
+          const buyStop = ok(b.buyStop) ? b.buyStop : '02:15';
+          return json({ ok: true, ...(await ledger.setHours({ close: b.close, open: b.open, buyStop, on: !!b.on })) });
         }
         if (path === '/staff/browse') {
           const [artists, albums, on] = await Promise.all([ledger.getBrowse(), ledger.allAlbums(), ledger.browseOn()]);
